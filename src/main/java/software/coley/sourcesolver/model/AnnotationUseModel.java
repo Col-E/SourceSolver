@@ -4,7 +4,6 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class AnnotationUseModel extends AbstractModel implements Named {

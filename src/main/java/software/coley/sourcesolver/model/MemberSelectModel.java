@@ -4,17 +4,24 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
-public class NameModel extends AbstractModel {
+public class MemberSelectModel extends AbstractModel {
 	private final String name;
+	private final AbstractModel context;
 
-	public NameModel(@Nonnull Range range, @Nonnull String name) {
-		super(range);
+	public MemberSelectModel(@Nonnull Range range, @Nonnull String name, @Nonnull AbstractModel context) {
+		super(range, context);
 		this.name = name;
+		this.context = context;
 	}
 
 	@Nonnull
 	public String getName() {
 		return name;
+	}
+
+	@Nonnull
+	public AbstractModel getContext() {
+		return context;
 	}
 
 	@Override
@@ -23,20 +30,22 @@ public class NameModel extends AbstractModel {
 		if (o == null || getClass() != o.getClass()) return false;
 		if (!super.equals(o)) return false;
 
-		NameModel nameModel = (NameModel) o;
+		MemberSelectModel that = (MemberSelectModel) o;
 
-		return name.equals(nameModel.name);
+		if (!name.equals(that.name)) return false;
+		return context.equals(that.context);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = super.hashCode();
 		result = 31 * result + name.hashCode();
+		result = 31 * result + context.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return name;
+		return getContext().toString() + '.' + name;
 	}
 }

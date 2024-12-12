@@ -9,8 +9,6 @@ import software.coley.sourcesolver.model.AnnotationUseModel;
 import software.coley.sourcesolver.model.ArrayDeclarationModel;
 
 import javax.annotation.Nonnull;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;

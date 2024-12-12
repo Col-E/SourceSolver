@@ -14,5 +14,6 @@ public sealed interface Resolution {
 	}
 
 	non-sealed interface FieldResolution extends MemberResolution {}
+
 	non-sealed interface MethodResolution extends MemberResolution {}
 }

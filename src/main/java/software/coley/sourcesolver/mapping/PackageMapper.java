@@ -8,7 +8,6 @@ import software.coley.sourcesolver.model.PackageModel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

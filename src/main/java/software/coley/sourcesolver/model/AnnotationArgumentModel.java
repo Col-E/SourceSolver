@@ -4,7 +4,6 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Objects;
 
 public class AnnotationArgumentModel extends AbstractModel implements Named {
 	private final NameModel nameModel;

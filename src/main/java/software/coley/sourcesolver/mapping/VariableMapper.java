@@ -1,11 +1,6 @@
 package software.coley.sourcesolver.mapping;
 
-import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ExpressionTree;
-import com.sun.source.tree.IdentifierTree;
-import com.sun.source.tree.ParameterizedTypeTree;
-import com.sun.source.tree.PrimitiveTypeTree;
-import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
@@ -15,7 +10,6 @@ import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
 
 import javax.annotation.Nonnull;
-
 import java.util.Collections;
 import java.util.List;
 

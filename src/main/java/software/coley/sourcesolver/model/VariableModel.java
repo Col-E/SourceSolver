@@ -1,7 +1,6 @@
 package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.util.Range;
-import static software.coley.sourcesolver.model.ChildSupplier.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -9,7 +8,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class VariableModel extends AbstractModel implements Annotated, Named{
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
+public class VariableModel extends AbstractModel implements Annotated, Named {
 	private final List<AnnotationUseModel> annotationModels;
 	private final ModifiersModel modifiers;
 	private final TypeModel typeModel;

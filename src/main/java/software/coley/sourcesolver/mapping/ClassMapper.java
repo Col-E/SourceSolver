@@ -1,5 +1,6 @@
 package software.coley.sourcesolver.mapping;
 
+import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
@@ -72,6 +73,8 @@ public class ClassMapper {
 			} else if (memberTree instanceof ClassTree innerClassTree) {
 				ClassModel innerClassModel = map(table, innerClassTree);
 				innerClassModels.add(innerClassModel);
+			} else if (memberTree instanceof BlockTree staticInitializerTree) {
+				methodModels.add(methodMapper.mapStaticInitializer(table, staticInitializerTree));
 			}
 		}
 

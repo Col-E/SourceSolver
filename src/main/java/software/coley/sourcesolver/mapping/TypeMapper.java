@@ -23,7 +23,7 @@ public class TypeMapper {
 			return new TypeModel.Primitive(extractRange(table, primitive), new NameMapper().map(table, primitive));
 
 		if (tree instanceof IdentifierTree identifier)
-			return new TypeModel.Objekt(extractRange(table, identifier), new NameMapper().map(table, identifier));
+			return new TypeModel.NamedObject(extractRange(table, identifier), new NameMapper().map(table, identifier));
 
 		if (tree instanceof ArrayTypeTree arrayType) {
 			TypeModel elementType = map(table, arrayType.getType());

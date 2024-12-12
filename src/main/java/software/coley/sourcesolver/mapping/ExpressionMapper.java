@@ -19,7 +19,7 @@ public class ExpressionMapper {
 
 		// Strings, integers, floats, etc
 		if (tree instanceof LiteralTree literal)
-			return new LiteralModel(extractRange(table, literal), literal.toString());
+			return new LiteralMapper().map(table, literal);
 
 		// ???
 		if (tree instanceof IdentifierTree identifier)
@@ -28,7 +28,7 @@ public class ExpressionMapper {
 		// Enum.name
 		// Constants.MY_CONSTANT
 		if (tree instanceof MemberSelectTree memberAccess)
-			throw new UnsupportedOperationException("TODO: MemberSelectTree");
+			return new MemberSelectMapper().map(table, memberAccess);
 
 		// Util.doUtility()
 		if (tree instanceof MethodInvocationTree methodInvoke)

@@ -29,7 +29,7 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 	                  @Nonnull List<AnnotationUseModel> annotationModels,
 	                  @Nonnull ModifiersModel modifiersModel,
 	                  @Nonnull String name,
-					  @Nonnull List<TypeParameterModel> typeParameterModels,
+	                  @Nonnull List<TypeParameterModel> typeParameterModels,
 	                  @Nonnull NameModel extendsModel,
 	                  @Nonnull ImplementsModel implementsModel,
 	                  @Nonnull PermitsModel permitsModel,
@@ -105,11 +105,6 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 		return null;
 	}
 
-	@Override
-	public String toString() {
-		return name;
-	}
-
 	@Nonnull
 	public List<VariableModel> getFieldModels() {
 		return fieldModels;
@@ -123,5 +118,69 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 	@Nonnull
 	public List<ClassModel> getInnerClassModels() {
 		return innerClassModels;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		if (!super.equals(o)) return false;
+
+		ClassModel that = (ClassModel) o;
+
+		if (!packageModel.equals(that.packageModel)) return false;
+		if (!importModels.equals(that.importModels)) return false;
+		if (!annotationModels.equals(that.annotationModels)) return false;
+		if (!modifiersModel.equals(that.modifiersModel)) return false;
+		if (!name.equals(that.name)) return false;
+		if (!typeParameterModels.equals(that.typeParameterModels)) return false;
+		if (!extendsModel.equals(that.extendsModel)) return false;
+		if (!implementsModel.equals(that.implementsModel)) return false;
+		if (!permitsModel.equals(that.permitsModel)) return false;
+		if (!fieldModels.equals(that.fieldModels)) return false;
+		if (!methodModels.equals(that.methodModels)) return false;
+		return innerClassModels.equals(that.innerClassModels);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + packageModel.hashCode();
+		result = 31 * result + importModels.hashCode();
+		result = 31 * result + annotationModels.hashCode();
+		result = 31 * result + modifiersModel.hashCode();
+		result = 31 * result + name.hashCode();
+		result = 31 * result + typeParameterModels.hashCode();
+		result = 31 * result + extendsModel.hashCode();
+		result = 31 * result + implementsModel.hashCode();
+		result = 31 * result + permitsModel.hashCode();
+		result = 31 * result + fieldModels.hashCode();
+		result = 31 * result + methodModels.hashCode();
+		result = 31 * result + innerClassModels.hashCode();
+		return result;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		if (packageModel.isDefaultPackage()) {
+
+		} else {
+			sb.append(packageModel.getName()).append('.');
+		}
+		sb.append(name);
+
+		if (fieldModels.isEmpty() && methodModels.isEmpty()) {
+			sb.append(" {}");
+		} else {
+			sb.append(" {\n    // Fields");
+			for (VariableModel fieldModel : fieldModels)
+				sb.append("\n    ").append(fieldModel.toString());
+			sb.append("\n    // Methods");
+			for (MethodModel methodModel : methodModels)
+				sb.append("\n    ").append(methodModel.toString());
+			sb.append("\n}");
+		}
+		return sb.toString();
 	}
 }

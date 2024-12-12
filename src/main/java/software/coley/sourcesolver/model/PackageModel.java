@@ -19,9 +19,8 @@ public class PackageModel extends AbstractModel implements Annotated, Named {
 		this.annotationModels = annotationModels;
 	}
 
-	@Override
-	public String toString() {
-		return "package " + nameModel.getName();
+	public boolean isDefaultPackage() {
+		return nameModel.getName().isEmpty() && annotationModels.isEmpty();
 	}
 
 	@Nonnull
@@ -34,5 +33,30 @@ public class PackageModel extends AbstractModel implements Annotated, Named {
 	@Override
 	public NameModel getNameModel() {
 		return nameModel;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		if (!super.equals(o)) return false;
+
+		PackageModel that = (PackageModel) o;
+
+		if (!nameModel.equals(that.nameModel)) return false;
+		return annotationModels.equals(that.annotationModels);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + nameModel.hashCode();
+		result = 31 * result + annotationModels.hashCode();
+		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "package " + nameModel.getName();
 	}
 }

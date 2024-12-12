@@ -4,6 +4,7 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.lang.model.type.TypeKind;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -59,6 +60,8 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class Primitive extends TypeModel {
+		private TypeKind primitiveKind;
+
 		public Primitive(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
 			super(range, identifierModel);
 		}
@@ -68,10 +71,30 @@ public abstract class TypeModel extends AbstractModel {
 		public Kind getKind() {
 			return Kind.PRIMITIVE;
 		}
+
+		@Nonnull
+		public TypeKind getPrimitiveKind() {
+			if (primitiveKind == null) {
+				String identifier = getIdentifierModel().toString();
+				primitiveKind = switch (identifier) {
+					case "boolean" -> TypeKind.BOOLEAN;
+					case "byte" -> TypeKind.BYTE;
+					case "short" -> TypeKind.SHORT;
+					case "int" -> TypeKind.INT;
+					case "long" -> TypeKind.LONG;
+					case "char" -> TypeKind.CHAR;
+					case "float" -> TypeKind.FLOAT;
+					case "double" -> TypeKind.DOUBLE;
+					case "void" -> TypeKind.VOID;
+					default -> TypeKind.ERROR;
+				};
+			}
+			return primitiveKind;
+		}
 	}
 
-	public static class Objekt extends TypeModel {
-		public Objekt(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
+	public static class NamedObject extends TypeModel {
+		public NamedObject(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
 			super(range, identifierModel);
 		}
 
