@@ -3,6 +3,7 @@ package software.coley.sourcesolver.model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
+import java.util.Collections;
 import java.util.List;
 
 public class MethodBodyModel extends AbstractModel {

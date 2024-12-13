@@ -8,9 +8,10 @@ import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class NameMapper {
+public class NameMapper implements Mapper<NameModel, Tree> {
 	@Nonnull
-	public NameModel map(@Nonnull EndPosTable table, @Nonnull Tree tree) {
+	@Override
+	public NameModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull Tree tree) {
 		return new NameModel(extractRange(table, tree), tree.toString());
 	}
 }

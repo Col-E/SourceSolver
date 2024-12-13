@@ -5,6 +5,7 @@ import software.coley.sourcesolver.util.Range;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.lang.model.type.TypeKind;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +16,12 @@ public abstract class TypeModel extends AbstractModel {
 
 	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
 		super(range, identifierModel);
+		this.identifierModel = identifierModel;
+	}
+
+	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
+	                    @Nonnull Collection<? extends AbstractModel> additionalChildren) {
+		super(range, ChildSupplier.of(identifierModel), ChildSupplier.of(additionalChildren));
 		this.identifierModel = identifierModel;
 	}
 
@@ -153,7 +160,7 @@ public abstract class TypeModel extends AbstractModel {
 
 		public Parameterized(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
 		                     @Nonnull List<? extends AbstractModel> typeArgumentModels) {
-			super(range, identifierModel);
+			super(range, identifierModel, typeArgumentModels);
 			this.typeArgumentModels = Collections.unmodifiableList(typeArgumentModels);
 		}
 
@@ -200,7 +207,7 @@ public abstract class TypeModel extends AbstractModel {
 
 		public Wildcard(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
 		                @Nullable AbstractModel boundModel) {
-			super(range, identifierModel);
+			super(range, identifierModel, Collections.singletonList(boundModel));
 			this.boundModel = boundModel;
 		}
 

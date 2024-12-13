@@ -24,7 +24,6 @@ public class VariableModel extends AbstractModel implements Annotated, Named {
 	                     @Nonnull String name,
 	                     @Nullable AbstractModel valueModel) {
 		super(range, of(annotationModels), of(modifiers), of(typeModel), of(valueModel));
-
 		this.annotationModels = Collections.unmodifiableList(annotationModels);
 		this.modifiers = modifiers;
 		this.typeModel = typeModel;

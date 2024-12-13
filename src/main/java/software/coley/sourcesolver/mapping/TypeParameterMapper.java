@@ -12,9 +12,11 @@ import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class TypeParameterMapper {
+public class TypeParameterMapper implements Mapper<TypeParameterModel, TypeParameterTree> {
 	@Nonnull
-	public TypeParameterModel map(@Nonnull EndPosTable table, @Nonnull TypeParameterTree tree) {
+	@Override
+	public TypeParameterModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull TypeParameterTree tree) {
+		// TODO: Implement type parameter model and parsing
 		List<? extends AnnotationTree> annotations = tree.getAnnotations();
 		List<? extends Tree> bounds = tree.getBounds();
 		Name name = tree.getName();

@@ -16,31 +16,34 @@ import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class TypeMapper {
+public class TypeMapper implements Mapper<TypeModel, Tree> {
 	@Nonnull
-	public TypeModel map(@Nonnull EndPosTable table, @Nonnull Tree tree) {
+	@Override
+	public TypeModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull Tree tree) {
 		if (tree instanceof PrimitiveTypeTree primitive)
-			return new TypeModel.Primitive(extractRange(table, primitive), new NameMapper().map(table, primitive));
+			return new TypeModel.Primitive(extractRange(table, primitive), context.map(NameMapper.class, primitive));
 
 		if (tree instanceof IdentifierTree identifier)
-			return new TypeModel.NamedObject(extractRange(table, identifier), new NameMapper().map(table, identifier));
+			return new TypeModel.NamedObject(extractRange(table, identifier), context.map(NameMapper.class, identifier));
 
 		if (tree instanceof ArrayTypeTree arrayType) {
-			TypeModel elementType = map(table, arrayType.getType());
+			TypeModel elementType = map(context, table, arrayType.getType());
 			return new TypeModel.Array(extractRange(table, arrayType), elementType);
 		}
 
 		if (tree instanceof ParameterizedTypeTree parameterizedType) {
-			TypeModel identifier = map(table, parameterizedType.getType());
+			TypeModel identifier = map(context, table, parameterizedType.getType());
 			List<TypeModel> typeParameters = parameterizedType.getTypeArguments().stream()
-					.map(t -> map(table, t))
+					.map(t -> map(context, table, t))
 					.toList();
 			return new TypeModel.Parameterized(extractRange(table, parameterizedType), identifier, typeParameters);
 		}
 
 		if (tree instanceof WildcardTree wildcardTree) {
-			NameModel identifier = new NameMapper().map(table, wildcardTree);
-			AbstractModel boundModel = wildcardTree.getBound() == null ? null : map(table, wildcardTree.getBound());
+			// This isn't great because the identifier spans the whole wildcard tree
+			// but with how the API is structured we can't get any better data.
+			NameModel identifier = context.map(NameMapper.class, wildcardTree);
+			AbstractModel boundModel = wildcardTree.getBound() == null ? null : map(context, table, wildcardTree.getBound());
 			return new TypeModel.Wildcard(extractRange(table, wildcardTree), identifier, boundModel);
 		}
 

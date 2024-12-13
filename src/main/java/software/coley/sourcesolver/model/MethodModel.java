@@ -1,13 +1,14 @@
 package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.util.Range;
-import static software.coley.sourcesolver.model.ChildSupplier.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class MethodModel extends AbstractModel implements Annotated, Named {
 	private final String name;

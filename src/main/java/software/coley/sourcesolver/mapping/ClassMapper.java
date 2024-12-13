@@ -18,7 +18,7 @@ import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class ClassMapper {
+public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 	private final PackageModel packageModel;
 	private final List<ImportModel> importModels;
 
@@ -29,52 +29,51 @@ public class ClassMapper {
 	}
 
 	@Nonnull
-	public ClassModel map(@Nonnull EndPosTable table, @Nonnull ClassTree tree) {
-		ModifiersMapper.ParsePair modifiersPair = new ModifiersMapper().map(table, tree.getModifiers());
-		List<AnnotationUseModel> annotationModels = modifiersPair.annotationModels() == null ? Collections.emptyList() : modifiersPair.annotationModels();
-		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.modifiers();
+	@Override
+	public ClassModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ClassTree tree) {
+		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
+		List<AnnotationUseModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		Name className = tree.getSimpleName();
 
 		List<? extends TypeParameterTree> typeParameters = tree.getTypeParameters();
 		List<TypeParameterModel> typeParameterModels = typeParameters == null ?
 				Collections.emptyList() :
-				typeParameters.stream().map(t -> new TypeParameterMapper().map(table, t)).toList();
+				typeParameters.stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		Tree extendsClause = tree.getExtendsClause();
-		NameModel extendsModel = extendsClause == null ? new NameModel(Range.UNKNOWN, "Object") : new NameMapper().map(table, extendsClause);
+		NameModel extendsModel = extendsClause == null ? new NameModel(Range.UNKNOWN, "Object") : context.map(NameMapper.class, extendsClause);
 
 		List<? extends Tree> implementsClauses = tree.getImplementsClause();
 		ImplementsModel implementsModel = implementsClauses.isEmpty() ?
 				ImplementsModel.EMPTY :
 				new ImplementsModel(extractRange(table, implementsClauses), implementsClauses.stream()
-						.map(e -> new NameMapper().map(table, e))
+						.map(e -> context.map(NameMapper.class, e))
 						.toList());
 
 		List<? extends Tree> permitsClause = tree.getPermitsClause();
 		PermitsModel permitsModel = permitsClause.isEmpty() ?
 				PermitsModel.EMPTY :
 				new PermitsModel(extractRange(table, permitsClause), permitsClause.stream()
-						.map(e -> new NameMapper().map(table, e))
+						.map(e -> context.map(NameMapper.class, e))
 						.toList());
 
 		List<VariableModel> fieldModels = new ArrayList<>();
 		List<MethodModel> methodModels = new ArrayList<>();
 		List<ClassModel> innerClassModels = new ArrayList<>();
-		VariableMapper variableMapper = new VariableMapper();
-		MethodMapper methodMapper = new MethodMapper();
 		for (Tree memberTree : tree.getMembers()) {
 			if (memberTree instanceof MethodTree methodTree) {
-				MethodModel methodModel = methodMapper.map(table, methodTree);
+				MethodModel methodModel = context.map(MethodMapper.class, methodTree);
 				methodModels.add(methodModel);
 			} else if (memberTree instanceof VariableTree variableTree) {
-				VariableModel fieldModel = variableMapper.map(table, variableTree);
+				VariableModel fieldModel = context.map(VariableMapper.class, variableTree);
 				fieldModels.add(fieldModel);
 			} else if (memberTree instanceof ClassTree innerClassTree) {
-				ClassModel innerClassModel = map(table, innerClassTree);
+				ClassModel innerClassModel = map(context, table, innerClassTree);
 				innerClassModels.add(innerClassModel);
 			} else if (memberTree instanceof BlockTree staticInitializerTree) {
-				methodModels.add(methodMapper.mapStaticInitializer(table, staticInitializerTree));
+				methodModels.add(context.map(StaticInitializerMethodMapper.class, staticInitializerTree));
 			}
 		}
 

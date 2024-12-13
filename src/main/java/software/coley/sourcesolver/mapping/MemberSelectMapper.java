@@ -9,11 +9,12 @@ import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class MemberSelectMapper {
+public class MemberSelectMapper implements Mapper<MemberSelectModel, MemberSelectTree> {
 	@Nonnull
-	public MemberSelectModel map(@Nonnull EndPosTable table, @Nonnull MemberSelectTree tree) {
+	@Override
+	public MemberSelectModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull MemberSelectTree tree) {
 		String name = tree.getIdentifier().toString();
-		AbstractModel context = new ExpressionMapper().map(table, tree.getExpression());
-		return new MemberSelectModel(extractRange(table, tree), name, context);
+		AbstractModel selectContext = context.map(ExpressionMapper.class, tree.getExpression());
+		return new MemberSelectModel(extractRange(table, tree), name, selectContext);
 	}
 }

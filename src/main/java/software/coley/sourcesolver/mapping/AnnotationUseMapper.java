@@ -16,28 +16,28 @@ import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class AnnotationUseMapper {
+public class AnnotationUseMapper implements Mapper<AnnotationUseModel, AnnotationTree> {
 	@Nonnull
-	public AnnotationUseModel map(@Nonnull EndPosTable table, AnnotationTree tree) {
+	@Override
+	public AnnotationUseModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull AnnotationTree tree) {
 		Tree annotationType = tree.getAnnotationType();
 
 		List<? extends ExpressionTree> arguments = tree.getArguments();
 		List<AnnotationArgumentModel> argumentModels = new ArrayList<>(arguments.size());
-		ExpressionMapper expressionMapper = new ExpressionMapper();
 		for (ExpressionTree argument : arguments) {
 			if (argument instanceof AssignmentTree argumentAssign) {
 				// Map value model based on "arg=value"
-				NameModel nameModel = new NameMapper().map(table, argumentAssign.getVariable());
-				AbstractModel valueModel = expressionMapper.map(table, argumentAssign.getExpression());
+				NameModel nameModel = context.map(NameMapper.class, argumentAssign.getVariable());
+				AbstractModel valueModel = context.map(ExpressionMapper.class, argumentAssign.getExpression());
 				argumentModels.add(new AnnotationArgumentModel(extractRange(table, argument), nameModel, valueModel));
 			} else {
 				// Variable name is implied to be "value"
-				AbstractModel valueModel = expressionMapper.map(table, argument);
+				AbstractModel valueModel = context.map(ExpressionMapper.class, argument);
 				argumentModels.add(new AnnotationArgumentModel(extractRange(table, argument), null, valueModel));
 			}
 		}
 
-		NameModel name = new NameMapper().map(table, annotationType);
+		NameModel name = context.map(NameMapper.class, annotationType);
 		return new AnnotationUseModel(extractRange(table, tree), name, argumentModels);
 	}
 }

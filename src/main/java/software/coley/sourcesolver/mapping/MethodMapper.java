@@ -7,49 +7,52 @@ import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.*;
-import software.coley.sourcesolver.util.Range;
+import software.coley.sourcesolver.model.AbstractModel;
+import software.coley.sourcesolver.model.AnnotationUseModel;
+import software.coley.sourcesolver.model.MethodBodyModel;
+import software.coley.sourcesolver.model.MethodModel;
+import software.coley.sourcesolver.model.ModifiersModel;
+import software.coley.sourcesolver.model.TypeModel;
+import software.coley.sourcesolver.model.TypeParameterModel;
+import software.coley.sourcesolver.model.VariableModel;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class MethodMapper {
+public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 	@Nonnull
-	public MethodModel map(@Nonnull EndPosTable table, @Nonnull MethodTree tree) {
+	@Override
+	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull MethodTree tree) {
 		// Modifiers
-		ModifiersMapper.ParsePair modifiersPair = new ModifiersMapper().map(table, tree.getModifiers());
-		List<AnnotationUseModel> annotationModels = modifiersPair.annotationModels() == null ? Collections.emptyList() : modifiersPair.annotationModels();
-		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.modifiers();
+		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
+		List<AnnotationUseModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		// Type param
-		TypeParameterMapper typeParameterMapper = new TypeParameterMapper();
-		List<TypeParameterModel> typeParameters = tree.getTypeParameters().stream().map(t -> typeParameterMapper.map(table, t)).toList();
+		List<TypeParameterModel> typeParameters = tree.getTypeParameters().stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		// Return type + parameters
-		TypeModel returnType = new TypeMapper().map(table, tree.getReturnType());
-		VariableMapper variableMapper = new VariableMapper();
-		List<VariableModel> parameters = tree.getParameters().stream().map(p -> variableMapper.map(table, p)).toList();
+		TypeModel returnType = context.map(TypeMapper.class, tree.getReturnType());
+		List<VariableModel> parameters = tree.getParameters().stream().map(p -> context.map(VariableMapper.class, p)).toList();
 
 		// throws X,Y,Z
-		ExpressionMapper expressionMapper = new ExpressionMapper();
-		List<AbstractModel> thrownTypes = tree.getThrows().stream().map(t -> expressionMapper.map(table, t)).toList();
+		List<AbstractModel> thrownTypes = tree.getThrows().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
 
 		// default value for annotation methods
 		AbstractModel defaultValue;
 		Tree defaultValueTree = tree.getDefaultValue();
 		if (defaultValueTree instanceof LiteralTree literalValue) {
 			// primitives + strings
-			defaultValue = new LiteralMapper().map(table, literalValue);
+			defaultValue = context.map(LiteralMapper.class, literalValue);
 		} else if (defaultValueTree instanceof MemberSelectTree enumValue) {
 			// enums
-			defaultValue = new MemberSelectMapper().map(table, enumValue);
+			defaultValue = context.map(MemberSelectMapper.class, enumValue);
 		} else if (defaultValueTree instanceof AnnotationTree annotationValue) {
 			// inner annotations
-			defaultValue = new AnnotationUseMapper().map(table, annotationValue);
+			defaultValue = context.map(AnnotationUseMapper.class, annotationValue);
 		} else {
 			defaultValue = null;
 		}
@@ -63,25 +66,10 @@ public class MethodMapper {
 		String name = tree.getName().toString();
 
 		// Method body { ... }
-		MethodBodyModel methodBody = mapMethodBody(table, tree.getBody());
+		BlockTree body = tree.getBody();
+		MethodBodyModel methodBody = body == null ? null : context.map(MethodBodyMapper.class, body);
 
 		return new MethodModel(extractRange(table, tree), name, modifiers, typeParameters, returnType,
 				parameters, defaultValue, thrownTypes, annotationModels, methodBody);
-	}
-
-	@Nonnull
-	public MethodModel mapStaticInitializer(@Nonnull EndPosTable table, @Nonnull BlockTree staticInitializerTree) {
-		TypeModel.Primitive returnType = new TypeModel.Primitive(Range.UNKNOWN, new NameModel(Range.UNKNOWN, "void"));
-		return new MethodModel(extractRange(table, staticInitializerTree), "<clinit>", ModifiersModel.EMPTY,
-				Collections.emptyList(), returnType, Collections.emptyList(), null, Collections.emptyList(),
-				Collections.emptyList(), mapMethodBody(table, staticInitializerTree));
-	}
-
-	@Nullable
-	public MethodBodyModel mapMethodBody(@Nonnull EndPosTable table, @Nullable BlockTree blockTree) {
-		if (blockTree == null) return null;
-		StatementMapper statementMapper = new StatementMapper();
-		List<AbstractStatementModel> list = blockTree.getStatements().stream().map(s -> statementMapper.map(table, s)).toList();
-		return new MethodBodyModel(extractRange(table, blockTree), list);
 	}
 }

@@ -10,16 +10,17 @@ import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class ExpressionMapper {
+public class ExpressionMapper implements Mapper<AbstractModel, ExpressionTree> {
 	@Nonnull
-	public AbstractModel map(@Nonnull EndPosTable table, @Nonnull ExpressionTree tree) {
+	@Override
+	public AbstractModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ExpressionTree tree) {
 		// Anything in parentheses
 		if (tree instanceof ParenthesizedTree parenthesized)
 			throw new UnsupportedOperationException("TODO: ParenthesizedTree");
 
 		// Strings, integers, floats, etc
 		if (tree instanceof LiteralTree literal)
-			return new LiteralMapper().map(table, literal);
+			return context.map(LiteralMapper.class, literal);
 
 		// ???
 		if (tree instanceof IdentifierTree identifier)
@@ -28,7 +29,7 @@ public class ExpressionMapper {
 		// Enum.name
 		// Constants.MY_CONSTANT
 		if (tree instanceof MemberSelectTree memberAccess)
-			return new MemberSelectMapper().map(table, memberAccess);
+			return context.map(MemberSelectMapper.class, memberAccess);
 
 		// Util.doUtility()
 		if (tree instanceof MethodInvocationTree methodInvoke)
@@ -73,7 +74,7 @@ public class ExpressionMapper {
 		// new int[N];
 		// { one, two };
 		if (tree instanceof NewArrayTree array)
-			return new ArrayDeclarationMapper().map(table, array);
+			return context.map(ArrayDeclarationMapper.class, array);
 
 		// a -> true
 		// () -> { ... }
@@ -92,7 +93,7 @@ public class ExpressionMapper {
 		// @Foo
 		// @Foo(fizz = "buzz")
 		if (tree instanceof AnnotationTree annotation)
-			return new AnnotationUseMapper().map(table, annotation);
+			return context.map(AnnotationUseMapper.class, annotation);
 
 		// Any bogus input that the parser cannot fit into a good model gets
 		// mapped to a literal

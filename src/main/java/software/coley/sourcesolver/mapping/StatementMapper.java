@@ -8,9 +8,10 @@ import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class StatementMapper {
+public class StatementMapper implements Mapper<AbstractStatementModel, StatementTree> {
 	@Nonnull
-	public AbstractStatementModel map(@Nonnull EndPosTable table, @Nonnull StatementTree tree) {
+	@Override
+	public AbstractStatementModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull StatementTree tree) {
 		return new AbstractStatementModel(extractRange(table, tree));
 	}
 }

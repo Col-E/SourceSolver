@@ -52,9 +52,12 @@ public class LiteralModel extends AbstractModel {
 
 	@Override
 	public String toString() {
-		return Objects.toString(content);
+		String contentString = Objects.toString(content);
+		if (kind == Kind.STRING)
+			return '"' + contentString + "\";";
+		return contentString + ';';
 	}
-	
+
 	public enum Kind {
 		INT,
 		LONG,

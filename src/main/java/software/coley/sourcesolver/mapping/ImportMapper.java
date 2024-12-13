@@ -8,9 +8,10 @@ import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class ImportMapper {
+public class ImportMapper implements Mapper<ImportModel, ImportTree> {
 	@Nonnull
-	public ImportModel map(@Nonnull EndPosTable table, @Nonnull ImportTree tree) {
+	@Override
+	public ImportModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ImportTree tree) {
 		return new ImportModel(extractRange(table, tree), tree.isStatic(), tree.getQualifiedIdentifier().toString());
 	}
 }
