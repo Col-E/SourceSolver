@@ -97,9 +97,9 @@ public class ExpressionMapper {
 		// Any bogus input that the parser cannot fit into a good model gets
 		// mapped to a literal
 		if (tree instanceof ErroneousTree erroneous)
-			return new LiteralModel(extractRange(table, erroneous), erroneous.toString());
+			return new LiteralModel(extractRange(table, erroneous), LiteralModel.Kind.ERROR, erroneous.toString());
 
 		// Handle unknown cases as literals
-		return new LiteralModel(extractRange(table, tree), tree.toString());
+		return new LiteralModel(extractRange(table, tree), LiteralModel.Kind.ERROR, tree.toString());
 	}
 }
