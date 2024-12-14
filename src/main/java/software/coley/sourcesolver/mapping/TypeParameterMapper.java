@@ -1,9 +1,9 @@
 package software.coley.sourcesolver.mapping;
 
-import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeParameterTree;
 import com.sun.tools.javac.tree.EndPosTable;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.TypeParameterModel;
 
 import javax.annotation.Nonnull;
@@ -16,8 +16,10 @@ public class TypeParameterMapper implements Mapper<TypeParameterModel, TypeParam
 	@Nonnull
 	@Override
 	public TypeParameterModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull TypeParameterTree tree) {
-		// TODO: Implement type parameter model and parsing
-		List<? extends AnnotationTree> annotations = tree.getAnnotations();
+		List<AnnotationExpressionModel> annotationModels = tree.getAnnotations().stream()
+				.map(anno -> context.map(AnnotationUseMapper.class, anno))
+				.toList();
+		// TODO: What tree type are the bounds in practice?
 		List<? extends Tree> bounds = tree.getBounds();
 		Name name = tree.getName();
 		return new TypeParameterModel(extractRange(table, tree));

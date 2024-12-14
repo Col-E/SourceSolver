@@ -2,29 +2,35 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.*;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.LiteralModel;
-import software.coley.sourcesolver.model.NameModel;
+import software.coley.sourcesolver.model.AbstractExpressionModel;
+import software.coley.sourcesolver.model.AssignmentExpressionModel;
+import software.coley.sourcesolver.model.LiteralExpressionModel;
+import software.coley.sourcesolver.model.NameExpressionModel;
+import software.coley.sourcesolver.model.ParenthesizedExpressionModel;
+import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
-public class ExpressionMapper implements Mapper<AbstractModel, ExpressionTree> {
+public class ExpressionMapper implements Mapper<AbstractExpressionModel, ExpressionTree> {
 	@Nonnull
 	@Override
-	public AbstractModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ExpressionTree tree) {
+	public AbstractExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ExpressionTree tree) {
+		Range range = extractRange(table, tree);
+
 		// Anything in parentheses
 		if (tree instanceof ParenthesizedTree parenthesized)
-			throw new UnsupportedOperationException("TODO: ParenthesizedTree");
+			return new ParenthesizedExpressionModel(range, map(context, table, parenthesized.getExpression()));
 
 		// Strings, integers, floats, etc
 		if (tree instanceof LiteralTree literal)
 			return context.map(LiteralMapper.class, literal);
 
 		// ???
-		if (tree instanceof IdentifierTree identifier)
-			return new NameModel(extractRange(table, identifier), identifier.toString());
+		if (tree instanceof IdentifierTree identifier) {
+			return new NameExpressionModel(range, identifier.toString());
+		}
 
 		// Enum.name
 		// Constants.MY_CONSTANT
@@ -33,17 +39,41 @@ public class ExpressionMapper implements Mapper<AbstractModel, ExpressionTree> {
 
 		// Util.doUtility()
 		if (tree instanceof MethodInvocationTree methodInvoke)
-			throw new UnsupportedOperationException("TODO: MethodInvocationTree");
+			return context.map(MethodInvocationMapper.class, methodInvoke);
 
 		// foo = expression
-		if (tree instanceof AssignmentTree assignment)
-			throw new UnsupportedOperationException("TODO: AssignmentTree");
+		if (tree instanceof AssignmentTree assignment) {
+			AbstractExpressionModel variable = map(context, table, assignment.getVariable());
+			AbstractExpressionModel expression = map(context, table, assignment.getExpression());
+			return new AssignmentExpressionModel(range, variable, expression, AssignmentExpressionModel.Operator.SET);
+		}
+
+		// foo += value
+		if (tree instanceof CompoundAssignmentTree assignment) {
+			AbstractExpressionModel variable = map(context, table, assignment.getVariable());
+			AbstractExpressionModel expression = map(context, table, assignment.getExpression());
+			AssignmentExpressionModel.Operator operator = switch (tree.getKind()) {
+				case PLUS_ASSIGNMENT -> AssignmentExpressionModel.Operator.PLUS;
+				case MINUS_ASSIGNMENT -> AssignmentExpressionModel.Operator.MINUS;
+				case MULTIPLY_ASSIGNMENT -> AssignmentExpressionModel.Operator.MULTIPLY;
+				case DIVIDE_ASSIGNMENT -> AssignmentExpressionModel.Operator.DIVIDE;
+				case REMAINDER_ASSIGNMENT -> AssignmentExpressionModel.Operator.REMAINDER;
+				case OR_ASSIGNMENT -> AssignmentExpressionModel.Operator.BIT_OR;
+				case AND_ASSIGNMENT -> AssignmentExpressionModel.Operator.BIT_AND;
+				case XOR_ASSIGNMENT -> AssignmentExpressionModel.Operator.BIT_XOR;
+				case LEFT_SHIFT_ASSIGNMENT -> AssignmentExpressionModel.Operator.SHIFT_LEFT;
+				case RIGHT_SHIFT_ASSIGNMENT -> AssignmentExpressionModel.Operator.SHIFT_RIGHT;
+				case UNSIGNED_RIGHT_SHIFT_ASSIGNMENT -> AssignmentExpressionModel.Operator.SHIFT_RIGHT_UNSIGNED;
+				default -> AssignmentExpressionModel.Operator.UNKNOWN;
+			};
+			return new AssignmentExpressionModel(range, variable, expression, operator);
+		}
 
 		// five * two
 		// bit << shift
 		// one || another
 		if (tree instanceof BinaryTree binary)
-			throw new UnsupportedOperationException("TODO: BinaryTree");
+			return context.map(BinaryMapper.class, binary);
 
 		// x++
 		// (Foo) maybeFoo
@@ -98,9 +128,9 @@ public class ExpressionMapper implements Mapper<AbstractModel, ExpressionTree> {
 		// Any bogus input that the parser cannot fit into a good model gets
 		// mapped to a literal
 		if (tree instanceof ErroneousTree erroneous)
-			return new LiteralModel(extractRange(table, erroneous), LiteralModel.Kind.ERROR, erroneous.toString());
+			return new LiteralExpressionModel(range, LiteralExpressionModel.Kind.ERROR, erroneous.toString());
 
 		// Handle unknown cases as literals
-		return new LiteralModel(extractRange(table, tree), LiteralModel.Kind.ERROR, tree.toString());
+		return new LiteralExpressionModel(range, LiteralExpressionModel.Kind.ERROR, tree.toString());
 	}
 }

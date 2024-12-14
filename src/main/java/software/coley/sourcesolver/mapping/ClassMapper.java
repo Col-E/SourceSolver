@@ -32,7 +32,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 	@Override
 	public ClassModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ClassTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
-		List<AnnotationUseModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
 		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		Name className = tree.getSimpleName();
@@ -43,7 +43,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 				typeParameters.stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		Tree extendsClause = tree.getExtendsClause();
-		NameModel extendsModel = extendsClause == null ? new NameModel(Range.UNKNOWN, "Object") : context.map(NameMapper.class, extendsClause);
+		NameExpressionModel extendsModel = extendsClause == null ? new NameExpressionModel(Range.UNKNOWN, "Object") : context.map(NameMapper.class, extendsClause);
 
 		List<? extends Tree> implementsClauses = tree.getImplementsClause();
 		ImplementsModel implementsModel = implementsClauses.isEmpty() ?

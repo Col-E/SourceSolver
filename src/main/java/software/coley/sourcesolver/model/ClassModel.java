@@ -9,14 +9,14 @@ import java.util.List;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class ClassModel extends AbstractModel implements Annotated, Named {
+public class ClassModel extends AbstractStatementModel implements Annotated, Named {
 	private final PackageModel packageModel;
 	private final List<ImportModel> importModels;
-	private final List<AnnotationUseModel> annotationModels;
+	private final List<AnnotationExpressionModel> annotationModels;
 	private final ModifiersModel modifiersModel;
 	private final String name;
 	private final List<TypeParameterModel> typeParameterModels;
-	private final NameModel extendsModel;
+	private final NameExpressionModel extendsModel;
 	private final ImplementsModel implementsModel;
 	private final PermitsModel permitsModel;
 	private final List<VariableModel> fieldModels;
@@ -26,11 +26,11 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 	public ClassModel(@Nonnull Range range,
 	                  @Nonnull PackageModel packageModel,
 	                  @Nonnull List<ImportModel> importModels,
-	                  @Nonnull List<AnnotationUseModel> annotationModels,
+	                  @Nonnull List<AnnotationExpressionModel> annotationModels,
 	                  @Nonnull ModifiersModel modifiersModel,
 	                  @Nonnull String name,
 	                  @Nonnull List<TypeParameterModel> typeParameterModels,
-	                  @Nonnull NameModel extendsModel,
+	                  @Nonnull NameExpressionModel extendsModel,
 	                  @Nonnull ImplementsModel implementsModel,
 	                  @Nonnull PermitsModel permitsModel,
 	                  @Nonnull List<VariableModel> fieldModels,
@@ -63,7 +63,7 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 
 	@Nonnull
 	@Override
-	public List<AnnotationUseModel> getAnnotationModels() {
+	public List<AnnotationExpressionModel> getAnnotationModels() {
 		return annotationModels;
 	}
 
@@ -84,7 +84,7 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 	}
 
 	@Nonnull
-	public NameModel getExtendsModel() {
+	public NameExpressionModel getExtendsModel() {
 		return extendsModel;
 	}
 
@@ -100,7 +100,7 @@ public class ClassModel extends AbstractModel implements Annotated, Named {
 
 	@Nullable
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		// Javac doesn't have an AST covering the class's name
 		return null;
 	}

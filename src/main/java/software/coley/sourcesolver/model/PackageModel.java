@@ -9,11 +9,11 @@ import java.util.List;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class PackageModel extends AbstractModel implements Annotated, Named {
-	public static final PackageModel DEFAULT_PACKAGE = new PackageModel(Range.UNKNOWN, new NameModel(Range.UNKNOWN, ""), Collections.emptyList());
-	private final NameModel nameModel;
-	private final List<AnnotationUseModel> annotationModels;
+	public static final PackageModel DEFAULT_PACKAGE = new PackageModel(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, ""), Collections.emptyList());
+	private final NameExpressionModel nameModel;
+	private final List<AnnotationExpressionModel> annotationModels;
 
-	public PackageModel(@Nonnull Range range, @Nonnull NameModel nameModel, @Nonnull List<AnnotationUseModel> annotationModels) {
+	public PackageModel(@Nonnull Range range, @Nonnull NameExpressionModel nameModel, @Nonnull List<AnnotationExpressionModel> annotationModels) {
 		super(range, of(nameModel), of(annotationModels));
 		this.nameModel = nameModel;
 		this.annotationModels = annotationModels;
@@ -25,13 +25,13 @@ public class PackageModel extends AbstractModel implements Annotated, Named {
 
 	@Nonnull
 	@Override
-	public List<AnnotationUseModel> getAnnotationModels() {
+	public List<AnnotationExpressionModel> getAnnotationModels() {
 		return annotationModels;
 	}
 
 	@Nonnull
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		return nameModel;
 	}
 

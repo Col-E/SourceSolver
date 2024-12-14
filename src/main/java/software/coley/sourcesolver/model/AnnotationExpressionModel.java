@@ -6,12 +6,12 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class AnnotationUseModel extends AbstractModel implements Named {
-	private final NameModel nameModel;
+public class AnnotationExpressionModel extends AbstractExpressionModel implements Named {
+	private final NameExpressionModel nameModel;
 	private final List<AnnotationArgumentModel> argumentModels;
 
-	public AnnotationUseModel(@Nonnull Range range, @Nonnull NameModel nameModel,
-	                          @Nonnull List<AnnotationArgumentModel> argumentModels) {
+	public AnnotationExpressionModel(@Nonnull Range range, @Nonnull NameExpressionModel nameModel,
+	                                 @Nonnull List<AnnotationArgumentModel> argumentModels) {
 		super(range);
 		this.nameModel = nameModel;
 		this.argumentModels = argumentModels;
@@ -19,7 +19,7 @@ public class AnnotationUseModel extends AbstractModel implements Named {
 
 	@Nonnull
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		return nameModel;
 	}
 
@@ -34,7 +34,7 @@ public class AnnotationUseModel extends AbstractModel implements Named {
 		if (o == null || getClass() != o.getClass()) return false;
 		if (!super.equals(o)) return false;
 
-		AnnotationUseModel that = (AnnotationUseModel) o;
+		AnnotationExpressionModel that = (AnnotationExpressionModel) o;
 
 		if (!nameModel.equals(that.nameModel)) return false;
 		return argumentModels.equals(that.argumentModels);

@@ -4,7 +4,7 @@ import com.sun.source.tree.BlockTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.MethodModel;
 import software.coley.sourcesolver.model.ModifiersModel;
-import software.coley.sourcesolver.model.NameModel;
+import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -17,7 +17,7 @@ public class StaticInitializerMethodMapper implements Mapper<MethodModel, BlockT
 	@Nonnull
 	@Override
 	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull BlockTree tree) {
-		TypeModel.Primitive returnType = new TypeModel.Primitive(Range.UNKNOWN, new NameModel(Range.UNKNOWN, "void"));
+		TypeModel.Primitive returnType = new TypeModel.Primitive(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, "void"));
 		return new MethodModel(extractRange(table, tree), "<clinit>", ModifiersModel.EMPTY,
 				Collections.emptyList(), returnType, Collections.emptyList(), null, Collections.emptyList(),
 				Collections.emptyList(), context.map(MethodBodyMapper.class, tree));

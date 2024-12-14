@@ -9,15 +9,15 @@ import java.util.stream.Collectors;
 
 public class ImplementsModel extends AbstractModel {
 	public static final ImplementsModel EMPTY = new ImplementsModel(Range.UNKNOWN, Collections.emptyList());
-	private final List<NameModel> implementedClassNameModels;
+	private final List<NameExpressionModel> implementedClassNameModels;
 
-	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameModel> implementedClassNameModels) {
+	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> implementedClassNameModels) {
 		super(range);
 		this.implementedClassNameModels = Collections.unmodifiableList(implementedClassNameModels);
 	}
 
 	@Nonnull
-	public List<NameModel> getImplementedClassNameModels() {
+	public List<NameExpressionModel> getImplementedClassNameModels() {
 		return implementedClassNameModels;
 	}
 
@@ -44,7 +44,7 @@ public class ImplementsModel extends AbstractModel {
 		if (implementedClassNameModels.isEmpty())
 			return "";
 		return "implements " + implementedClassNameModels.stream()
-				.map(NameModel::getName)
+				.map(NameExpressionModel::getName)
 				.collect(Collectors.joining(", "));
 	}
 }

@@ -9,15 +9,15 @@ import java.util.stream.Collectors;
 
 public class PermitsModel extends AbstractModel {
 	public static final PermitsModel EMPTY = new PermitsModel(Range.UNKNOWN, Collections.emptyList());
-	private final List<NameModel> permittedClassNameModels;
+	private final List<NameExpressionModel> permittedClassNameModels;
 
-	public PermitsModel(@Nonnull Range range, @Nonnull List<NameModel> permittedClassNameModels) {
+	public PermitsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> permittedClassNameModels) {
 		super(range);
 		this.permittedClassNameModels = Collections.unmodifiableList(permittedClassNameModels);
 	}
 
 	@Nonnull
-	public List<NameModel> getPermittedClassNameModels() {
+	public List<NameExpressionModel> getPermittedClassNameModels() {
 		return permittedClassNameModels;
 	}
 
@@ -44,7 +44,7 @@ public class PermitsModel extends AbstractModel {
 		if (permittedClassNameModels.isEmpty())
 			return "";
 		return "permits " + permittedClassNameModels.stream()
-				.map(NameModel::getName)
+				.map(NameExpressionModel::getName)
 				.collect(Collectors.joining(", "));
 	}
 }

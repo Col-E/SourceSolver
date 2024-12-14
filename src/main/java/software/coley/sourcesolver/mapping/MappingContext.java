@@ -48,6 +48,10 @@ public class MappingContext {
 	private void initializeDefaultMappers() {
 		setMapper(AnnotationUseMapper.class, new AnnotationUseMapper());
 		setMapper(ArrayDeclarationMapper.class, new ArrayDeclarationMapper());
+		setMapper(BinaryMapper.class, new BinaryMapper());
+		setMapper(BlockMapper.class, new BlockMapper());
+		setMapper(CaseMapper.class, new CaseMapper());
+		setMapper(CatchMapper.class, new CatchMapper());
 		// setMapper(ClassMapper.class, new ClassMapper()); // Set externally
 		setMapper(CompilationUnitMapper.class, new CompilationUnitMapper());
 		setMapper(ExpressionMapper.class, new ExpressionMapper());
@@ -55,12 +59,14 @@ public class MappingContext {
 		setMapper(LiteralMapper.class, new LiteralMapper());
 		setMapper(MemberSelectMapper.class, new MemberSelectMapper());
 		setMapper(MethodBodyMapper.class, new MethodBodyMapper());
+		setMapper(MethodInvocationMapper.class, new MethodInvocationMapper());
 		setMapper(MethodMapper.class, new MethodMapper());
 		setMapper(ModifiersMapper.class, new ModifiersMapper());
 		setMapper(NameMapper.class, new NameMapper());
 		// setMapper(PackageMapper.class, new PackageMapper()); // Set externally
 		setMapper(StatementMapper.class, new StatementMapper());
 		setMapper(StaticInitializerMethodMapper.class, new StaticInitializerMethodMapper());
+		setMapper(TryMapper.class, new TryMapper());
 		setMapper(TypeMapper.class, new TypeMapper());
 		setMapper(TypeParameterMapper.class, new TypeParameterMapper());
 		setMapper(VariableMapper.class, new VariableMapper());

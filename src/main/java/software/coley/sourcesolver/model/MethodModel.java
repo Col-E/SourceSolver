@@ -17,8 +17,8 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	private final TypeModel returnType;
 	private final List<VariableModel> parameters;
 	private final AbstractModel defaultValue;
-	private final List<AbstractModel> thrownTypes;
-	private final List<AnnotationUseModel> annotationModels;
+	private final List<AbstractExpressionModel> thrownTypes;
+	private final List<AnnotationExpressionModel> annotationModels;
 	private final MethodBodyModel methodBody;
 
 	public MethodModel(@Nonnull Range range,
@@ -28,8 +28,8 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	                   @Nonnull TypeModel returnType,
 	                   @Nonnull List<VariableModel> parameters,
 	                   @Nullable AbstractModel defaultValue,
-	                   @Nonnull List<AbstractModel> thrownTypes,
-	                   @Nonnull List<AnnotationUseModel> annotationModels,
+	                   @Nonnull List<AbstractExpressionModel> thrownTypes,
+	                   @Nonnull List<AnnotationExpressionModel> annotationModels,
 	                   @Nullable MethodBodyModel methodBody) {
 		super(range, of(modifiers), of(typeParameters), of(returnType), of(parameters), of(defaultValue), of(thrownTypes), of(annotationModels), of(methodBody));
 		this.name = name;
@@ -55,7 +55,7 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 
 	@Nullable
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		return null;
 	}
 
@@ -85,12 +85,12 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getThrownTypes() {
+	public List<AbstractExpressionModel> getThrownTypes() {
 		return thrownTypes;
 	}
 
 	@Nonnull
-	public List<AnnotationUseModel> getAnnotationModels() {
+	public List<AnnotationExpressionModel> getAnnotationModels() {
 		return annotationModels;
 	}
 
@@ -135,12 +135,23 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 
 	@Override
 	public String toString() {
-		if (isStaticInitializer()) return "static {}";
-		String args = parameters.stream().map(VariableModel::toString).collect(Collectors.joining(" "));
 		StringBuilder sb = new StringBuilder();
-		if (!modifiers.getModifiers().isEmpty())
-			sb.append(modifiers).append(' ');
-		sb.append(returnType.toString()).append(' ').append(name).append('(').append(args).append(')');
+
+		if (isStaticInitializer()) {
+			sb.append("static");
+		} else {
+			String args = parameters.stream().map(VariableModel::toString).collect(Collectors.joining(" "));
+			if (!modifiers.getModifiers().isEmpty())
+				sb.append(modifiers).append(' ');
+			sb.append(returnType.toString()).append(' ').append(name).append('(').append(args).append(')');
+		}
+
+		if (methodBody != null) {
+			sb.append(" ").append(methodBody);
+		} else {
+			sb.append(';');
+		}
+
 		return sb.toString();
 	}
 }

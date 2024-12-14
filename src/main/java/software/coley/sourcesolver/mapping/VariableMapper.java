@@ -4,7 +4,7 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.AnnotationUseModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
@@ -21,7 +21,7 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 	@SuppressWarnings("DataFlowIssue")
 	public VariableModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull VariableTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
-		List<AnnotationUseModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
 		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		TypeModel typeModel = context.map(TypeMapper.class, tree.getType());

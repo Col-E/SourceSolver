@@ -5,5 +5,5 @@ import java.util.List;
 
 public interface Annotated {
 	@Nonnull
-	List<AnnotationUseModel> getAnnotationModels();
+	List<AnnotationExpressionModel> getAnnotationModels();
 }

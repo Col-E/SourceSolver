@@ -7,11 +7,11 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
-public class LiteralModel extends AbstractModel {
+public class LiteralExpressionModel extends AbstractExpressionModel {
 	private final Kind kind;
 	private final Object content;
 
-	public LiteralModel(@Nonnull Range range, @Nonnull Kind kind, @Nullable Object content) {
+	public LiteralExpressionModel(@Nonnull Range range, @Nonnull Kind kind, @Nullable Object content) {
 		super(range);
 		this.kind = kind;
 		this.content = content;
@@ -36,7 +36,7 @@ public class LiteralModel extends AbstractModel {
 		if (o == null || getClass() != o.getClass()) return false;
 		if (!super.equals(o)) return false;
 
-		LiteralModel that = (LiteralModel) o;
+		LiteralExpressionModel that = (LiteralExpressionModel) o;
 
 		if (kind != that.kind) return false;
 		return Objects.equals(content, that.content);
@@ -54,8 +54,8 @@ public class LiteralModel extends AbstractModel {
 	public String toString() {
 		String contentString = Objects.toString(content);
 		if (kind == Kind.STRING)
-			return '"' + contentString + "\";";
-		return contentString + ';';
+			return '"' + contentString + '"';
+		return contentString;
 	}
 
 	public enum Kind {

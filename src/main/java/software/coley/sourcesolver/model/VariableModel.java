@@ -10,15 +10,15 @@ import java.util.Objects;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class VariableModel extends AbstractModel implements Annotated, Named {
-	private final List<AnnotationUseModel> annotationModels;
+public class VariableModel extends AbstractStatementModel implements Annotated, Named {
+	private final List<AnnotationExpressionModel> annotationModels;
 	private final ModifiersModel modifiers;
 	private final TypeModel typeModel;
 	private final String name;
 	private final AbstractModel valueModel;
 
 	public VariableModel(@Nonnull Range range,
-	                     @Nonnull List<AnnotationUseModel> annotationModels,
+	                     @Nonnull List<AnnotationExpressionModel> annotationModels,
 	                     @Nonnull ModifiersModel modifiers,
 	                     @Nonnull TypeModel typeModel,
 	                     @Nonnull String name,
@@ -33,7 +33,7 @@ public class VariableModel extends AbstractModel implements Annotated, Named {
 
 	@Nonnull
 	@Override
-	public List<AnnotationUseModel> getAnnotationModels() {
+	public List<AnnotationExpressionModel> getAnnotationModels() {
 		return annotationModels;
 	}
 
@@ -55,7 +55,7 @@ public class VariableModel extends AbstractModel implements Annotated, Named {
 
 	@Nullable
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		// Javac doesn't have an AST covering the variable's name
 		return null;
 	}

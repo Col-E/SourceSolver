@@ -6,10 +6,10 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MethodBodyModel extends AbstractModel {
+public class BlockStatementModel extends AbstractStatementModel {
 	private final List<AbstractStatementModel> statements;
 
-	public MethodBodyModel(@Nonnull Range range, @Nonnull List<AbstractStatementModel> statements) {
+	public BlockStatementModel(@Nonnull Range range, @Nonnull List<AbstractStatementModel> statements) {
 		super(range, statements);
 		this.statements = statements;
 	}
@@ -25,7 +25,7 @@ public class MethodBodyModel extends AbstractModel {
 		if (o == null || getClass() != o.getClass()) return false;
 		if (!super.equals(o)) return false;
 
-		MethodBodyModel that = (MethodBodyModel) o;
+		BlockStatementModel that = (BlockStatementModel) o;
 
 		return statements.equals(that.statements);
 	}
@@ -39,6 +39,6 @@ public class MethodBodyModel extends AbstractModel {
 
 	@Override
 	public String toString() {
-		return "{\n    " + statements.stream().map(Object::toString).collect(Collectors.joining("\n    ")) + "\n}";
+		return "{\n    " + statements.stream().map(Object::toString).collect(Collectors.joining("    \n")) + "\n}";
 	}
 }

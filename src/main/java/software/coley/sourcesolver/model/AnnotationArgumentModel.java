@@ -6,12 +6,12 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public class AnnotationArgumentModel extends AbstractModel implements Named {
-	private final NameModel nameModel;
-	private final AbstractModel valueModel;
+	private final NameExpressionModel nameModel;
+	private final AbstractExpressionModel valueModel;
 
 	public AnnotationArgumentModel(@Nonnull Range range,
-	                               @Nullable NameModel nameModel,
-	                               @Nonnull AbstractModel valueModel) {
+	                               @Nullable NameExpressionModel nameModel,
+	                               @Nonnull AbstractExpressionModel valueModel) {
 		super(range, nameModel, valueModel);
 		this.nameModel = nameModel;
 		this.valueModel = valueModel;
@@ -28,12 +28,12 @@ public class AnnotationArgumentModel extends AbstractModel implements Named {
 
 	@Nullable
 	@Override
-	public NameModel getNameModel() {
+	public NameExpressionModel getNameModel() {
 		return nameModel;
 	}
 
 	@Nonnull
-	public AbstractModel getValueModel() {
+	public AbstractExpressionModel getValueModel() {
 		return valueModel;
 	}
 

@@ -4,7 +4,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.PackageTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AnnotationUseModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.model.ImportModel;
@@ -22,7 +22,7 @@ public class CompilationUnitMapper implements Mapper<CompilationUnitModel, Compi
 	@Override
 	public CompilationUnitModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree tree) {
 		// Package
-		List<AnnotationUseModel> packageAnnotations;
+		List<AnnotationExpressionModel> packageAnnotations;
 		if (tree.getPackageAnnotations() == null)
 			packageAnnotations = Collections.emptyList();
 		else {

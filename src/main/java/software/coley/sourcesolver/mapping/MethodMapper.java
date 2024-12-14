@@ -7,8 +7,9 @@ import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
+import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.AnnotationUseModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.MethodBodyModel;
 import software.coley.sourcesolver.model.MethodModel;
 import software.coley.sourcesolver.model.ModifiersModel;
@@ -28,7 +29,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull MethodTree tree) {
 		// Modifiers
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
-		List<AnnotationUseModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
 		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		// Type param
@@ -39,7 +40,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		List<VariableModel> parameters = tree.getParameters().stream().map(p -> context.map(VariableMapper.class, p)).toList();
 
 		// throws X,Y,Z
-		List<AbstractModel> thrownTypes = tree.getThrows().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
+		List<AbstractExpressionModel> thrownTypes = tree.getThrows().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
 
 		// default value for annotation methods
 		AbstractModel defaultValue;

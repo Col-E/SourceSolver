@@ -3,7 +3,7 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.ModifiersTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.AnnotationUseModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -23,7 +23,7 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 		if (tree == null)
 			return new ModifiersParsePair(Collections.emptyList(), null);
 
-		List<AnnotationUseModel> annotationModels = tree.getAnnotations().stream()
+		List<AnnotationExpressionModel> annotationModels = tree.getAnnotations().stream()
 				.map(anno -> context.map(AnnotationUseMapper.class, anno))
 				.toList();
 		Set<String> modifierNames = tree.getFlags().stream()
@@ -38,10 +38,10 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 	 * fields, and methods.
 	 */
 	public static class ModifiersParsePair extends AbstractModel {
-		private final List<AnnotationUseModel> annotationModels;
+		private final List<AnnotationExpressionModel> annotationModels;
 		private final ModifiersModel modifiers;
 
-		public ModifiersParsePair(@Nullable List<AnnotationUseModel> annotationModels,
+		public ModifiersParsePair(@Nullable List<AnnotationExpressionModel> annotationModels,
 		                          @Nullable ModifiersModel modifiers) {
 			super(Range.UNKNOWN);
 			this.annotationModels = annotationModels;
@@ -49,7 +49,7 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 		}
 
 		@Nullable
-		public List<AnnotationUseModel> getAnnotationModels() {
+		public List<AnnotationExpressionModel> getAnnotationModels() {
 			return annotationModels;
 		}
 
