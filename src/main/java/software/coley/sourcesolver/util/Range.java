@@ -45,7 +45,7 @@ public record Range(int begin, int end) implements Comparable<Range> {
 	}
 
 	public boolean isWithin(int position, boolean startInclusive, boolean endInclusive) {
-		if (startInclusive ? position <= begin : position < begin)
+		if (startInclusive ? position < begin : position <= begin)
 			return false;
 		int end = end();
 		return endInclusive ? position <= end : position < end;
