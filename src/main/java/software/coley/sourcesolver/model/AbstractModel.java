@@ -3,6 +3,7 @@ package software.coley.sourcesolver.model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.stream.Stream;
 public abstract class AbstractModel implements Ranged {
 	private final List<AbstractModel> children;
 	private final Range range;
+	private AbstractModel parent;
 
 	protected AbstractModel(@Nonnull Range range) {
 		this.range = range;
@@ -22,6 +24,8 @@ public abstract class AbstractModel implements Ranged {
 	protected AbstractModel(@Nonnull Range range, AbstractModel... children) {
 		this.range = range;
 		this.children = extractChildren(Arrays.stream(children));
+		for (AbstractModel child : children)
+			child.parent = this;
 	}
 
 	protected AbstractModel(@Nonnull Range range, ChildSupplier... suppliers) {
@@ -29,6 +33,8 @@ public abstract class AbstractModel implements Ranged {
 		this.children = extractChildren(Arrays.stream(suppliers)
 				.flatMap(supplier -> supplier.isSingle() ?
 						Stream.of(supplier.getSingle()) : supplier.getMultiple().stream()));
+		for (AbstractModel child : children)
+			child.parent = this;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -47,6 +53,11 @@ public abstract class AbstractModel implements Ranged {
 	@Nonnull
 	public List<AbstractModel> getChildren() {
 		return children;
+	}
+
+	@Nullable
+	public AbstractModel getParent() {
+		return parent;
 	}
 
 	@Nonnull

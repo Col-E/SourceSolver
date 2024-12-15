@@ -11,44 +11,44 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class ClassModel extends AbstractStatementModel implements Annotated, Named {
 	private final PackageModel packageModel;
-	private final List<ImportModel> importModels;
-	private final List<AnnotationExpressionModel> annotationModels;
-	private final ModifiersModel modifiersModel;
+	private final List<ImportModel> imports;
+	private final List<AnnotationExpressionModel> annotations;
+	private final ModifiersModel modifiers;
 	private final String name;
-	private final List<TypeParameterModel> typeParameterModels;
+	private final List<TypeParameterModel> typeParameters;
 	private final NameExpressionModel extendsModel;
 	private final ImplementsModel implementsModel;
 	private final PermitsModel permitsModel;
-	private final List<VariableModel> fieldModels;
-	private final List<MethodModel> methodModels;
-	private final List<ClassModel> innerClassModels;
+	private final List<VariableModel> fields;
+	private final List<MethodModel> methods;
+	private final List<ClassModel> innerClasses;
 
 	public ClassModel(@Nonnull Range range,
 	                  @Nonnull PackageModel packageModel,
-	                  @Nonnull List<ImportModel> importModels,
-	                  @Nonnull List<AnnotationExpressionModel> annotationModels,
-	                  @Nonnull ModifiersModel modifiersModel,
+	                  @Nonnull List<ImportModel> imports,
+	                  @Nonnull List<AnnotationExpressionModel> annotations,
+	                  @Nonnull ModifiersModel modifiers,
 	                  @Nonnull String name,
-	                  @Nonnull List<TypeParameterModel> typeParameterModels,
+	                  @Nonnull List<TypeParameterModel> typeParameters,
 	                  @Nonnull NameExpressionModel extendsModel,
 	                  @Nonnull ImplementsModel implementsModel,
 	                  @Nonnull PermitsModel permitsModel,
-	                  @Nonnull List<VariableModel> fieldModels,
-	                  @Nonnull List<MethodModel> methodModels,
-	                  @Nonnull List<ClassModel> innerClassModels) {
-		super(range, of(packageModel), of(importModels), of(annotationModels), of(fieldModels), of(methodModels), of(innerClassModels));
+	                  @Nonnull List<VariableModel> fields,
+	                  @Nonnull List<MethodModel> methods,
+	                  @Nonnull List<ClassModel> innerClasses) {
+		super(range, of(packageModel), of(imports), of(annotations), of(fields), of(methods), of(innerClasses));
 		this.packageModel = packageModel;
-		this.importModels = Collections.unmodifiableList(importModels);
-		this.annotationModels = Collections.unmodifiableList(annotationModels);
-		this.modifiersModel = modifiersModel;
+		this.imports = Collections.unmodifiableList(imports);
+		this.annotations = Collections.unmodifiableList(annotations);
+		this.modifiers = modifiers;
 		this.name = name;
-		this.typeParameterModels = typeParameterModels;
+		this.typeParameters = typeParameters;
 		this.extendsModel = extendsModel;
 		this.implementsModel = implementsModel;
 		this.permitsModel = permitsModel;
-		this.fieldModels = Collections.unmodifiableList(fieldModels);
-		this.methodModels = Collections.unmodifiableList(methodModels);
-		this.innerClassModels = Collections.unmodifiableList(innerClassModels);
+		this.fields = Collections.unmodifiableList(fields);
+		this.methods = Collections.unmodifiableList(methods);
+		this.innerClasses = Collections.unmodifiableList(innerClasses);
 	}
 
 	@Nonnull
@@ -57,19 +57,19 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	}
 
 	@Nonnull
-	public List<ImportModel> getImportModels() {
-		return importModels;
+	public List<ImportModel> getImports() {
+		return imports;
 	}
 
 	@Nonnull
 	@Override
-	public List<AnnotationExpressionModel> getAnnotationModels() {
-		return annotationModels;
+	public List<AnnotationExpressionModel> getAnnotations() {
+		return annotations;
 	}
 
 	@Nonnull
-	public ModifiersModel getModifiersModel() {
-		return modifiersModel;
+	public ModifiersModel getModifiers() {
+		return modifiers;
 	}
 
 	@Nonnull
@@ -79,8 +79,8 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	}
 
 	@Nonnull
-	public List<TypeParameterModel> getTypeParameterModels() {
-		return typeParameterModels;
+	public List<TypeParameterModel> getTypeParameters() {
+		return typeParameters;
 	}
 
 	@Nonnull
@@ -106,18 +106,18 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	}
 
 	@Nonnull
-	public List<VariableModel> getFieldModels() {
-		return fieldModels;
+	public List<VariableModel> getFields() {
+		return fields;
 	}
 
 	@Nonnull
-	public List<MethodModel> getMethodModels() {
-		return methodModels;
+	public List<MethodModel> getMethods() {
+		return methods;
 	}
 
 	@Nonnull
-	public List<ClassModel> getInnerClassModels() {
-		return innerClassModels;
+	public List<ClassModel> getInnerClasses() {
+		return innerClasses;
 	}
 
 	@Override
@@ -129,34 +129,34 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 
 		if (!getRange().equals(that.getRange())) return false;
 		if (!packageModel.equals(that.packageModel)) return false;
-		if (!importModels.equals(that.importModels)) return false;
-		if (!annotationModels.equals(that.annotationModels)) return false;
-		if (!modifiersModel.equals(that.modifiersModel)) return false;
+		if (!imports.equals(that.imports)) return false;
+		if (!annotations.equals(that.annotations)) return false;
+		if (!modifiers.equals(that.modifiers)) return false;
 		if (!name.equals(that.name)) return false;
-		if (!typeParameterModels.equals(that.typeParameterModels)) return false;
+		if (!typeParameters.equals(that.typeParameters)) return false;
 		if (!extendsModel.equals(that.extendsModel)) return false;
 		if (!implementsModel.equals(that.implementsModel)) return false;
 		if (!permitsModel.equals(that.permitsModel)) return false;
-		if (!fieldModels.equals(that.fieldModels)) return false;
-		if (!methodModels.equals(that.methodModels)) return false;
-		return innerClassModels.equals(that.innerClassModels);
+		if (!fields.equals(that.fields)) return false;
+		if (!methods.equals(that.methods)) return false;
+		return innerClasses.equals(that.innerClasses);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
 		result = 31 * result + packageModel.hashCode();
-		result = 31 * result + importModels.hashCode();
-		result = 31 * result + annotationModels.hashCode();
-		result = 31 * result + modifiersModel.hashCode();
+		result = 31 * result + imports.hashCode();
+		result = 31 * result + annotations.hashCode();
+		result = 31 * result + modifiers.hashCode();
 		result = 31 * result + name.hashCode();
-		result = 31 * result + typeParameterModels.hashCode();
+		result = 31 * result + typeParameters.hashCode();
 		result = 31 * result + extendsModel.hashCode();
 		result = 31 * result + implementsModel.hashCode();
 		result = 31 * result + permitsModel.hashCode();
-		result = 31 * result + fieldModels.hashCode();
-		result = 31 * result + methodModels.hashCode();
-		result = 31 * result + innerClassModels.hashCode();
+		result = 31 * result + fields.hashCode();
+		result = 31 * result + methods.hashCode();
+		result = 31 * result + innerClasses.hashCode();
 		return result;
 	}
 
@@ -167,14 +167,14 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 			sb.append(packageModel.getName()).append('.');
 		sb.append(name);
 
-		if (fieldModels.isEmpty() && methodModels.isEmpty()) {
+		if (fields.isEmpty() && methods.isEmpty()) {
 			sb.append(" {}");
 		} else {
 			sb.append(" {\n    // Fields");
-			for (VariableModel fieldModel : fieldModels)
+			for (VariableModel fieldModel : fields)
 				sb.append("\n    ").append(fieldModel.toString());
 			sb.append("\n    // Methods");
-			for (MethodModel methodModel : methodModels)
+			for (MethodModel methodModel : methods)
 				sb.append("\n    ").append(methodModel.toString());
 			sb.append("\n}");
 		}

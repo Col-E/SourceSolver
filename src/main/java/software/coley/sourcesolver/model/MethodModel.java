@@ -18,7 +18,7 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	private final List<VariableModel> parameters;
 	private final AbstractModel defaultValue;
 	private final List<AbstractExpressionModel> thrownTypes;
-	private final List<AnnotationExpressionModel> annotationModels;
+	private final List<AnnotationExpressionModel> annotations;
 	private final MethodBodyModel methodBody;
 
 	public MethodModel(@Nonnull Range range,
@@ -29,9 +29,9 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	                   @Nonnull List<VariableModel> parameters,
 	                   @Nullable AbstractModel defaultValue,
 	                   @Nonnull List<AbstractExpressionModel> thrownTypes,
-	                   @Nonnull List<AnnotationExpressionModel> annotationModels,
+	                   @Nonnull List<AnnotationExpressionModel> annotations,
 	                   @Nullable MethodBodyModel methodBody) {
-		super(range, of(modifiers), of(typeParameters), of(returnType), of(parameters), of(defaultValue), of(thrownTypes), of(annotationModels), of(methodBody));
+		super(range, of(modifiers), of(typeParameters), of(returnType), of(parameters), of(defaultValue), of(thrownTypes), of(annotations), of(methodBody));
 		this.name = name;
 		this.modifiers = modifiers;
 		this.typeParameters = typeParameters;
@@ -39,7 +39,7 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 		this.parameters = parameters;
 		this.defaultValue = defaultValue;
 		this.thrownTypes = thrownTypes;
-		this.annotationModels = annotationModels;
+		this.annotations = annotations;
 		this.methodBody = methodBody;
 	}
 
@@ -90,8 +90,8 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 	}
 
 	@Nonnull
-	public List<AnnotationExpressionModel> getAnnotationModels() {
-		return annotationModels;
+	public List<AnnotationExpressionModel> getAnnotations() {
+		return annotations;
 	}
 
 	@Nullable
@@ -115,7 +115,7 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 		if (!Objects.equals(defaultValue, that.defaultValue)) return false;
 		if (!thrownTypes.equals(that.thrownTypes)) return false;
 		if (!Objects.equals(methodBody, that.methodBody)) return false;
-		return annotationModels.equals(that.annotationModels);
+		return annotations.equals(that.annotations);
 	}
 
 	@Override
@@ -128,7 +128,7 @@ public class MethodModel extends AbstractModel implements Annotated, Named {
 		result = 31 * result + parameters.hashCode();
 		result = 31 * result + (defaultValue != null ? defaultValue.hashCode() : 0);
 		result = 31 * result + thrownTypes.hashCode();
-		result = 31 * result + annotationModels.hashCode();
+		result = 31 * result + annotations.hashCode();
 		result = 31 * result + (methodBody != null ? methodBody.hashCode() : 0);
 		return result;
 	}

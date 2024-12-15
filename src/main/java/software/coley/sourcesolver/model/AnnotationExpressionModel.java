@@ -7,25 +7,25 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class AnnotationExpressionModel extends AbstractExpressionModel implements Named {
-	private final NameExpressionModel nameModel;
-	private final List<AnnotationArgumentModel> argumentModels;
+	private final NameExpressionModel name;
+	private final List<AnnotationArgumentModel> arguments;
 
-	public AnnotationExpressionModel(@Nonnull Range range, @Nonnull NameExpressionModel nameModel,
-	                                 @Nonnull List<AnnotationArgumentModel> argumentModels) {
+	public AnnotationExpressionModel(@Nonnull Range range, @Nonnull NameExpressionModel name,
+	                                 @Nonnull List<AnnotationArgumentModel> arguments) {
 		super(range);
-		this.nameModel = nameModel;
-		this.argumentModels = argumentModels;
+		this.name = name;
+		this.arguments = arguments;
 	}
 
 	@Nonnull
 	@Override
 	public NameExpressionModel getNameModel() {
-		return nameModel;
+		return name;
 	}
 
 	@Nonnull
-	public List<AnnotationArgumentModel> getArgumentModels() {
-		return argumentModels;
+	public List<AnnotationArgumentModel> getArguments() {
+		return arguments;
 	}
 
 	@Override
@@ -35,22 +35,22 @@ public class AnnotationExpressionModel extends AbstractExpressionModel implement
 
 		AnnotationExpressionModel that = (AnnotationExpressionModel) o;
 
-		if (!nameModel.equals(that.nameModel)) return false;
-		return argumentModels.equals(that.argumentModels);
+		if (!name.equals(that.name)) return false;
+		return arguments.equals(that.arguments);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = nameModel.hashCode();
-		result = 31 * result + argumentModels.hashCode();
+		int result = name.hashCode();
+		result = 31 * result + arguments.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		String display = "@" + nameModel;
-		if (!argumentModels.isEmpty()) {
-			display += "(" + argumentModels.stream()
+		String display = "@" + name;
+		if (!arguments.isEmpty()) {
+			display += "(" + arguments.stream()
 					.map(AnnotationArgumentModel::toString)
 					.collect(Collectors.joining(", ")) +
 					")";

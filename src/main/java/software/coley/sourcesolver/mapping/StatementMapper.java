@@ -110,6 +110,6 @@ public class StatementMapper implements Mapper<AbstractStatementModel, Statement
 		}
 
 		// Generic fallback
-		return new UnknownStatementModel(extractRange(table, tree));
+		return new UnknownStatementModel(extractRange(table, tree), tree.toString());
 	}
 }

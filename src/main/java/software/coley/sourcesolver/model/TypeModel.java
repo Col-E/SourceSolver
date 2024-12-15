@@ -155,17 +155,17 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class Parameterized extends TypeModel {
-		private final List<AbstractModel> typeArgumentModels;
+		private final List<AbstractModel> typeArguments;
 
 		public Parameterized(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
-		                     @Nonnull List<? extends AbstractModel> typeArgumentModels) {
-			super(range, identifierModel, typeArgumentModels);
-			this.typeArgumentModels = Collections.unmodifiableList(typeArgumentModels);
+		                     @Nonnull List<? extends AbstractModel> typeArguments) {
+			super(range, identifierModel, typeArguments);
+			this.typeArguments = Collections.unmodifiableList(typeArguments);
 		}
 
 		@Nonnull
-		public List<AbstractModel> getTypeArgumentModels() {
-			return typeArgumentModels;
+		public List<AbstractModel> getTypeArguments() {
+			return typeArguments;
 		}
 
 		@Nonnull
@@ -182,19 +182,19 @@ public abstract class TypeModel extends AbstractModel {
 
 			Parameterized that = (Parameterized) o;
 
-			return typeArgumentModels.equals(that.typeArgumentModels);
+			return typeArguments.equals(that.typeArguments);
 		}
 
 		@Override
 		public int hashCode() {
 			int result = super.hashCode();
-			result = 31 * result + typeArgumentModels.hashCode();
+			result = 31 * result + typeArguments.hashCode();
 			return result;
 		}
 
 		@Override
 		public String toString() {
-			return super.toString() + "<" + typeArgumentModels.stream()
+			return super.toString() + "<" + typeArguments.stream()
 					.map(Object::toString)
 					.collect(Collectors.joining(", ")) +
 					">";

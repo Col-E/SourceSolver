@@ -3,13 +3,17 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.*;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
+import software.coley.sourcesolver.model.ArrayAccessExpressionModel;
 import software.coley.sourcesolver.model.AssignmentExpressionModel;
-import software.coley.sourcesolver.model.LiteralExpressionModel;
-import software.coley.sourcesolver.model.NameExpressionModel;
+import software.coley.sourcesolver.model.CaseModel;
+import software.coley.sourcesolver.model.ConditionalExpressionModel;
 import software.coley.sourcesolver.model.ParenthesizedExpressionModel;
+import software.coley.sourcesolver.model.SwitchExpressionModel;
+import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
@@ -28,9 +32,8 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 			return context.map(LiteralMapper.class, literal);
 
 		// ???
-		if (tree instanceof IdentifierTree identifier) {
-			return new NameExpressionModel(range, identifier.toString());
-		}
+		if (tree instanceof IdentifierTree identifier)
+			return context.map(IdentifierMapper.class, identifier);
 
 		// Enum.name
 		// Constants.MY_CONSTANT
@@ -76,30 +79,34 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 			return context.map(BinaryMapper.class, binary);
 
 		// x++
-		// (Foo) maybeFoo
 		if (tree instanceof UnaryTree unary)
-			throw new UnsupportedOperationException("TODO: UnaryTree");
+			return context.map(UnaryMapper.class, unary);
 
 		// (Foo) maybeFoo
 		if (tree instanceof TypeCastTree cast)
-			throw new UnsupportedOperationException("TODO: TypeCastTree");
+			return context.map(CastMapper.class, cast);
 
 		// foo instanceof Bar b
 		if (tree instanceof InstanceOfTree instanceCheck)
-			throw new UnsupportedOperationException("TODO: TypeCastTree");
+			return context.map(InstanceofMapper.class, instanceCheck);
 
 		// new Foo()
 		if (tree instanceof NewClassTree newClass)
-			throw new UnsupportedOperationException("TODO: NewClassTree");
+			return context.map(NewClassMapper.class, newClass);
 
 		// array[0]
 		// array[index++]
 		if (tree instanceof ArrayAccessTree arrayAccess)
-			throw new UnsupportedOperationException("TODO: ArrayAccessTree");
+			return new ArrayAccessExpressionModel(range,
+					map(context, table, arrayAccess.getExpression()),
+					map(context, table, arrayAccess.getIndex()));
 
-		// flag ? case1 : case2
+		// condition ? case1 : case2
 		if (tree instanceof ConditionalExpressionTree conditional)
-			throw new UnsupportedOperationException("TODO: ConditionalExpressionTree");
+			return new ConditionalExpressionModel(range,
+					map(context, table, conditional.getCondition()),
+					map(context, table, conditional.getTrueExpression()),
+					map(context, table, conditional.getFalseExpression()));
 
 		// new int[N];
 		// { one, two };
@@ -109,28 +116,28 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 		// a -> true
 		// () -> { ... }
 		if (tree instanceof LambdaExpressionTree lambda)
-			throw new UnsupportedOperationException("TODO: LambdaExpressionTree");
+			return context.map(LambdaMapper.class, lambda);
 
 		// value = switch(foo) { ... }
-		if (tree instanceof SwitchExpressionTree switchExpr)
-			throw new UnsupportedOperationException("TODO: SwitchExpressionTree");
+		if (tree instanceof SwitchExpressionTree switchExpr) {
+			AbstractExpressionModel expression = context.map(ExpressionMapper.class, switchExpr.getExpression());
+			List<CaseModel> cases = switchExpr.getCases().stream()
+					.map(c -> context.map(CaseMapper.class, c))
+					.toList();
+			return new SwitchExpressionModel(range, expression, cases);
+		}
 
 		// String::new
 		// Objects::requireNonNull
 		if (tree instanceof MemberReferenceTree memberReference)
-			throw new UnsupportedOperationException("TODO: MemberReferenceTree");
+			return context.map(MemberReferenceMapper.class, memberReference);
 
 		// @Foo
 		// @Foo(fizz = "buzz")
 		if (tree instanceof AnnotationTree annotation)
 			return context.map(AnnotationUseMapper.class, annotation);
 
-		// Any bogus input that the parser cannot fit into a good model gets
-		// mapped to a literal
-		if (tree instanceof ErroneousTree erroneous)
-			return new LiteralExpressionModel(range, LiteralExpressionModel.Kind.ERROR, erroneous.toString());
-
-		// Handle unknown cases as literals
-		return new LiteralExpressionModel(range, LiteralExpressionModel.Kind.ERROR, tree.toString());
+		// Handle unknown cases or errors as unknowns which toString the content
+		return new UnknownExpressionModel(range, tree.toString());
 	}
 }

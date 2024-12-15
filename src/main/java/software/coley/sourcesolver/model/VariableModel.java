@@ -11,30 +11,30 @@ import java.util.Objects;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class VariableModel extends AbstractStatementModel implements Annotated, Named {
-	private final List<AnnotationExpressionModel> annotationModels;
+	private final List<AnnotationExpressionModel> annotations;
 	private final ModifiersModel modifiers;
-	private final TypeModel typeModel;
+	private final TypeModel type;
 	private final String name;
-	private final AbstractModel valueModel;
+	private final AbstractModel value;
 
 	public VariableModel(@Nonnull Range range,
-	                     @Nonnull List<AnnotationExpressionModel> annotationModels,
+	                     @Nonnull List<AnnotationExpressionModel> annotations,
 	                     @Nonnull ModifiersModel modifiers,
-	                     @Nonnull TypeModel typeModel,
+	                     @Nonnull TypeModel type,
 	                     @Nonnull String name,
-	                     @Nullable AbstractModel valueModel) {
-		super(range, of(annotationModels), of(modifiers), of(typeModel), of(valueModel));
-		this.annotationModels = Collections.unmodifiableList(annotationModels);
+	                     @Nullable AbstractModel value) {
+		super(range, of(annotations), of(modifiers), of(type), of(value));
+		this.annotations = Collections.unmodifiableList(annotations);
 		this.modifiers = modifiers;
-		this.typeModel = typeModel;
+		this.type = type;
 		this.name = name;
-		this.valueModel = valueModel;
+		this.value = value;
 	}
 
 	@Nonnull
 	@Override
-	public List<AnnotationExpressionModel> getAnnotationModels() {
-		return annotationModels;
+	public List<AnnotationExpressionModel> getAnnotations() {
+		return annotations;
 	}
 
 	@Nonnull
@@ -43,8 +43,8 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 	}
 
 	@Nonnull
-	public TypeModel getTypeModel() {
-		return typeModel;
+	public TypeModel getType() {
+		return type;
 	}
 
 	@Nonnull
@@ -61,8 +61,8 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 	}
 
 	@Nullable
-	public AbstractModel getValueModel() {
-		return valueModel;
+	public AbstractModel getValue() {
+		return value;
 	}
 
 	@Override
@@ -73,21 +73,21 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 		VariableModel that = (VariableModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
-		if (!annotationModels.equals(that.annotationModels)) return false;
+		if (!annotations.equals(that.annotations)) return false;
 		if (!modifiers.equals(that.modifiers)) return false;
-		if (!typeModel.equals(that.typeModel)) return false;
+		if (!type.equals(that.type)) return false;
 		if (!name.equals(that.name)) return false;
-		return Objects.equals(valueModel, that.valueModel);
+		return Objects.equals(value, that.value);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + annotationModels.hashCode();
+		result = 31 * result + annotations.hashCode();
 		result = 31 * result + modifiers.hashCode();
-		result = 31 * result + typeModel.hashCode();
+		result = 31 * result + type.hashCode();
 		result = 31 * result + name.hashCode();
-		result = 31 * result + (valueModel != null ? valueModel.hashCode() : 0);
+		result = 31 * result + (value != null ? value.hashCode() : 0);
 		return result;
 	}
 
@@ -96,9 +96,9 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 		StringBuilder sb = new StringBuilder();
 		if (modifiers.getModifiers().isEmpty())
 			sb.append(modifiers).append(' ');
-		sb.append(typeModel).append(' ').append(name);
-		if (valueModel != null)
-			sb.append(" = ").append(valueModel);
+		sb.append(type).append(' ').append(name);
+		if (value != null)
+			sb.append(" = ").append(value);
 		return sb.toString();
 	}
 }

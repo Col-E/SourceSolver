@@ -38,19 +38,19 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 	 * fields, and methods.
 	 */
 	public static class ModifiersParsePair extends AbstractModel {
-		private final List<AnnotationExpressionModel> annotationModels;
+		private final List<AnnotationExpressionModel> annotations;
 		private final ModifiersModel modifiers;
 
-		public ModifiersParsePair(@Nullable List<AnnotationExpressionModel> annotationModels,
+		public ModifiersParsePair(@Nullable List<AnnotationExpressionModel> annotations,
 		                          @Nullable ModifiersModel modifiers) {
 			super(Range.UNKNOWN);
-			this.annotationModels = annotationModels;
+			this.annotations = annotations;
 			this.modifiers = modifiers;
 		}
 
 		@Nullable
-		public List<AnnotationExpressionModel> getAnnotationModels() {
-			return annotationModels;
+		public List<AnnotationExpressionModel> getAnnotations() {
+			return annotations;
 		}
 
 		@Nullable
@@ -60,6 +60,16 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 
 		public boolean isEmpty() {
 			return modifiers == null || modifiers.getModifiers().isEmpty();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o == this;
+		}
+
+		@Override
+		public int hashCode() {
+			return 0;
 		}
 	}
 }

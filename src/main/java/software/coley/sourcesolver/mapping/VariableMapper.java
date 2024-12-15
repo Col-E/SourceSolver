@@ -21,7 +21,7 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 	@SuppressWarnings("DataFlowIssue")
 	public VariableModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull VariableTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
-		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		TypeModel typeModel = context.map(TypeMapper.class, tree.getType());

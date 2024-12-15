@@ -10,29 +10,29 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class PackageModel extends AbstractModel implements Annotated, Named {
 	public static final PackageModel DEFAULT_PACKAGE = new PackageModel(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, ""), Collections.emptyList());
-	private final NameExpressionModel nameModel;
-	private final List<AnnotationExpressionModel> annotationModels;
+	private final NameExpressionModel name;
+	private final List<AnnotationExpressionModel> annotations;
 
-	public PackageModel(@Nonnull Range range, @Nonnull NameExpressionModel nameModel, @Nonnull List<AnnotationExpressionModel> annotationModels) {
-		super(range, of(nameModel), of(annotationModels));
-		this.nameModel = nameModel;
-		this.annotationModels = annotationModels;
+	public PackageModel(@Nonnull Range range, @Nonnull NameExpressionModel name, @Nonnull List<AnnotationExpressionModel> annotations) {
+		super(range, of(name), of(annotations));
+		this.name = name;
+		this.annotations = annotations;
 	}
 
 	public boolean isDefaultPackage() {
-		return nameModel.getName().isEmpty() && annotationModels.isEmpty();
+		return name.getName().isEmpty() && annotations.isEmpty();
 	}
 
 	@Nonnull
 	@Override
-	public List<AnnotationExpressionModel> getAnnotationModels() {
-		return annotationModels;
+	public List<AnnotationExpressionModel> getAnnotations() {
+		return annotations;
 	}
 
 	@Nonnull
 	@Override
 	public NameExpressionModel getNameModel() {
-		return nameModel;
+		return name;
 	}
 
 	@Override
@@ -43,20 +43,20 @@ public class PackageModel extends AbstractModel implements Annotated, Named {
 		PackageModel that = (PackageModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
-		if (!nameModel.equals(that.nameModel)) return false;
-		return annotationModels.equals(that.annotationModels);
+		if (!name.equals(that.name)) return false;
+		return annotations.equals(that.annotations);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + nameModel.hashCode();
-		result = 31 * result + annotationModels.hashCode();
+		result = 31 * result + name.hashCode();
+		result = 31 * result + annotations.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "package " + nameModel.getName();
+		return "package " + name.getName();
 	}
 }

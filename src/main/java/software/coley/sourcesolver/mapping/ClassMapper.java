@@ -20,19 +20,19 @@ import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 	private final PackageModel packageModel;
-	private final List<ImportModel> importModels;
+	private final List<ImportModel> imports;
 
 	public ClassMapper(@Nonnull PackageModel packageModel,
-	                   @Nonnull List<ImportModel> importModels) {
+	                   @Nonnull List<ImportModel> imports) {
 		this.packageModel = packageModel;
-		this.importModels = importModels;
+		this.imports = imports;
 	}
 
 	@Nonnull
 	@Override
 	public ClassModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ClassTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
-		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotationModels() == null ? Collections.emptyList() : modifiersPair.getAnnotationModels();
+		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
 		Name className = tree.getSimpleName();
@@ -77,7 +77,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 			}
 		}
 
-		return new ClassModel(extractRange(table, tree), packageModel, importModels, annotationModels, modifiersModel,
+		return new ClassModel(extractRange(table, tree), packageModel, imports, annotationModels, modifiersModel,
 				className.toString(), typeParameterModels, extendsModel, implementsModel, permitsModel, fieldModels, methodModels, innerClassModels);
 	}
 }

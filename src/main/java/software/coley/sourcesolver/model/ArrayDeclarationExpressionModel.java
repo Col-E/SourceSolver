@@ -8,34 +8,42 @@ import java.util.List;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class ArrayDeclarationExpressionModel extends AbstractExpressionModel implements Annotated {
-	private final List<AbstractExpressionModel> dimensionModels;
-	private final List<AbstractExpressionModel> initializersModels;
-	private final List<AnnotationExpressionModel> annotationModels;
+	private final TypeModel type;
+	private final List<AbstractExpressionModel> dimensions;
+	private final List<AbstractExpressionModel> initializers;
+	private final List<AnnotationExpressionModel> annotations;
 
 	public ArrayDeclarationExpressionModel(@Nonnull Range range,
-	                                       @Nonnull List<AbstractExpressionModel> dimensionModels,
-	                                       @Nonnull List<AbstractExpressionModel> initializersModels,
-	                                       @Nonnull List<AnnotationExpressionModel> annotationModels) {
-		super(range, of(dimensionModels), of(initializersModels), of(annotationModels));
-		this.dimensionModels = dimensionModels;
-		this.initializersModels = initializersModels;
-		this.annotationModels = annotationModels;
+	                                       @Nonnull TypeModel type,
+	                                       @Nonnull List<AbstractExpressionModel> dimensions,
+	                                       @Nonnull List<AbstractExpressionModel> initializers,
+	                                       @Nonnull List<AnnotationExpressionModel> annotations) {
+		super(range, of(type), of(dimensions), of(initializers), of(annotations));
+		this.type = type;
+		this.dimensions = dimensions;
+		this.initializers = initializers;
+		this.annotations = annotations;
 	}
 
 	@Nonnull
-	public List<AbstractExpressionModel> getDimensionModels() {
-		return dimensionModels;
+	public TypeModel getType() {
+		return type;
 	}
 
 	@Nonnull
-	public List<AbstractExpressionModel> getInitializersModels() {
-		return initializersModels;
+	public List<AbstractExpressionModel> getDimensions() {
+		return dimensions;
+	}
+
+	@Nonnull
+	public List<AbstractExpressionModel> getInitializers() {
+		return initializers;
 	}
 
 	@Nonnull
 	@Override
-	public List<AnnotationExpressionModel> getAnnotationModels() {
-		return annotationModels;
+	public List<AnnotationExpressionModel> getAnnotations() {
+		return annotations;
 	}
 
 	@Override
@@ -46,25 +54,27 @@ public class ArrayDeclarationExpressionModel extends AbstractExpressionModel imp
 		ArrayDeclarationExpressionModel that = (ArrayDeclarationExpressionModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
-		if (!dimensionModels.equals(that.dimensionModels)) return false;
-		if (!initializersModels.equals(that.initializersModels)) return false;
-		return annotationModels.equals(that.annotationModels);
+		if (!type.equals(that.type)) return false;
+		if (!dimensions.equals(that.dimensions)) return false;
+		if (!initializers.equals(that.initializers)) return false;
+		return annotations.equals(that.annotations);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + dimensionModels.hashCode();
-		result = 31 * result + initializersModels.hashCode();
-		result = 31 * result + annotationModels.hashCode();
+		result = 31 * result + type.hashCode();
+		result = 31 * result + dimensions.hashCode();
+		result = 31 * result + initializers.hashCode();
+		result = 31 * result + annotations.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		// TODO: Flesh out
+		// TODO: Flesh out properly
 		//     new type dimensions initializers
 		//     new type dimensions [ ] initializers
-		return super.toString();
+		return "new " + type + "[]".repeat(dimensions.size());
 	}
 }

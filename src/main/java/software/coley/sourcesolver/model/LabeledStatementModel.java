@@ -11,7 +11,7 @@ public class LabeledStatementModel extends AbstractStatementModel {
 	private final AbstractStatementModel statement;
 
 	public LabeledStatementModel(@Nonnull Range range, @Nullable String labelName, @Nonnull AbstractStatementModel statement) {
-		super(range);
+		super(range, statement);
 		this.labelName = labelName;
 		this.statement = statement;
 	}

@@ -6,6 +6,8 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 	private final List<AbstractModel> typeArguments;
 	private final AbstractExpressionModel methodSelect;
@@ -13,7 +15,7 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 
 	public MethodInvocationExpressionModel(@Nonnull Range range, @Nonnull List<AbstractModel> typeArguments,
 	                                       @Nonnull AbstractExpressionModel methodSelect, @Nonnull List<AbstractExpressionModel> arguments) {
-		super(range);
+		super(range, of(typeArguments), of(methodSelect), of(arguments));
 		this.typeArguments = typeArguments;
 		this.methodSelect = methodSelect;
 		this.arguments = arguments;
@@ -50,6 +52,7 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
+		result = 31 * result + typeArguments.hashCode();
 		result = 31 * result + methodSelect.hashCode();
 		result = 31 * result + arguments.hashCode();
 		return result;

@@ -51,11 +51,15 @@ public class MappingContext {
 		setMapper(BinaryMapper.class, new BinaryMapper());
 		setMapper(BlockMapper.class, new BlockMapper());
 		setMapper(CaseMapper.class, new CaseMapper());
+		setMapper(CastMapper.class, new CastMapper());
 		setMapper(CatchMapper.class, new CatchMapper());
 		// setMapper(ClassMapper.class, new ClassMapper()); // Set externally
 		setMapper(CompilationUnitMapper.class, new CompilationUnitMapper());
 		setMapper(ExpressionMapper.class, new ExpressionMapper());
+		setMapper(IdentifierMapper.class, new IdentifierMapper());
 		setMapper(ImportMapper.class, new ImportMapper());
+		setMapper(InstanceofMapper.class, new InstanceofMapper());
+		setMapper(LambdaMapper.class, new LambdaMapper());
 		setMapper(LiteralMapper.class, new LiteralMapper());
 		setMapper(MemberSelectMapper.class, new MemberSelectMapper());
 		setMapper(MethodBodyMapper.class, new MethodBodyMapper());
@@ -63,12 +67,16 @@ public class MappingContext {
 		setMapper(MethodMapper.class, new MethodMapper());
 		setMapper(ModifiersMapper.class, new ModifiersMapper());
 		setMapper(NameMapper.class, new NameMapper());
+		setMapper(NewClassMapper.class, new NewClassMapper());
 		// setMapper(PackageMapper.class, new PackageMapper()); // Set externally
+		setMapper(PatternMapper.class, new PatternMapper());
 		setMapper(StatementMapper.class, new StatementMapper());
 		setMapper(StaticInitializerMethodMapper.class, new StaticInitializerMethodMapper());
 		setMapper(TryMapper.class, new TryMapper());
 		setMapper(TypeMapper.class, new TypeMapper());
+		setMapper(TypeArgumentsMapper.class, new TypeArgumentsMapper());
 		setMapper(TypeParameterMapper.class, new TypeParameterMapper());
+		setMapper(UnaryMapper.class, new UnaryMapper());
 		setMapper(VariableMapper.class, new VariableMapper());
 	}
 }

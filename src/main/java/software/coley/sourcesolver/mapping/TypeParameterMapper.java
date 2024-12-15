@@ -7,7 +7,7 @@ import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.TypeParameterModel;
 
 import javax.annotation.Nonnull;
-import javax.lang.model.element.Name;
+import java.util.Collections;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
@@ -21,7 +21,7 @@ public class TypeParameterMapper implements Mapper<TypeParameterModel, TypeParam
 				.toList();
 		// TODO: What tree type are the bounds in practice?
 		List<? extends Tree> bounds = tree.getBounds();
-		Name name = tree.getName();
-		return new TypeParameterModel(extractRange(table, tree));
+		String name = tree.getName().toString();
+		return new TypeParameterModel(extractRange(table, tree), name, Collections.emptyList(), annotationModels);
 	}
 }

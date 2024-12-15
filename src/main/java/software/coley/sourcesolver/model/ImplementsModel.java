@@ -9,16 +9,16 @@ import java.util.stream.Collectors;
 
 public class ImplementsModel extends AbstractModel {
 	public static final ImplementsModel EMPTY = new ImplementsModel(Range.UNKNOWN, Collections.emptyList());
-	private final List<NameExpressionModel> implementedClassNameModels;
+	private final List<NameExpressionModel> implementedClassNames;
 
-	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> implementedClassNameModels) {
+	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> implementedClassNames) {
 		super(range);
-		this.implementedClassNameModels = Collections.unmodifiableList(implementedClassNameModels);
+		this.implementedClassNames = Collections.unmodifiableList(implementedClassNames);
 	}
 
 	@Nonnull
-	public List<NameExpressionModel> getImplementedClassNameModels() {
-		return implementedClassNameModels;
+	public List<NameExpressionModel> getImplementedClassNames() {
+		return implementedClassNames;
 	}
 
 	@Override
@@ -28,19 +28,19 @@ public class ImplementsModel extends AbstractModel {
 
 		ImplementsModel that = (ImplementsModel) o;
 
-		return implementedClassNameModels.equals(that.implementedClassNameModels) && getRange().equals(that.getRange());
+		return implementedClassNames.equals(that.implementedClassNames) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		return implementedClassNameModels.hashCode() + (31 * getRange().hashCode());
+		return implementedClassNames.hashCode() + (31 * getRange().hashCode());
 	}
 
 	@Override
 	public String toString() {
-		if (implementedClassNameModels.isEmpty())
+		if (implementedClassNames.isEmpty())
 			return "";
-		return "implements " + implementedClassNameModels.stream()
+		return "implements " + implementedClassNames.stream()
 				.map(NameExpressionModel::getName)
 				.collect(Collectors.joining(", "));
 	}

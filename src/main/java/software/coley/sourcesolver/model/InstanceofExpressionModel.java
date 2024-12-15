@@ -15,7 +15,7 @@ public class InstanceofExpressionModel extends AbstractExpressionModel {
 	                                 @Nonnull AbstractExpressionModel expression,
 	                                 @Nonnull AbstractModel type,
 	                                 @Nullable AbstractPatternModel pattern) {
-		super(range, type, expression);
+		super(range, type, expression, pattern);
 		this.expression = expression;
 		this.type = type;
 		this.pattern = pattern;

@@ -9,16 +9,16 @@ import java.util.stream.Collectors;
 
 public class PermitsModel extends AbstractModel {
 	public static final PermitsModel EMPTY = new PermitsModel(Range.UNKNOWN, Collections.emptyList());
-	private final List<NameExpressionModel> permittedClassNameModels;
+	private final List<NameExpressionModel> permittedClassNames;
 
-	public PermitsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> permittedClassNameModels) {
+	public PermitsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> permittedClassNames) {
 		super(range);
-		this.permittedClassNameModels = Collections.unmodifiableList(permittedClassNameModels);
+		this.permittedClassNames = Collections.unmodifiableList(permittedClassNames);
 	}
 
 	@Nonnull
-	public List<NameExpressionModel> getPermittedClassNameModels() {
-		return permittedClassNameModels;
+	public List<NameExpressionModel> getPermittedClassNames() {
+		return permittedClassNames;
 	}
 
 	@Override
@@ -28,21 +28,21 @@ public class PermitsModel extends AbstractModel {
 
 		PermitsModel that = (PermitsModel) o;
 
-		return permittedClassNameModels.equals(that.permittedClassNameModels) && getRange().equals(that.getRange());
+		return permittedClassNames.equals(that.permittedClassNames) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + permittedClassNameModels.hashCode();
+		result = 31 * result + permittedClassNames.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		if (permittedClassNameModels.isEmpty())
+		if (permittedClassNames.isEmpty())
 			return "";
-		return "permits " + permittedClassNameModels.stream()
+		return "permits " + permittedClassNames.stream()
 				.map(NameExpressionModel::getName)
 				.collect(Collectors.joining(", "));
 	}
