@@ -51,6 +51,14 @@ public abstract class AbstractModel implements Ranged {
 	}
 
 	@Nonnull
+	public String getSource(@Nonnull CompilationUnitModel unit) {
+		String src = unit.getInputSource();
+		int begin = Math.max(0, range.begin());
+		int end = Math.min(src.length(), range.end());
+		return src.substring(begin, end);
+	}
+
+	@Nonnull
 	public List<AbstractModel> getChildren() {
 		return children;
 	}
