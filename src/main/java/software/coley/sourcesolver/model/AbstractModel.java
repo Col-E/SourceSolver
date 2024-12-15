@@ -1,5 +1,7 @@
 package software.coley.sourcesolver.model;
 
+import software.coley.sourcesolver.resolve.Resolver;
+import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
@@ -15,6 +17,7 @@ public abstract class AbstractModel implements Ranged {
 	private final List<AbstractModel> children;
 	private final Range range;
 	private AbstractModel parent;
+	private Resolution resolution;
 
 	protected AbstractModel(@Nonnull Range range) {
 		this.range = range;
@@ -48,6 +51,29 @@ public abstract class AbstractModel implements Ranged {
 		return stream.filter(c -> c != null && !c.range.isUnknown())
 				.sorted(Comparator.comparing(AbstractModel::getRange))
 				.toList();
+	}
+
+	@Nonnull
+	public Resolution resolve(@Nonnull Resolver resolver) {
+		int index = range.begin();
+		if (index < 0 && parent != null)
+			index = parent.range.begin();
+		return resolveAt(resolver, index);
+	}
+
+	@Nonnull
+	public Resolution resolveAt(@Nonnull Resolver resolver, int index) {
+		if (resolution == null)
+			resolution = resolver.resolveAt(index, this);
+		return resolution;
+	}
+
+	@Nullable
+	public AbstractModel getChildAtPosition(int position) {
+		for (AbstractModel child : children)
+			if (child.range.isWithin(position))
+				return child;
+		return null;
 	}
 
 	@Nonnull
