@@ -65,6 +65,7 @@ public class LiteralExpressionModel extends AbstractExpressionModel {
 		CHAR,
 		STRING,
 		NULL,
+		VOID,
 		ERROR;
 	}
 }

@@ -6,6 +6,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class InstanceofExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel expression;
 	private final AbstractModel type;
@@ -15,7 +17,7 @@ public class InstanceofExpressionModel extends AbstractExpressionModel {
 	                                 @Nonnull AbstractExpressionModel expression,
 	                                 @Nonnull AbstractModel type,
 	                                 @Nullable AbstractPatternModel pattern) {
-		super(range, type, expression, pattern);
+		super(range, of(expression), of(type), of(pattern));
 		this.expression = expression;
 		this.type = type;
 		this.pattern = pattern;

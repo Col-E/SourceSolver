@@ -17,7 +17,7 @@ public class BlockMapper implements Mapper<BlockStatementModel, BlockTree> {
 	public BlockStatementModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull BlockTree tree) {
 		Range range = extractRange(table, tree);
 		List<AbstractStatementModel> statements = tree.getStatements().stream()
-				.map(s -> context.map(StatementMapper.class, tree))
+				.map(s -> context.map(StatementMapper.class, s))
 				.toList();
 		return new BlockStatementModel(range, statements);
 

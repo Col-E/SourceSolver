@@ -7,15 +7,8 @@ import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractExpressionModel;
-import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.AnnotationExpressionModel;
-import software.coley.sourcesolver.model.MethodBodyModel;
-import software.coley.sourcesolver.model.MethodModel;
-import software.coley.sourcesolver.model.ModifiersModel;
-import software.coley.sourcesolver.model.TypeModel;
-import software.coley.sourcesolver.model.TypeParameterModel;
-import software.coley.sourcesolver.model.VariableModel;
+import software.coley.sourcesolver.model.*;
+import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
@@ -36,7 +29,10 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		List<TypeParameterModel> typeParameters = tree.getTypeParameters().stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		// Return type + parameters
-		TypeModel returnType = context.map(TypeMapper.class, tree.getReturnType());
+		//  - Constructors are a special case so we manually make a 'void' return for those
+		TypeModel returnType = tree.getReturnType() == null ?
+				new TypeModel.Primitive(Range.UNKNOWN, new LiteralExpressionModel(Range.UNKNOWN, LiteralExpressionModel.Kind.VOID, "void")) :
+				context.map(TypeMapper.class, tree.getReturnType());
 		List<VariableModel> parameters = tree.getParameters().stream().map(p -> context.map(VariableMapper.class, p)).toList();
 
 		// throws X,Y,Z

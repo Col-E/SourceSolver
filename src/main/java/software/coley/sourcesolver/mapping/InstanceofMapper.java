@@ -31,7 +31,7 @@ public class InstanceofMapper implements Mapper<InstanceofExpressionModel, Insta
 			type = new UnknownExpressionModel(range, typeTree.toString());
 		}
 		AbstractExpressionModel expression = context.map(ExpressionMapper.class, tree.getExpression());
-		AbstractPatternModel pattern = context.map(PatternMapper.class, tree.getPattern());
+		AbstractPatternModel pattern = tree.getPattern() == null ? null : context.map(PatternMapper.class, tree.getPattern());
 		return new InstanceofExpressionModel(range, expression, type, pattern);
 	}
 }

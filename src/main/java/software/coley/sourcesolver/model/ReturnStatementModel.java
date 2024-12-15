@@ -5,11 +5,13 @@ import software.coley.sourcesolver.util.Range;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class ReturnStatementModel extends AbstractStatementModel {
 	private final AbstractExpressionModel expression;
 
 	public ReturnStatementModel(@Nonnull Range range, @Nullable AbstractExpressionModel expression) {
-		super(range, expression);
+		super(range, of(expression));
 		this.expression = expression;
 	}
 
