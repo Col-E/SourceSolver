@@ -8,7 +8,7 @@ import com.sun.tools.javac.util.JCDiagnostic;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 
-public record Range(int begin, int length) implements Comparable<Range> {
+public record Range(int begin, int end) implements Comparable<Range> {
 	public static final Range UNKNOWN = new Range(-1, -1);
 
 	@Nonnull
@@ -40,19 +40,26 @@ public record Range(int begin, int length) implements Comparable<Range> {
 		return new Range(min, (max - min));
 	}
 
-	public int end() {
-		return begin + length;
+	public boolean isWithin(int position) {
+		return isWithin(position, true, true);
+	}
+
+	public boolean isWithin(int position, boolean startInclusive, boolean endInclusive) {
+		if (startInclusive ? position <= begin : position < begin)
+			return false;
+		int end = end();
+		return endInclusive ? position <= end : position < end;
 	}
 
 	public boolean isUnknown() {
-		return begin < 0 || length < 0;
+		return begin < 0 || end < 0;
 	}
 
 	@Override
 	public int compareTo(Range o) {
 		int cmp = Integer.compare(begin, o.begin);
 		if (cmp == 0)
-			cmp = -Integer.compare(length, o.length);
+			cmp = -Integer.compare(end, o.end);
 		return cmp;
 	}
 }
