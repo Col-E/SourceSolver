@@ -77,12 +77,13 @@ public class Parser {
 
 		// Parse the compilation unit and convert to our own lightweight model
 		CompilationUnitTree unit = parser.parseCompilationUnit();
-		return mapCompilationUnit(table, unit);
+		return mapCompilationUnit(source, table, unit);
 	}
 
 	@Nonnull
-	protected CompilationUnitModel mapCompilationUnit(@Nonnull EndPosTable table, @Nonnull CompilationUnitTree unit) {
+	protected CompilationUnitModel mapCompilationUnit(@Nonnull String source, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree unit) {
 		MappingContext mappingContext = mappingContextFactory.apply(table);
+		mappingContext.setMapperSupplier(CompilationUnitMapper.class, () -> new CompilationUnitMapper(source));
 		return mappingContext.map(CompilationUnitMapper.class, unit);
 	}
 

@@ -18,6 +18,12 @@ import java.util.stream.Collectors;
 import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class CompilationUnitMapper implements Mapper<CompilationUnitModel, CompilationUnitTree> {
+	private final String inputSource;
+
+	public CompilationUnitMapper(@Nonnull String inputSource) {
+		this.inputSource = inputSource;
+	}
+
 	@Nonnull
 	@Override
 	public CompilationUnitModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree tree) {
@@ -46,6 +52,6 @@ public class CompilationUnitMapper implements Mapper<CompilationUnitModel, Compi
 				.map(t -> (ClassTree) t)
 				.map(ct -> context.map(ClassMapper.class, ct))
 				.toList();
-		return new CompilationUnitModel(extractRange(table, tree), classModels);
+		return new CompilationUnitModel(extractRange(table, tree), inputSource, classModels);
 	}
 }

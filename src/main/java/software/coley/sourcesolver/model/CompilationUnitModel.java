@@ -7,12 +7,23 @@ import java.util.List;
 
 public class CompilationUnitModel extends AbstractModel {
 	private final List<ClassModel> declaredClasses;
+	private final String inputSource;
 
-	public CompilationUnitModel(@Nonnull Range range, @Nonnull List<ClassModel> declaredClasses) {
+	public CompilationUnitModel(@Nonnull Range range, @Nonnull String inputSource, @Nonnull List<ClassModel> declaredClasses) {
 		super(range, declaredClasses);
+		this.inputSource = inputSource;
 		this.declaredClasses = declaredClasses;
 	}
 
+	/**
+	 * @return Original source code used to construct this unit.
+	 */
+	@Nonnull
+	public String getInputSource() {
+		return inputSource;
+	}
+
+	@Nonnull
 	public List<ClassModel> getDeclaredClasses() {
 		return declaredClasses;
 	}

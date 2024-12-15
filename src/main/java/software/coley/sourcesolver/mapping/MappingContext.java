@@ -54,7 +54,7 @@ public class MappingContext {
 		setMapper(CastMapper.class, new CastMapper());
 		setMapper(CatchMapper.class, new CatchMapper());
 		// setMapper(ClassMapper.class, new ClassMapper()); // Set externally
-		setMapper(CompilationUnitMapper.class, new CompilationUnitMapper());
+		// setMapper(CompilationUnitMapper.class, new CompilationUnitMapper()); // Entry point, set externally
 		setMapper(ExpressionMapper.class, new ExpressionMapper());
 		setMapper(IdentifierMapper.class, new IdentifierMapper());
 		setMapper(ImportMapper.class, new ImportMapper());
