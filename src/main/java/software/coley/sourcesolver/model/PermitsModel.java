@@ -25,16 +25,15 @@ public class PermitsModel extends AbstractModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		PermitsModel that = (PermitsModel) o;
 
-		return permittedClassNameModels.equals(that.permittedClassNameModels);
+		return permittedClassNameModels.equals(that.permittedClassNameModels) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + permittedClassNameModels.hashCode();
 		return result;
 	}

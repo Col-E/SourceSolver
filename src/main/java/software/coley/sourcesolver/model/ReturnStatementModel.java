@@ -22,16 +22,15 @@ public class ReturnStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		ReturnStatementModel that = (ReturnStatementModel) o;
 
-		return expression.equals(that.expression);
+		return expression.equals(that.expression) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + expression.hashCode();
 		return result;
 	}

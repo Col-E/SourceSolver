@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Stream;
 
 public abstract class AbstractModel implements Ranged {
@@ -57,20 +56,8 @@ public abstract class AbstractModel implements Ranged {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		AbstractModel that = (AbstractModel) o;
-
-		if (!range.equals(that.range)) return false;
-		return !Objects.equals(children, that.children);
-	}
+	public abstract boolean equals(Object o);
 
 	@Override
-	public int hashCode() {
-		int result = children != null ? children.hashCode() : 0;
-		result = 31 * result + range.hashCode();
-		return result;
-	}
+	public abstract int hashCode();
 }

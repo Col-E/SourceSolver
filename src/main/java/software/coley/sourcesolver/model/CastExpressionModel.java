@@ -3,20 +3,17 @@ package software.coley.sourcesolver.model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import static software.coley.sourcesolver.model.ChildSupplier.of;
-
-public class SwitchStatementModel extends AbstractStatementModel {
+public class CastExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel expression;
-	private final List<CaseModel> cases;
+	private final AbstractModel type;
 
-	public SwitchStatementModel(@Nonnull Range range, @Nonnull AbstractExpressionModel expression, @Nonnull List<CaseModel> cases) {
-		super(range, of(expression), of(cases));
-
+	public CastExpressionModel(@Nonnull Range range,
+	                           @Nonnull AbstractModel type,
+	                           @Nonnull AbstractExpressionModel expression) {
+		super(range, type, expression);
 		this.expression = expression;
-		this.cases = cases;
+		this.type = type;
 	}
 
 	@Nonnull
@@ -25,8 +22,8 @@ public class SwitchStatementModel extends AbstractStatementModel {
 	}
 
 	@Nonnull
-	public List<CaseModel> getCases() {
-		return cases;
+	public AbstractModel getType() {
+		return type;
 	}
 
 	@Override
@@ -34,25 +31,23 @@ public class SwitchStatementModel extends AbstractStatementModel {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SwitchStatementModel that = (SwitchStatementModel) o;
+		CastExpressionModel that = (CastExpressionModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
 		if (!expression.equals(that.expression)) return false;
-		return cases.equals(that.cases);
+		return type.equals(that.type);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
 		result = 31 * result + expression.hashCode();
-		result = 31 * result + cases.hashCode();
+		result = 31 * result + type.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "switch " + expression + ") {\n" +
-				cases.stream().map(CaseModel::toString).collect(Collectors.joining("\n")) +
-				"\n}";
+		return "(" + type + ") " + expression;
 	}
 }

@@ -38,10 +38,10 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		MethodInvocationExpressionModel that = (MethodInvocationExpressionModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!typeArguments.equals(that.typeArguments)) return false;
 		if (!methodSelect.equals(that.methodSelect)) return false;
 		return arguments.equals(that.arguments);
@@ -49,8 +49,7 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + typeArguments.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + methodSelect.hashCode();
 		result = 31 * result + arguments.hashCode();
 		return result;

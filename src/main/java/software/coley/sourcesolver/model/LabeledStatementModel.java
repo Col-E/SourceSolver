@@ -30,17 +30,17 @@ public class LabeledStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		LabeledStatementModel that = (LabeledStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!Objects.equals(labelName, that.labelName)) return false;
 		return statement.equals(that.statement);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + (labelName != null ? labelName.hashCode() : 0);
 		result = 31 * result + statement.hashCode();
 		return result;

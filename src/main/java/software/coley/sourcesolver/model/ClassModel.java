@@ -124,10 +124,10 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		ClassModel that = (ClassModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!packageModel.equals(that.packageModel)) return false;
 		if (!importModels.equals(that.importModels)) return false;
 		if (!annotationModels.equals(that.annotationModels)) return false;
@@ -144,7 +144,7 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + packageModel.hashCode();
 		result = 31 * result + importModels.hashCode();
 		result = 31 * result + annotationModels.hashCode();
@@ -163,11 +163,8 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		if (packageModel.isDefaultPackage()) {
-
-		} else {
+		if (!packageModel.isDefaultPackage())
 			sb.append(packageModel.getName()).append('.');
-		}
 		sb.append(name);
 
 		if (fieldModels.isEmpty() && methodModels.isEmpty()) {

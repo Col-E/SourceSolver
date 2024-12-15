@@ -23,18 +23,15 @@ public class MethodBodyModel extends AbstractModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		MethodBodyModel that = (MethodBodyModel) o;
 
-		return statements.equals(that.statements);
+		return statements.equals(that.statements) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + statements.hashCode();
-		return result;
+		return statements.hashCode() + (31 * getRange().hashCode());
 	}
 
 	@Override

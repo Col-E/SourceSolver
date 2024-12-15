@@ -37,7 +37,6 @@ public abstract class TypeModel extends AbstractModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		TypeModel typeModel = (TypeModel) o;
 
@@ -47,7 +46,7 @@ public abstract class TypeModel extends AbstractModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + identifierModel.hashCode();
 		result = 31 * result + getKind().hashCode();
 		return result;

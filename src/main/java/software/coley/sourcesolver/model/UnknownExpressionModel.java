@@ -4,12 +4,17 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
-public class UnknownStatementModel extends AbstractStatementModel {
+public class UnknownExpressionModel extends AbstractExpressionModel {
 	private final String content;
 
-	public UnknownStatementModel(@Nonnull Range range, @Nonnull String content) {
+	public UnknownExpressionModel(@Nonnull Range range, @Nonnull String content) {
 		super(range);
 		this.content = content;
+	}
+
+	@Nonnull
+	public String getContent() {
+		return content;
 	}
 
 	@Override
@@ -17,14 +22,16 @@ public class UnknownStatementModel extends AbstractStatementModel {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		UnknownStatementModel that = (UnknownStatementModel) o;
+		UnknownExpressionModel that = (UnknownExpressionModel) o;
 
 		return content.equals(that.content) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		return getRange().hashCode() * 31 + content.hashCode();
+		int result = getRange().hashCode();
+		result = 31 * result + content.hashCode();
+		return result;
 	}
 
 	@Override

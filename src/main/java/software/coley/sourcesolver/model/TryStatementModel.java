@@ -50,10 +50,10 @@ public class TryStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		TryStatementModel that = (TryStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!block.equals(that.block)) return false;
 		if (!Objects.equals(finallyBlock, that.finallyBlock)) return false;
 		if (!resources.equals(that.resources)) return false;
@@ -62,7 +62,7 @@ public class TryStatementModel extends AbstractStatementModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + block.hashCode();
 		result = 31 * result + (finallyBlock != null ? finallyBlock.hashCode() : 0);
 		result = 31 * result + resources.hashCode();

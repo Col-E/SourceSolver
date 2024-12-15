@@ -32,17 +32,17 @@ public class CaseModel extends AbstractModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		CaseModel caseModel = (CaseModel) o;
 
+		if (!getRange().equals(caseModel.getRange())) return false;
 		if (!expressions.equals(caseModel.expressions)) return false;
 		return statements.equals(caseModel.statements);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + expressions.hashCode();
 		result = 31 * result + statements.hashCode();
 		return result;

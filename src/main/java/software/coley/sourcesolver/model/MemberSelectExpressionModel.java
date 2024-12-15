@@ -28,17 +28,17 @@ public class MemberSelectExpressionModel extends AbstractExpressionModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		MemberSelectExpressionModel that = (MemberSelectExpressionModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!name.equals(that.name)) return false;
 		return context.equals(that.context);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + name.hashCode();
 		result = 31 * result + context.hashCode();
 		return result;

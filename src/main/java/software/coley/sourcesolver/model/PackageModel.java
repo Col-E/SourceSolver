@@ -39,17 +39,17 @@ public class PackageModel extends AbstractModel implements Annotated, Named {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		PackageModel that = (PackageModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!nameModel.equals(that.nameModel)) return false;
 		return annotationModels.equals(that.annotationModels);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + nameModel.hashCode();
 		result = 31 * result + annotationModels.hashCode();
 		return result;

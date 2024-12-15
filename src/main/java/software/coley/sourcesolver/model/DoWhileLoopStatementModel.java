@@ -28,17 +28,17 @@ public class DoWhileLoopStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		DoWhileLoopStatementModel that = (DoWhileLoopStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!condition.equals(that.condition)) return false;
 		return statement.equals(that.statement);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + condition.hashCode();
 		result = 31 * result + statement.hashCode();
 		return result;

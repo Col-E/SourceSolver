@@ -28,17 +28,17 @@ public class SynchronizedStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		SynchronizedStatementModel that = (SynchronizedStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!expression.equals(that.expression)) return false;
 		return block.equals(that.block);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + expression.hashCode();
 		result = 31 * result + block.hashCode();
 		return result;

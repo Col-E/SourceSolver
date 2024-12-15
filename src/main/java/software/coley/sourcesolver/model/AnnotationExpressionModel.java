@@ -32,7 +32,6 @@ public class AnnotationExpressionModel extends AbstractExpressionModel implement
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		AnnotationExpressionModel that = (AnnotationExpressionModel) o;
 
@@ -42,8 +41,7 @@ public class AnnotationExpressionModel extends AbstractExpressionModel implement
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + nameModel.hashCode();
+		int result = nameModel.hashCode();
 		result = 31 * result + argumentModels.hashCode();
 		return result;
 	}

@@ -40,10 +40,10 @@ public class IfStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		IfStatementModel that = (IfStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!condition.equals(that.condition)) return false;
 		if (!thenCaseStatement.equals(that.thenCaseStatement)) return false;
 		return Objects.equals(elseCaseStatement, that.elseCaseStatement);
@@ -51,7 +51,7 @@ public class IfStatementModel extends AbstractStatementModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + condition.hashCode();
 		result = 31 * result + thenCaseStatement.hashCode();
 		result = 31 * result + (elseCaseStatement != null ? elseCaseStatement.hashCode() : 0);

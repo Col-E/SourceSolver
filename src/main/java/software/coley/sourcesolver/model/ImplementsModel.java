@@ -25,18 +25,15 @@ public class ImplementsModel extends AbstractModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		ImplementsModel that = (ImplementsModel) o;
 
-		return implementedClassNameModels.equals(that.implementedClassNameModels);
+		return implementedClassNameModels.equals(that.implementedClassNameModels) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + implementedClassNameModels.hashCode();
-		return result;
+		return implementedClassNameModels.hashCode() + (31 * getRange().hashCode());
 	}
 
 	@Override

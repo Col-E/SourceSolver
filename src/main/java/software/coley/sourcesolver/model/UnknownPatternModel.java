@@ -4,17 +4,17 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
-public class NameExpressionModel extends AbstractExpressionModel {
-	private final String name;
+public class UnknownPatternModel extends AbstractPatternModel {
+	private final String content;
 
-	public NameExpressionModel(@Nonnull Range range, @Nonnull String name) {
+	public UnknownPatternModel(@Nonnull Range range, @Nonnull String content) {
 		super(range);
-		this.name = name;
+		this.content = content;
 	}
 
 	@Nonnull
-	public String getName() {
-		return name;
+	public String getContent() {
+		return content;
 	}
 
 	@Override
@@ -22,20 +22,20 @@ public class NameExpressionModel extends AbstractExpressionModel {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		NameExpressionModel that = (NameExpressionModel) o;
+		UnknownPatternModel that = (UnknownPatternModel) o;
 
-		return name.equals(that.name) && getRange().equals(that.getRange());
+		return content.equals(that.content) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + name.hashCode();
+		result = 31 * result + content.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return name;
+		return content;
 	}
 }

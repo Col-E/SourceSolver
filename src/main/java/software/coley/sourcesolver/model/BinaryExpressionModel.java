@@ -38,10 +38,10 @@ public class BinaryExpressionModel extends AbstractExpressionModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		BinaryExpressionModel that = (BinaryExpressionModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!left.equals(that.left)) return false;
 		if (!right.equals(that.right)) return false;
 		return operator == that.operator;
@@ -49,7 +49,7 @@ public class BinaryExpressionModel extends AbstractExpressionModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + left.hashCode();
 		result = 31 * result + right.hashCode();
 		result = 31 * result + operator.hashCode();
@@ -88,9 +88,6 @@ public class BinaryExpressionModel extends AbstractExpressionModel {
 
 		Operator(String text) {
 			this.text = text;
-			int i = 5;
-			i <<= 1;
-			i >>>= 1;
 		}
 
 		@Override

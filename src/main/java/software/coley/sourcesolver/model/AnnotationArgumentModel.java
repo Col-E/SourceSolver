@@ -41,17 +41,17 @@ public class AnnotationArgumentModel extends AbstractModel implements Named {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		AnnotationArgumentModel that = (AnnotationArgumentModel) o;
 
 		if (!nameModel.equals(that.nameModel)) return false;
+		if (!getRange().equals(that.getRange())) return false;
 		return valueModel.equals(that.valueModel);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + nameModel.hashCode();
 		result = 31 * result + valueModel.hashCode();
 		return result;

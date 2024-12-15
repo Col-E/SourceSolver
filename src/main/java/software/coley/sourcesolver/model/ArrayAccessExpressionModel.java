@@ -3,20 +3,17 @@ package software.coley.sourcesolver.model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import static software.coley.sourcesolver.model.ChildSupplier.of;
-
-public class SwitchStatementModel extends AbstractStatementModel {
+public class ArrayAccessExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel expression;
-	private final List<CaseModel> cases;
+	private final AbstractExpressionModel index;
 
-	public SwitchStatementModel(@Nonnull Range range, @Nonnull AbstractExpressionModel expression, @Nonnull List<CaseModel> cases) {
-		super(range, of(expression), of(cases));
-
+	public ArrayAccessExpressionModel(@Nonnull Range range,
+	                                  @Nonnull AbstractExpressionModel expression,
+	                                  @Nonnull AbstractExpressionModel index) {
+		super(range, expression, index);
 		this.expression = expression;
-		this.cases = cases;
+		this.index = index;
 	}
 
 	@Nonnull
@@ -25,8 +22,8 @@ public class SwitchStatementModel extends AbstractStatementModel {
 	}
 
 	@Nonnull
-	public List<CaseModel> getCases() {
-		return cases;
+	public AbstractExpressionModel getIndex() {
+		return index;
 	}
 
 	@Override
@@ -34,25 +31,23 @@ public class SwitchStatementModel extends AbstractStatementModel {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SwitchStatementModel that = (SwitchStatementModel) o;
+		ArrayAccessExpressionModel that = (ArrayAccessExpressionModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
 		if (!expression.equals(that.expression)) return false;
-		return cases.equals(that.cases);
+		return index.equals(that.index);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
 		result = 31 * result + expression.hashCode();
-		result = 31 * result + cases.hashCode();
+		result = 31 * result + index.hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "switch " + expression + ") {\n" +
-				cases.stream().map(CaseModel::toString).collect(Collectors.joining("\n")) +
-				"\n}";
+		return expression + "[" + index + "]";
 	}
 }

@@ -34,7 +34,6 @@ public class LiteralExpressionModel extends AbstractExpressionModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		LiteralExpressionModel that = (LiteralExpressionModel) o;
 
@@ -44,8 +43,7 @@ public class LiteralExpressionModel extends AbstractExpressionModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + kind.hashCode();
+		int result = kind.hashCode();
 		result = 31 * result + (content != null ? content.hashCode() : 0);
 		return result;
 	}

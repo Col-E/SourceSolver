@@ -69,10 +69,10 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		VariableModel that = (VariableModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!annotationModels.equals(that.annotationModels)) return false;
 		if (!modifiers.equals(that.modifiers)) return false;
 		if (!typeModel.equals(that.typeModel)) return false;
@@ -82,7 +82,7 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + annotationModels.hashCode();
 		result = 31 * result + modifiers.hashCode();
 		result = 31 * result + typeModel.hashCode();

@@ -23,18 +23,15 @@ public class BreakStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		BreakStatementModel that = (BreakStatementModel) o;
 
-		return Objects.equals(targetLabel, that.targetLabel);
+		return Objects.equals(targetLabel, that.targetLabel) && getRange().equals(that.getRange());
 	}
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + (targetLabel != null ? targetLabel.hashCode() : 0);
-		return result;
+		return (targetLabel != null ? targetLabel.hashCode() : 0) + (31 * getRange().hashCode());
 	}
 
 	@Override

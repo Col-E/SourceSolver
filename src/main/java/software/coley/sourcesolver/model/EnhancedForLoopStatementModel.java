@@ -36,10 +36,10 @@ public class EnhancedForLoopStatementModel extends AbstractStatementModel {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
 
 		EnhancedForLoopStatementModel that = (EnhancedForLoopStatementModel) o;
 
+		if (!getRange().equals(that.getRange())) return false;
 		if (!variable.equals(that.variable)) return false;
 		if (!expression.equals(that.expression)) return false;
 		return statement.equals(that.statement);
@@ -47,7 +47,7 @@ public class EnhancedForLoopStatementModel extends AbstractStatementModel {
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
+		int result = getRange().hashCode();
 		result = 31 * result + variable.hashCode();
 		result = 31 * result + expression.hashCode();
 		result = 31 * result + statement.hashCode();
