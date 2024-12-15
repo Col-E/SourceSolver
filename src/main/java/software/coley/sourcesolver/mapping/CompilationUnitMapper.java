@@ -46,12 +46,11 @@ public class CompilationUnitMapper implements Mapper<CompilationUnitModel, Compi
 				.toList();
 
 		// Class declarations
-		context.setMapperSupplier(ClassMapper.class, () -> new ClassMapper(packageModel, importModels));
 		List<ClassModel> classModels = tree.getTypeDecls().stream()
 				.filter(t -> t instanceof ClassTree)
 				.map(t -> (ClassTree) t)
 				.map(ct -> context.map(ClassMapper.class, ct))
 				.toList();
-		return new CompilationUnitModel(extractRange(table, tree), inputSource, classModels);
+		return new CompilationUnitModel(extractRange(table, tree), inputSource, packageModel, importModels, classModels);
 	}
 }

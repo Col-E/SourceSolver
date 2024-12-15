@@ -8,17 +8,17 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
 import software.coley.sourcesolver.mapping.CompilationUnitMapper;
 import software.coley.sourcesolver.mapping.MappingContext;
+import software.coley.sourcesolver.mapping.MappingContextProvider;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 
 import javax.annotation.Nonnull;
 import javax.tools.JavaFileManager;
 import java.lang.reflect.Field;
-import java.util.function.Function;
 
 public class Parser {
 	private Context context;
 	private ParserFactory factory;
-	private Function<EndPosTable, MappingContext> mappingContextFactory = MappingContext::new;
+	private MappingContextProvider mappingContextFactory = MappingContext::new;
 
 	public Parser() {
 		context = new Context();
@@ -27,7 +27,7 @@ public class Parser {
 		regenerateFactory();
 	}
 
-	public void setMappingContextFactory(@Nonnull Function<EndPosTable, MappingContext> mappingContextFactory) {
+	public void setMappingContextFactory(@Nonnull MappingContextProvider mappingContextFactory) {
 		this.mappingContextFactory = mappingContextFactory;
 	}
 
@@ -82,7 +82,7 @@ public class Parser {
 
 	@Nonnull
 	protected CompilationUnitModel mapCompilationUnit(@Nonnull String source, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree unit) {
-		MappingContext mappingContext = mappingContextFactory.apply(table);
+		MappingContext mappingContext = mappingContextFactory.newMappingContext(table, source);
 		mappingContext.setMapperSupplier(CompilationUnitMapper.class, () -> new CompilationUnitMapper(source));
 		return mappingContext.map(CompilationUnitMapper.class, unit);
 	}

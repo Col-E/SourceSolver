@@ -10,8 +10,6 @@ import java.util.List;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class ClassModel extends AbstractStatementModel implements Annotated, Named {
-	private final PackageModel packageModel;
-	private final List<ImportModel> imports;
 	private final List<AnnotationExpressionModel> annotations;
 	private final ModifiersModel modifiers;
 	private final String name;
@@ -24,8 +22,6 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	private final List<ClassModel> innerClasses;
 
 	public ClassModel(@Nonnull Range range,
-	                  @Nonnull PackageModel packageModel,
-	                  @Nonnull List<ImportModel> imports,
 	                  @Nonnull List<AnnotationExpressionModel> annotations,
 	                  @Nonnull ModifiersModel modifiers,
 	                  @Nonnull String name,
@@ -36,9 +32,7 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	                  @Nonnull List<VariableModel> fields,
 	                  @Nonnull List<MethodModel> methods,
 	                  @Nonnull List<ClassModel> innerClasses) {
-		super(range, of(packageModel), of(imports), of(annotations), of(fields), of(methods), of(innerClasses));
-		this.packageModel = packageModel;
-		this.imports = Collections.unmodifiableList(imports);
+		super(range, of(annotations), of(fields), of(methods), of(innerClasses));
 		this.annotations = Collections.unmodifiableList(annotations);
 		this.modifiers = modifiers;
 		this.name = name;
@@ -49,16 +43,6 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 		this.fields = Collections.unmodifiableList(fields);
 		this.methods = Collections.unmodifiableList(methods);
 		this.innerClasses = Collections.unmodifiableList(innerClasses);
-	}
-
-	@Nonnull
-	public PackageModel getPackageModel() {
-		return packageModel;
-	}
-
-	@Nonnull
-	public List<ImportModel> getImports() {
-		return imports;
 	}
 
 	@Nonnull
@@ -84,17 +68,17 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	}
 
 	@Nonnull
-	public NameExpressionModel getExtendsModel() {
+	public NameExpressionModel getExtends() {
 		return extendsModel;
 	}
 
 	@Nonnull
-	public ImplementsModel getImplementsModel() {
+	public ImplementsModel getImplements() {
 		return implementsModel;
 	}
 
 	@Nonnull
-	public PermitsModel getPermitsModel() {
+	public PermitsModel getPermits() {
 		return permitsModel;
 	}
 
@@ -128,8 +112,6 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 		ClassModel that = (ClassModel) o;
 
 		if (!getRange().equals(that.getRange())) return false;
-		if (!packageModel.equals(that.packageModel)) return false;
-		if (!imports.equals(that.imports)) return false;
 		if (!annotations.equals(that.annotations)) return false;
 		if (!modifiers.equals(that.modifiers)) return false;
 		if (!name.equals(that.name)) return false;
@@ -145,8 +127,6 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + packageModel.hashCode();
-		result = 31 * result + imports.hashCode();
 		result = 31 * result + annotations.hashCode();
 		result = 31 * result + modifiers.hashCode();
 		result = 31 * result + name.hashCode();
@@ -162,10 +142,7 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		if (!packageModel.isDefaultPackage())
-			sb.append(packageModel.getName()).append('.');
-		sb.append(name);
+		StringBuilder sb = new StringBuilder("class ").append(name);
 
 		if (fields.isEmpty() && methods.isEmpty()) {
 			sb.append(" {}");

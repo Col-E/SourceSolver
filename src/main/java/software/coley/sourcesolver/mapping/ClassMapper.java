@@ -7,7 +7,15 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.*;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
+import software.coley.sourcesolver.model.ClassModel;
+import software.coley.sourcesolver.model.ImplementsModel;
+import software.coley.sourcesolver.model.MethodModel;
+import software.coley.sourcesolver.model.ModifiersModel;
+import software.coley.sourcesolver.model.NameExpressionModel;
+import software.coley.sourcesolver.model.PermitsModel;
+import software.coley.sourcesolver.model.TypeParameterModel;
+import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
@@ -19,15 +27,6 @@ import java.util.List;
 import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class ClassMapper implements Mapper<ClassModel, ClassTree> {
-	private final PackageModel packageModel;
-	private final List<ImportModel> imports;
-
-	public ClassMapper(@Nonnull PackageModel packageModel,
-	                   @Nonnull List<ImportModel> imports) {
-		this.packageModel = packageModel;
-		this.imports = imports;
-	}
-
 	@Nonnull
 	@Override
 	public ClassModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ClassTree tree) {
@@ -77,7 +76,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 			}
 		}
 
-		return new ClassModel(extractRange(table, tree), packageModel, imports, annotationModels, modifiersModel,
+		return new ClassModel(extractRange(table, tree), annotationModels, modifiersModel,
 				className.toString(), typeParameterModels, extendsModel, implementsModel, permitsModel, fieldModels, methodModels, innerClassModels);
 	}
 }

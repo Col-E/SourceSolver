@@ -12,22 +12,22 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class TypeModel extends AbstractModel {
-	private final AbstractModel identifierModel;
+	private final AbstractModel identifier;
 
-	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
-		super(range, identifierModel);
-		this.identifierModel = identifierModel;
+	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifier) {
+		super(range, identifier);
+		this.identifier = identifier;
 	}
 
-	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
+	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifier,
 	                    @Nonnull Collection<? extends AbstractModel> additionalChildren) {
-		super(range, ChildSupplier.of(identifierModel), ChildSupplier.of(additionalChildren));
-		this.identifierModel = identifierModel;
+		super(range, ChildSupplier.of(identifier), ChildSupplier.of(additionalChildren));
+		this.identifier = identifier;
 	}
 
 	@Nonnull
-	public AbstractModel getIdentifierModel() {
-		return identifierModel;
+	public AbstractModel getIdentifier() {
+		return identifier;
 	}
 
 	@Nonnull
@@ -40,21 +40,21 @@ public abstract class TypeModel extends AbstractModel {
 
 		TypeModel typeModel = (TypeModel) o;
 
-		if (!identifierModel.equals(typeModel.identifierModel)) return false;
+		if (!identifier.equals(typeModel.identifier)) return false;
 		return getKind() == typeModel.getKind();
 	}
 
 	@Override
 	public int hashCode() {
 		int result = getRange().hashCode();
-		result = 31 * result + identifierModel.hashCode();
+		result = 31 * result + identifier.hashCode();
 		result = 31 * result + getKind().hashCode();
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return identifierModel.toString();
+		return identifier.toString();
 	}
 
 	public enum Kind {
@@ -81,7 +81,7 @@ public abstract class TypeModel extends AbstractModel {
 		@Nonnull
 		public TypeKind getPrimitiveKind() {
 			if (primitiveKind == null) {
-				String identifier = getIdentifierModel().toString();
+				String identifier = getIdentifier().toString();
 				primitiveKind = switch (identifier) {
 					case "boolean" -> TypeKind.BOOLEAN;
 					case "byte" -> TypeKind.BYTE;
@@ -126,7 +126,7 @@ public abstract class TypeModel extends AbstractModel {
 
 		public int getDimensions() {
 			if (dimensions == -1) {
-				if (getIdentifierModel() instanceof Array sub)
+				if (getIdentifier() instanceof Array sub)
 					dimensions = 1 + sub.getDimensions();
 				else
 					dimensions = 1;
@@ -135,10 +135,10 @@ public abstract class TypeModel extends AbstractModel {
 		}
 
 		@Nonnull
-		public AbstractModel getRootElementModel() {
-			AbstractModel root = getIdentifierModel();
+		public AbstractModel getRootModel() {
+			AbstractModel root = getIdentifier();
 			while (root instanceof Array array)
-				root = array.getRootElementModel();
+				root = array.getRootModel();
 			return root;
 		}
 
@@ -150,7 +150,7 @@ public abstract class TypeModel extends AbstractModel {
 
 		@Override
 		public String toString() {
-			return getRootElementModel() + "[]".repeat(getDimensions());
+			return getRootModel() + "[]".repeat(getDimensions());
 		}
 	}
 
@@ -211,7 +211,7 @@ public abstract class TypeModel extends AbstractModel {
 		}
 
 		@Nullable
-		public AbstractModel getBoundModel() {
+		public AbstractModel getBound() {
 			return boundModel;
 		}
 

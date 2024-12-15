@@ -3,6 +3,7 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
+import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import java.util.IdentityHashMap;
@@ -12,11 +13,28 @@ import java.util.function.Supplier;
 public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
 	private final EndPosTable table;
+	private final String source;
 
-	public MappingContext(@Nonnull EndPosTable table) {
+	public MappingContext(@Nonnull EndPosTable table, @Nonnull String source) {
 		this.table = table;
+		this.source = source;
 
 		initializeDefaultMappers();
+	}
+
+	@Nonnull
+	public String getSource() {
+		return source;
+	}
+
+	@Nonnull
+	public EndPosTable getTable() {
+		return table;
+	}
+
+	@Nonnull
+	public Range range(@Nonnull Tree tree) {
+		return Range.extractRange(table, tree);
 	}
 
 	public <T extends Mapper<?, ?>> void setMapper(@Nonnull Class<T> mapperType, @Nonnull T mapperImplementation) {
@@ -53,7 +71,7 @@ public class MappingContext {
 		setMapper(CaseMapper.class, new CaseMapper());
 		setMapper(CastMapper.class, new CastMapper());
 		setMapper(CatchMapper.class, new CatchMapper());
-		// setMapper(ClassMapper.class, new ClassMapper()); // Set externally
+		setMapper(ClassMapper.class, new ClassMapper());
 		// setMapper(CompilationUnitMapper.class, new CompilationUnitMapper()); // Entry point, set externally
 		setMapper(ExpressionMapper.class, new ExpressionMapper());
 		setMapper(IdentifierMapper.class, new IdentifierMapper());

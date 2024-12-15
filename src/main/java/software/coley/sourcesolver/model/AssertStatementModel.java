@@ -6,12 +6,14 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class AssertStatementModel extends AbstractStatementModel {
 	private final AbstractExpressionModel condition;
 	private final AbstractExpressionModel detail;
 
 	public AssertStatementModel(@Nonnull Range range, @Nonnull AbstractExpressionModel condition, @Nullable AbstractExpressionModel detail) {
-		super(range, condition, detail);
+		super(range, of(condition), of(detail));
 		this.condition = condition;
 		this.detail = detail;
 	}
