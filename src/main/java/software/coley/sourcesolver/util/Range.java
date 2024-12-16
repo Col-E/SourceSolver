@@ -37,7 +37,7 @@ public record Range(int begin, int end) implements Comparable<Range> {
 				max = end;
 		}
 
-		return new Range(min, (max - min));
+		return new Range(min, max);
 	}
 
 	public boolean isWithin(int position) {
