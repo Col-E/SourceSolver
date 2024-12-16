@@ -5,6 +5,8 @@ import software.coley.sourcesolver.util.Range;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class AnnotationArgumentModel extends AbstractModel implements Named {
 	private final NameExpressionModel nameModel;
 	private final AbstractExpressionModel valueModel;
@@ -12,7 +14,7 @@ public class AnnotationArgumentModel extends AbstractModel implements Named {
 	public AnnotationArgumentModel(@Nonnull Range range,
 	                               @Nullable NameExpressionModel nameModel,
 	                               @Nonnull AbstractExpressionModel valueModel) {
-		super(range, nameModel, valueModel);
+		super(range, of(nameModel), of(valueModel));
 		this.nameModel = nameModel;
 		this.valueModel = valueModel;
 	}

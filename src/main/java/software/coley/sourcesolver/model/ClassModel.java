@@ -32,7 +32,8 @@ public class ClassModel extends AbstractStatementModel implements Annotated, Nam
 	                  @Nonnull List<VariableModel> fields,
 	                  @Nonnull List<MethodModel> methods,
 	                  @Nonnull List<ClassModel> innerClasses) {
-		super(range, of(annotations), of(fields), of(methods), of(innerClasses));
+		super(range, of(annotations), of(typeParameters), of(extendsModel), of(implementsModel),
+				of(permitsModel), of(fields), of(methods), of(innerClasses));
 		this.annotations = Collections.unmodifiableList(annotations);
 		this.modifiers = modifiers;
 		this.name = name;

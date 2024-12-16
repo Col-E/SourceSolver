@@ -7,12 +7,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class ImplementsModel extends AbstractModel {
 	public static final ImplementsModel EMPTY = new ImplementsModel(Range.UNKNOWN, Collections.emptyList());
 	private final List<NameExpressionModel> implementedClassNames;
 
 	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> implementedClassNames) {
-		super(range);
+		super(range, of(implementedClassNames));
 		this.implementedClassNames = Collections.unmodifiableList(implementedClassNames);
 	}
 
