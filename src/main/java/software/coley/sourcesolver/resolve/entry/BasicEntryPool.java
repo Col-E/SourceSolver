@@ -38,9 +38,15 @@ public class BasicEntryPool implements EntryPool {
 				if (entry.getName().indexOf('/') < 0)
 					entries.add(entry);
 		} else {
-			for (ClassEntry entry : classEntries.values())
-				if (entry.getName().startsWith(packageName))
+			int packageNameLength = packageName.length();
+			for (ClassEntry entry : classEntries.values()) {
+				// The entry must start with the package name but not include subpackages.
+				// We do this by seeing if the entry's last package split character index matches our desired package name length.
+				// If so, it is in the same package and not a subpackage.
+				String entryName = entry.getName();
+				if (entryName.startsWith(packageName) && entryName.lastIndexOf('/') == packageNameLength)
 					entries.add(entry);
+			}
 		}
 		return entries;
 	}
