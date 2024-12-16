@@ -1,13 +1,6 @@
 package software.coley.sourcesolver.resolve;
 
-import software.coley.sourcesolver.model.AbstractModel;
-import software.coley.sourcesolver.model.ClassModel;
-import software.coley.sourcesolver.model.CompilationUnitModel;
-import software.coley.sourcesolver.model.ImportModel;
-import software.coley.sourcesolver.model.MethodModel;
-import software.coley.sourcesolver.model.ModifiersModel;
-import software.coley.sourcesolver.model.PackageModel;
-import software.coley.sourcesolver.model.VariableModel;
+import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
@@ -16,6 +9,7 @@ import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
 import software.coley.sourcesolver.resolve.result.FieldResolution;
 import software.coley.sourcesolver.resolve.result.MethodResolution;
+import software.coley.sourcesolver.resolve.result.MultiClassResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.resolve.result.Resolutions;
@@ -25,37 +19,63 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class BasicResolver implements Resolver {
+	private final Map<String, ClassEntry> importedTypes;
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
 
 	public BasicResolver(@Nonnull CompilationUnitModel unit, @Nonnull EntryPool pool) {
 		this.unit = unit;
 		this.pool = pool;
+
+		importedTypes = Collections.unmodifiableMap(populateImports());
+	}
+
+	@Nonnull
+	private Map<String, ClassEntry> populateImports() {
+		Map<String, ClassEntry> map = new TreeMap<>();
+		if (unit.getPackage().resolve(this) instanceof PackageResolution resolvedPackage) {
+			pool.getClassesInPackage(resolvedPackage.getPackageName())
+					.forEach(entry -> map.put(entry.getName(), entry));
+		}
+		for (ImportModel imp : unit.getImports()) {
+			Resolution resolution = imp.resolve(this);
+			if (resolution instanceof ClassResolution resolvedImport) {
+				ClassEntry entry = resolvedImport.getClassEntry();
+				map.put(entry.getName(), entry);
+			} else if (resolution instanceof MultiClassResolution resolvedImport) {
+				resolvedImport.getClassEntries()
+						.forEach(entry -> map.put(entry.getName(), entry));
+			}
+		}
+		return map;
 	}
 
 	@Nonnull
 	@Override
 	public Resolution resolveAt(int index, @Nullable AbstractModel target) {
+		if (target != null)
+			return resolve(target);
+
+		// Find the deepest model at position.
 		List<AbstractModel> modelPath = new ArrayList<>();
 		AbstractModel model = unit;
 		while (model != null) {
 			modelPath.add(model);
-			if (model == target)
-				break;
 			model = model.getChildAtPosition(index);
 		}
-		return resolve(modelPath);
+
+		// Resolve off of the deepest model so that it is aware of the results and can cache them.
+		return modelPath.get(modelPath.size() - 1).resolve(this);
 	}
 
 	@Nonnull
-	private Resolution resolve(@Nonnull List<AbstractModel> modelPath) {
-		if (modelPath.isEmpty())
-			return UnknownResolution.INSTANCE;
-
+	private Resolution resolve(@Nonnull AbstractModel target) {
 		// TODO: Do more than these basic cases
 		//  So far:
 		//   - imports
@@ -65,54 +85,30 @@ public class BasicResolver implements Resolver {
 		//      - but no child nodes
 		//   - method declarations
 		//      - but no child nodes
-		AbstractModel tail = modelPath.get(modelPath.size() - 1);
-		if (tail instanceof ClassModel clazz) {
+		if (target instanceof ClassModel clazz) {
 			return resolveClassModel(clazz);
-		} else if (tail instanceof MethodModel method) {
+		} else if (target instanceof MethodModel method) {
 			return resolveMethodModel(method);
-		} else if (tail instanceof VariableModel variable
-				&& tail.getParent() instanceof ClassModel declaringClass) {
+		} else if (target instanceof VariableModel variable
+				&& target.getParent() instanceof ClassModel declaringClass) {
 			return resolveFieldModel(declaringClass, variable);
-		} else if (tail instanceof PackageModel pkg) {
+		} else if (target instanceof PackageModel pkg) {
 			return resolvePackageModel(pkg);
-		} else if (tail instanceof ImportModel imp) {
+		} else if (target instanceof ImportModel imp) {
 			return resolveImportModel(imp);
-		} else if (tail instanceof ModifiersModel modifiers
+		} else if (target instanceof ModifiersModel modifiers
 				&& modifiers.getParent() instanceof MethodModel method
 				&& method.getName().equals("<clinit>")) {
 			return resolveStaticInitializer(method);
+		} else if (target instanceof NameExpressionModel nameExpression) {
+			if (nameExpression.getParent() instanceof ClassModel) {
+				return resolveImportedDotName(nameExpression);
+			} else if (nameExpression.getParent() instanceof ImplementsModel) {
+				return resolveImportedDotName(nameExpression);
+			}
 		}
 
 		return UnknownResolution.INSTANCE;
-	}
-
-	@Nonnull
-	private Resolution resolvePackageModel(@Nonnull PackageModel pkg) {
-		String packageName = pkg.isDefaultPackage() ? null : pkg.getName().replace('.', '/');
-		return (PackageResolution) () -> packageName;
-	}
-
-	@Nonnull
-	private Resolution resolveImportModel(@Nonnull ImportModel imp) {
-		if (imp.isStatic()) {
-			String name = imp.getName();
-			if (name.lastIndexOf('*') > 0)
-				return UnknownResolution.INSTANCE;
-			int lastDot = name.lastIndexOf('.');
-			String memberName = name.substring(lastDot + 1);
-			name = name.substring(0, lastDot);
-			if (resolveDotName(name) instanceof ClassResolution declaringClassResolution) {
-				ClassEntry declaringClassEntry = declaringClassResolution.getClassEntry();
-				Collection<FieldEntry> fieldsByName = declaringClassEntry.getDistinctFieldsByNameInHierarchy(memberName).values();
-				if (!fieldsByName.isEmpty())
-					return Resolutions.ofField(declaringClassEntry, fieldsByName.iterator().next());
-				Collection<MethodEntry> methodsByName = declaringClassEntry.getDistinctMethodsByNameInHierarchy(memberName).values();
-				if (!methodsByName.isEmpty())
-					return Resolutions.ofMethod(declaringClassEntry, methodsByName.iterator().next());
-			}
-			return UnknownResolution.INSTANCE;
-		}
-		return resolveDotName(imp.getName());
 	}
 
 	@Nonnull
@@ -125,6 +121,70 @@ public class BasicResolver implements Resolver {
 			name = name.substring(0, lastSlash) + '$' + tail;
 		}
 		return resolution;
+	}
+
+	@Nonnull
+	private Resolution resolveImportedDotName(@Nonnull NameExpressionModel extendsModel) {
+		return resolveImportedDotName(extendsModel.getName());
+	}
+
+	@Nonnull
+	private Resolution resolveImportedDotName(@Nonnull String name) {
+		// If it is a qualified name, just do a dot-name lookup.
+		if (name.indexOf('.') > 0)
+			return resolveDotName(name);
+
+		// Otherwise look for a name in the imports that match.
+		for (Map.Entry<String, ClassEntry> importEntry : importedTypes.entrySet())
+			if (importEntry.getKey().endsWith('/' + name))
+				return Resolutions.ofClass(importEntry.getValue());
+
+		return UnknownResolution.INSTANCE;
+	}
+
+	@Nonnull
+	private Resolution resolvePackageModel(@Nonnull PackageModel pkg) {
+		String packageName = pkg.isDefaultPackage() ? null : pkg.getName().replace('.', '/');
+		return (PackageResolution) () -> packageName;
+	}
+
+	@Nonnull
+	private Resolution resolveImportModel(@Nonnull ImportModel imp) {
+		String name = imp.getName();
+
+		if (imp.isStatic()) {
+			int lastDot = name.lastIndexOf('.');
+			String memberName = name.substring(lastDot + 1);
+			name = name.substring(0, lastDot);
+			if (resolveDotName(name) instanceof ClassResolution declaringClassResolution) {
+				// Find the first matching field/method by the give name.
+				// Star imports cannot be mapped to any given member.
+				if (name.lastIndexOf('*') < 0) {
+					ClassEntry declaringClassEntry = declaringClassResolution.getClassEntry();
+					Collection<FieldEntry> fieldsByName = declaringClassEntry.getDistinctFieldsByNameInHierarchy(memberName).values();
+					if (!fieldsByName.isEmpty())
+						return Resolutions.ofField(declaringClassEntry, fieldsByName.iterator().next());
+					Collection<MethodEntry> methodsByName = declaringClassEntry.getDistinctMethodsByNameInHierarchy(memberName).values();
+					if (!methodsByName.isEmpty())
+						return Resolutions.ofMethod(declaringClassEntry, methodsByName.iterator().next());
+				}
+
+				// Fall back to just the class resolution.
+				return declaringClassResolution;
+			}
+			return UnknownResolution.INSTANCE;
+		}
+
+		// If we're importing a whole package, we need a multi-class resolution for all
+		// the classes in that package.
+		if (name.endsWith(".*")) {
+			// Technically you could do "com.example.OuterClass.*" but that shouldn't occur frequently enough
+			// to bother supporting it here.
+			String packageName = name.substring(0, name.lastIndexOf(".*")).replace('.', '/');
+			return Resolutions.ofClasses(pool.getClassesInPackage(packageName));
+		}
+
+		return resolveDotName(name);
 	}
 
 	@Nonnull

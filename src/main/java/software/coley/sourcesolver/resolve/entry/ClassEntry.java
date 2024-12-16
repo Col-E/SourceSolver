@@ -16,6 +16,9 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 	@Nonnull
 	List<ClassEntry> getImplementedEntries();
 
+	/**
+	 * @return Name of class in internal format.
+	 */
 	@Nonnull
 	String getName();
 

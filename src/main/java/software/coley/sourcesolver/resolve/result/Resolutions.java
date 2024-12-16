@@ -77,6 +77,19 @@ public class Resolutions {
 		return UnknownResolution.INSTANCE;
 	}
 
+	@Nonnull
+	public static MultiClassResolution ofClasses(@Nonnull List<ClassEntry> classesInPackage) {
+		return new MultiClassResolutionImpl(classesInPackage);
+	}
+
+	private record MultiClassResolutionImpl(@Nonnull List<ClassEntry> entries) implements MultiClassResolution {
+		@Nonnull
+		@Override
+		public List<ClassEntry> getClassEntries() {
+			return entries;
+		}
+	}
+
 	private record ClassResolutionImpl(@Nonnull ClassEntry entry) implements ClassResolution {
 		@Nonnull
 		@Override

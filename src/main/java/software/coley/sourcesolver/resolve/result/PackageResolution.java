@@ -4,7 +4,7 @@ import javax.annotation.Nullable;
 
 non-sealed public interface PackageResolution extends Resolution {
 	/**
-	 * @return Package name, or {@code null} for the default package.
+	 * @return Package name in internal format, or {@code null} for the default package.
 	 */
 	@Nullable
 	String getPackageName();
