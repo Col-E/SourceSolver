@@ -6,7 +6,7 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class AnnotationExpressionModel extends AbstractExpressionModel implements Named {
+public class AnnotationExpressionModel extends AbstractExpressionModel implements NameHolder {
 	private final NameExpressionModel name;
 	private final List<AnnotationArgumentModel> arguments;
 

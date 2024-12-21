@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class NewClassExpressionModel extends AbstractExpressionModel {
+public class NewClassExpressionModel extends AbstractExpressionModel implements Named {
 	private final AbstractExpressionModel enclosingExpression;
 	private final List<AbstractModel> typeArguments;
 	private final AbstractExpressionModel identifier;
@@ -54,6 +54,12 @@ public class NewClassExpressionModel extends AbstractExpressionModel {
 		return body;
 	}
 
+	@Nonnull
+	@Override
+	public String getName() {
+		return getIdentifier() instanceof Named named ? named.getName() : getIdentifier().toString();
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -86,7 +92,7 @@ public class NewClassExpressionModel extends AbstractExpressionModel {
 		StringBuilder sb = new StringBuilder();
 		if (enclosingExpression != null)
 			sb.append(enclosingExpression).append('.');
-		sb.append("new ");
+		sb.append("new ").append(identifier);
 		if (typeArguments != null && !typeArguments.isEmpty())
 			sb.append('<').append(typeArguments.stream().map(Object::toString).collect(Collectors.joining(", "))).append('>');
 		sb.append('(').append(arguments.stream().map(Object::toString).collect(Collectors.joining(", "))).append(')');

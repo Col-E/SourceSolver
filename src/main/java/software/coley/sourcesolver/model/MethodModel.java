@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class MethodModel extends AbstractModel implements Annotated, Named {
+public class MethodModel extends AbstractModel implements Annotated, NameHolder {
 	private final String name;
 	private final ModifiersModel modifiers;
 	private final List<TypeParameterModel> typeParameters;

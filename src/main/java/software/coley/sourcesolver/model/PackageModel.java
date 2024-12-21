@@ -8,7 +8,7 @@ import java.util.List;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class PackageModel extends AbstractModel implements Annotated, Named {
+public class PackageModel extends AbstractModel implements Annotated, NameHolder {
 	public static final PackageModel DEFAULT_PACKAGE = new PackageModel(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, ""), Collections.emptyList());
 	private final NameExpressionModel name;
 	private final List<AnnotationExpressionModel> annotations;
