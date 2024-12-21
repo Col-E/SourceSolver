@@ -1,3 +1,8 @@
 package software.coley.sourcesolver.resolve.result;
 
-non-sealed public interface UnknownResolution extends Resolution {}
+non-sealed public interface UnknownResolution extends Resolution {
+	@Override
+	default boolean isUnknown() {
+		return true;
+	}
+}

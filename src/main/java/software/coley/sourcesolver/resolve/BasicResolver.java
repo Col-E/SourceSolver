@@ -137,7 +137,7 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveDotName(@Nonnull String name) {
 		name = name.replace('.', '/');
 		Resolution resolution = ofClass(pool, name);
-		while (resolution instanceof UnknownResolution && name.indexOf('/') >= 0) {
+		while (resolution.isUnknown() && name.indexOf('/') >= 0) {
 			int lastSlash = name.lastIndexOf('/');
 			String tail = name.substring(lastSlash) + 1;
 			name = name.substring(0, lastSlash) + '$' + tail;
