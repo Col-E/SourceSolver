@@ -12,21 +12,21 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class TypeModel extends AbstractModel {
-	private final AbstractModel identifier;
+	private final Model identifier;
 
-	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifier) {
+	protected TypeModel(@Nonnull Range range, @Nonnull Model identifier) {
 		super(range, identifier);
 		this.identifier = identifier;
 	}
 
-	protected TypeModel(@Nonnull Range range, @Nonnull AbstractModel identifier,
-	                    @Nonnull Collection<? extends AbstractModel> additionalChildren) {
+	protected TypeModel(@Nonnull Range range, @Nonnull Model identifier,
+	                    @Nonnull Collection<? extends Model> additionalChildren) {
 		super(range, ChildSupplier.of(identifier), ChildSupplier.of(additionalChildren));
 		this.identifier = identifier;
 	}
 
 	@Nonnull
-	public AbstractModel getIdentifier() {
+	public Model getIdentifier() {
 		return identifier;
 	}
 
@@ -74,7 +74,7 @@ public abstract class TypeModel extends AbstractModel {
 	public static class Primitive extends TypeModel {
 		private TypeKind primitiveKind;
 
-		public Primitive(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
+		public Primitive(@Nonnull Range range, @Nonnull Model identifierModel) {
 			super(range, identifierModel);
 		}
 
@@ -106,7 +106,7 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class NamedObject extends TypeModel {
-		public NamedObject(@Nonnull Range range, @Nonnull AbstractModel identifierModel) {
+		public NamedObject(@Nonnull Range range, @Nonnull Model identifierModel) {
 			super(range, identifierModel);
 		}
 
@@ -120,7 +120,7 @@ public abstract class TypeModel extends AbstractModel {
 	public static class Array extends TypeModel {
 		private int dimensions = -1;
 
-		public Array(@Nonnull Range range, @Nonnull AbstractModel elementModel) {
+		public Array(@Nonnull Range range, @Nonnull Model elementModel) {
 			// Identifier holds element type of array
 			//
 			// int[]   --> int
@@ -141,8 +141,8 @@ public abstract class TypeModel extends AbstractModel {
 		}
 
 		@Nonnull
-		public AbstractModel getRootModel() {
-			AbstractModel root = getIdentifier();
+		public Model getRootModel() {
+			Model root = getIdentifier();
 			while (root instanceof Array array)
 				root = array.getRootModel();
 			return root;
@@ -161,16 +161,16 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class Parameterized extends TypeModel {
-		private final List<AbstractModel> typeArguments;
+		private final List<Model> typeArguments;
 
-		public Parameterized(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
-		                     @Nonnull List<? extends AbstractModel> typeArguments) {
+		public Parameterized(@Nonnull Range range, @Nonnull Model identifierModel,
+		                     @Nonnull List<? extends Model> typeArguments) {
 			super(range, identifierModel, typeArguments);
 			this.typeArguments = Collections.unmodifiableList(typeArguments);
 		}
 
 		@Nonnull
-		public List<AbstractModel> getTypeArguments() {
+		public List<Model> getTypeArguments() {
 			return typeArguments;
 		}
 
@@ -208,16 +208,16 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class Wildcard extends TypeModel {
-		private final AbstractModel boundModel;
+		private final Model boundModel;
 
-		public Wildcard(@Nonnull Range range, @Nonnull AbstractModel identifierModel,
-		                @Nullable AbstractModel boundModel) {
+		public Wildcard(@Nonnull Range range, @Nonnull Model identifierModel,
+		                @Nullable Model boundModel) {
 			super(range, identifierModel, Collections.singletonList(boundModel));
 			this.boundModel = boundModel;
 		}
 
 		@Nullable
-		public AbstractModel getBound() {
+		public Model getBound() {
 			return boundModel;
 		}
 

@@ -9,11 +9,11 @@ import java.util.stream.Collectors;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class MethodInvocationExpressionModel extends AbstractExpressionModel {
-	private final List<AbstractModel> typeArguments;
+	private final List<Model> typeArguments;
 	private final AbstractExpressionModel methodSelect;
 	private final List<AbstractExpressionModel> arguments;
 
-	public MethodInvocationExpressionModel(@Nonnull Range range, @Nonnull List<AbstractModel> typeArguments,
+	public MethodInvocationExpressionModel(@Nonnull Range range, @Nonnull List<Model> typeArguments,
 	                                       @Nonnull AbstractExpressionModel methodSelect, @Nonnull List<AbstractExpressionModel> arguments) {
 		super(range, of(typeArguments), of(methodSelect), of(arguments));
 		this.typeArguments = typeArguments;
@@ -22,7 +22,7 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getTypeArguments() {
+	public List<Model> getTypeArguments() {
 		return typeArguments;
 	}
 

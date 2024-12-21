@@ -13,10 +13,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
-public abstract class AbstractModel implements Ranged {
-	private final List<AbstractModel> children;
+public abstract class AbstractModel implements Model {
+	private final List<Model> children;
 	private final Range range;
-	private AbstractModel parent;
+	private Model parent;
 	private Resolution resolution;
 
 	protected AbstractModel(@Nonnull Range range) {
@@ -24,11 +24,11 @@ public abstract class AbstractModel implements Ranged {
 		this.children = Collections.emptyList();
 	}
 
-	protected AbstractModel(@Nonnull Range range, AbstractModel... children) {
+	protected AbstractModel(@Nonnull Range range, Model... children) {
 		this.range = range;
 		this.children = extractChildren(Arrays.stream(children));
-		for (AbstractModel child : children)
-			child.parent = this;
+		for (Model child : children)
+			if (child instanceof AbstractModel abstractChild) abstractChild.parent = this;
 	}
 
 	protected AbstractModel(@Nonnull Range range, ChildSupplier... suppliers) {
@@ -36,32 +36,34 @@ public abstract class AbstractModel implements Ranged {
 		this.children = extractChildren(Arrays.stream(suppliers)
 				.flatMap(supplier -> supplier.isSingle() ?
 						Stream.of(supplier.getSingle()) : supplier.getMultiple().stream()));
-		for (AbstractModel child : children)
-			child.parent = this;
+		for (Model child : children)
+			if (child instanceof AbstractModel abstractChild) abstractChild.parent = this;
 	}
 
 	@SuppressWarnings("unchecked")
-	protected AbstractModel(@Nonnull Range range, @Nonnull Collection<? extends AbstractModel> children) {
+	protected AbstractModel(@Nonnull Range range, @Nonnull Collection<? extends Model> children) {
 		this.range = range;
-		this.children = extractChildren((Stream<AbstractModel>) children.stream());
+		this.children = extractChildren((Stream<Model>) children.stream());
 	}
 
 	@Nonnull
-	private static List<AbstractModel> extractChildren(@Nonnull Stream<AbstractModel> stream) {
-		return stream.filter(c -> c != null && !c.range.isUnknown())
-				.sorted(Comparator.comparing(AbstractModel::getRange))
+	private static List<Model> extractChildren(@Nonnull Stream<Model> stream) {
+		return stream.filter(c -> c != null && !c.getRange().isUnknown())
+				.sorted(Comparator.comparing(Ranged::getRange))
 				.toList();
 	}
 
 	@Nonnull
+	@Override
 	public Resolution resolve(@Nonnull Resolver resolver) {
 		int index = range.begin();
 		if (index < 0 && parent != null)
-			index = parent.range.begin();
+			index = parent.getRange().begin();
 		return resolveAt(resolver, index);
 	}
 
 	@Nonnull
+	@Override
 	public Resolution resolveAt(@Nonnull Resolver resolver, int index) {
 		if (resolution == null)
 			resolution = resolver.resolveAt(index, this);
@@ -69,14 +71,16 @@ public abstract class AbstractModel implements Ranged {
 	}
 
 	@Nullable
-	public AbstractModel getChildAtPosition(int position) {
-		for (AbstractModel child : children)
-			if (child.range.isWithin(position))
+	@Override
+	public Model getChildAtPosition(int position) {
+		for (Model child : children)
+			if (child.getRange().isWithin(position))
 				return child;
 		return null;
 	}
 
 	@Nonnull
+	@Override
 	public String getSource(@Nonnull CompilationUnitModel unit) {
 		String src = unit.getInputSource();
 		int begin = Math.max(0, range.begin());
@@ -85,12 +89,14 @@ public abstract class AbstractModel implements Ranged {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getChildren() {
+	@Override
+	public List<Model> getChildren() {
 		return children;
 	}
 
 	@Nullable
-	public AbstractModel getParent() {
+	@Override
+	public Model getParent() {
 		return parent;
 	}
 

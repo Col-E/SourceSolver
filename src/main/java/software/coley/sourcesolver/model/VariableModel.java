@@ -15,14 +15,14 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 	private final ModifiersModel modifiers;
 	private final TypeModel type;
 	private final String name;
-	private final AbstractModel value;
+	private final Model value;
 
 	public VariableModel(@Nonnull Range range,
 	                     @Nonnull List<AnnotationExpressionModel> annotations,
 	                     @Nonnull ModifiersModel modifiers,
 	                     @Nonnull TypeModel type,
 	                     @Nonnull String name,
-	                     @Nullable AbstractModel value) {
+	                     @Nullable Model value) {
 		super(range, of(annotations), of(modifiers), of(type), of(value));
 		this.annotations = Collections.unmodifiableList(annotations);
 		this.modifiers = modifiers;
@@ -61,7 +61,7 @@ public class VariableModel extends AbstractStatementModel implements Annotated, 
 	}
 
 	@Nullable
-	public AbstractModel getValue() {
+	public Model getValue() {
 		return value;
 	}
 

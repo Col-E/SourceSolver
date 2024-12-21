@@ -5,6 +5,7 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.MethodInvocationExpressionModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
@@ -17,7 +18,7 @@ public class MethodInvocationMapper implements Mapper<MethodInvocationExpression
 	@Override
 	public MethodInvocationExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull MethodInvocationTree tree) {
 		Range range = extractRange(table, tree);
-		List<AbstractModel> typeArguments = context.map(TypeArgumentsMapper.class, tree::getTypeArguments).getArguments();
+		List<Model> typeArguments = context.map(TypeArgumentsMapper.class, tree::getTypeArguments).getArguments();
 		AbstractExpressionModel methodSelect = context.map(ExpressionMapper.class, tree.getMethodSelect());
 		List<AbstractExpressionModel> arguments = tree.getArguments().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
 		return new MethodInvocationExpressionModel(range, typeArguments, methodSelect, arguments);

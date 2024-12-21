@@ -7,11 +7,11 @@ import java.util.List;
 
 public class TypeParameterModel extends AbstractModel implements Annotated {
 	private final String name;
-	private final List<AbstractModel> bounds;
+	private final List<Model> bounds;
 	private final List<AnnotationExpressionModel> annotations;
 
 	public TypeParameterModel(@Nonnull Range range, @Nonnull String name,
-	                          @Nonnull List<AbstractModel> bounds, @Nonnull List<AnnotationExpressionModel> annotations) {
+	                          @Nonnull List<Model> bounds, @Nonnull List<AnnotationExpressionModel> annotations) {
 		super(range);
 		this.name = name;
 		this.bounds = bounds;
@@ -24,7 +24,7 @@ public class TypeParameterModel extends AbstractModel implements Annotated {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getBounds() {
+	public List<Model> getBounds() {
 		return bounds;
 	}
 

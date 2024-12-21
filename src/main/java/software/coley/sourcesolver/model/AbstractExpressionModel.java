@@ -10,7 +10,7 @@ public abstract class AbstractExpressionModel extends AbstractModel {
 		super(range);
 	}
 
-	protected AbstractExpressionModel(@Nonnull Range range, AbstractModel... children) {
+	protected AbstractExpressionModel(@Nonnull Range range, Model... children) {
 		super(range, children);
 	}
 
@@ -18,7 +18,7 @@ public abstract class AbstractExpressionModel extends AbstractModel {
 		super(range, suppliers);
 	}
 
-	protected AbstractExpressionModel(@Nonnull Range range, @Nonnull Collection<? extends AbstractModel> children) {
+	protected AbstractExpressionModel(@Nonnull Range range, @Nonnull Collection<? extends Model> children) {
 		super(range, children);
 	}
 }

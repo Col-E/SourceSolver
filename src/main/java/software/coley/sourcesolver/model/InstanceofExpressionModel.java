@@ -10,12 +10,12 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class InstanceofExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel expression;
-	private final AbstractModel type;
+	private final Model type;
 	private final AbstractPatternModel pattern;
 
 	public InstanceofExpressionModel(@Nonnull Range range,
 	                                 @Nonnull AbstractExpressionModel expression,
-	                                 @Nonnull AbstractModel type,
+	                                 @Nonnull Model type,
 	                                 @Nullable AbstractPatternModel pattern) {
 		super(range, of(expression), of(type), of(pattern));
 		this.expression = expression;
@@ -29,7 +29,7 @@ public class InstanceofExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public AbstractModel getType() {
+	public Model getType() {
 		return type;
 	}
 

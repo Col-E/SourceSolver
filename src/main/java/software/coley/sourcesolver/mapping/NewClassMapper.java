@@ -5,6 +5,7 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.ClassModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NewClassExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -19,7 +20,7 @@ public class NewClassMapper implements Mapper<NewClassExpressionModel, NewClassT
 	public NewClassExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull NewClassTree tree) {
 		Range range = extractRange(table, tree);
 		AbstractExpressionModel enclosing = tree.getEnclosingExpression() == null ? null : context.map(ExpressionMapper.class, tree.getEnclosingExpression());
-		List<AbstractModel> typeArguments = context.map(TypeArgumentsMapper.class, tree::getTypeArguments).getArguments();
+		List<Model> typeArguments = context.map(TypeArgumentsMapper.class, tree::getTypeArguments).getArguments();
 		AbstractExpressionModel identifier = context.map(ExpressionMapper.class, tree.getIdentifier());
 		List<AbstractExpressionModel> arguments = tree.getArguments().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
 		ClassModel body = tree.getClassBody() == null ? null : context.map(ClassMapper.class, tree.getClassBody());

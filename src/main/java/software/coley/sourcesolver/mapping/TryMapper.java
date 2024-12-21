@@ -4,9 +4,9 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.TryTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.BlockStatementModel;
 import software.coley.sourcesolver.model.CatchModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.TryStatementModel;
 
 import javax.annotation.Nonnull;
@@ -20,13 +20,15 @@ public class TryMapper implements Mapper<TryStatementModel, TryTree> {
 	public TryStatementModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull TryTree tree) {
 		BlockStatementModel block = context.map(BlockMapper.class, tree.getBlock());
 		BlockStatementModel finallyBlock = tree.getFinallyBlock() == null ? null : context.map(BlockMapper.class, tree.getFinallyBlock());
-		List<AbstractModel> resources = tree.getResources().stream().map(t -> {
+		List<Model> resources = tree.getResources().stream().map(t -> {
+			Model model;
 			if (t instanceof ExpressionTree e)
-				return context.map(ExpressionMapper.class, e);
+				model = context.map(ExpressionMapper.class, e);
 			else if (t instanceof StatementTree s)
-				return context.map(StatementMapper.class, s);
+				model = context.map(StatementMapper.class, s);
 			else
 				throw new IllegalStateException("Unsupported catch resource AST node: " + t.getClass().getSimpleName());
+			return model;
 		}).toList();
 		List<CatchModel> catches = tree.getCatches().stream().map(c -> context.map(CatchMapper.class, c)).toList();
 		return new TryStatementModel(extractRange(table, tree), block, finallyBlock, resources, catches);

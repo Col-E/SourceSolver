@@ -59,13 +59,13 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	@Override
-	public Resolution resolveAt(int index, @Nullable AbstractModel target) {
+	public Resolution resolveAt(int index, @Nullable Model target) {
 		if (target != null)
 			return resolve(target);
 
 		// Find the deepest model at position.
-		List<AbstractModel> modelPath = new ArrayList<>();
-		AbstractModel model = unit;
+		List<Model> modelPath = new ArrayList<>();
+		Model model = unit;
 		while (model != null) {
 			modelPath.add(model);
 			model = model.getChildAtPosition(index);
@@ -76,7 +76,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolve(@Nonnull AbstractModel target) {
+	private Resolution resolve(@Nonnull Model target) {
 		// TODO: Do more than these basic cases
 		//  So far:
 		//   - imports
@@ -108,6 +108,7 @@ public class BasicResolver implements Resolver {
 			return resolveType(type);
 		else if (target instanceof ModifiersModel)
 			return resolve(target.getParent());
+		// TODO: Resolve literals (as primitive type, or string type)
 
 		System.err.println(target.getClass().getSimpleName() + " : parent=" + target.getParent().getClass().getSimpleName());
 		return unknown();
@@ -115,7 +116,7 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveNameUsage(@Nonnull NameExpressionModel nameExpression) {
-		AbstractModel parent = nameExpression.getParent();
+		Model parent = nameExpression.getParent();
 
 		if (parent instanceof ClassModel)
 			return resolveImportedDotName(nameExpression);
@@ -184,7 +185,7 @@ public class BasicResolver implements Resolver {
 			return resolveAsIdentifier(type.getIdentifier());
 		} else if (kind == TypeModel.Kind.ARRAY
 				&& type instanceof TypeModel.Array arrayType) {
-			AbstractModel elementType = arrayType.getRootModel();
+			Model elementType = arrayType.getRootModel();
 			Resolution elementResolution = resolveAsIdentifier(elementType);
 			if (elementResolution instanceof DescribableResolution describableElementResolution)
 				return ofArray(describableElementResolution, arrayType.getDimensions());
@@ -194,7 +195,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveAsIdentifier(@Nonnull AbstractModel identifier) {
+	private Resolution resolveAsIdentifier(@Nonnull Model identifier) {
 		if (identifier instanceof TypeModel typeIdentifier)
 			return resolveType(typeIdentifier);
 		else if (identifier instanceof Named named)

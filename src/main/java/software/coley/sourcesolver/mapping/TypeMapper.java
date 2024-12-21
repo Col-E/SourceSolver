@@ -8,6 +8,7 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.WildcardTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 
@@ -43,7 +44,7 @@ public class TypeMapper implements Mapper<TypeModel, Tree> {
 			// This isn't great because the identifier spans the whole wildcard tree
 			// but with how the API is structured we can't get any better data.
 			NameExpressionModel identifier = context.map(NameMapper.class, wildcardTree);
-			AbstractModel boundModel = wildcardTree.getBound() == null ? null : map(context, table, wildcardTree.getBound());
+			Model boundModel = wildcardTree.getBound() == null ? null : map(context, table, wildcardTree.getBound());
 			return new TypeModel.Wildcard(extractRange(table, wildcardTree), identifier, boundModel);
 		}
 

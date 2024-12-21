@@ -8,6 +8,7 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.CastExpressionModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -20,7 +21,7 @@ public class CastMapper implements Mapper<CastExpressionModel, TypeCastTree> {
 	@Override
 	public CastExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull TypeCastTree tree) {
 		Range range = extractRange(table, tree);
-		AbstractModel type;
+		Model type;
 		Tree typeTree = tree.getType();
 		if (typeTree instanceof IdentifierTree identifier) {
 			type = context.map(IdentifierMapper.class, identifier);

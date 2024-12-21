@@ -10,14 +10,14 @@ import java.util.stream.Collectors;
 
 public class NewClassExpressionModel extends AbstractExpressionModel implements Named {
 	private final AbstractExpressionModel enclosingExpression;
-	private final List<AbstractModel> typeArguments;
+	private final List<Model> typeArguments;
 	private final AbstractExpressionModel identifier;
 	private final List<AbstractExpressionModel> arguments;
 	private final ClassModel body;
 
 	public NewClassExpressionModel(@Nonnull Range range,
 	                               @Nullable AbstractExpressionModel enclosingExpression,
-	                               @Nonnull List<AbstractModel> typeArguments,
+	                               @Nonnull List<Model> typeArguments,
 	                               @Nonnull AbstractExpressionModel identifier,
 	                               @Nonnull List<AbstractExpressionModel> arguments,
 	                               @Nullable ClassModel body) {
@@ -35,7 +35,7 @@ public class NewClassExpressionModel extends AbstractExpressionModel implements 
 	}
 
 	@Nonnull
-	public List<AbstractModel> getTypeArguments() {
+	public List<Model> getTypeArguments() {
 		return typeArguments;
 	}
 

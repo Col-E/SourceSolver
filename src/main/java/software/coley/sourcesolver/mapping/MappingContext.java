@@ -3,6 +3,7 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
@@ -61,13 +62,13 @@ public class MappingContext {
 
 	@Nonnull
 	@SuppressWarnings("ConstantValue")
-	public <M extends AbstractModel, T extends Tree, X extends Mapper<M, T>> M map(@Nonnull Class<X> mapperType, @Nonnull T tree) {
+	public <M extends Model, T extends Tree, X extends Mapper<M, T>> M map(@Nonnull Class<X> mapperType, @Nonnull T tree) {
 		if (tree == null) throw new IllegalStateException("Cannot map 'null' tree value to type " + mapperType.getSimpleName());
 		return getMapper(mapperType).map(this, table, tree);
 	}
 
 	@Nonnull
-	public <M extends AbstractModel, T extends Tree, X extends Mapper<M, T>> M mapOr(@Nonnull Class<X> mapperType, @Nullable T tree,
+	public <M extends Model, T extends Tree, X extends Mapper<M, T>> M mapOr(@Nonnull Class<X> mapperType, @Nullable T tree,
 	                                                                                 @Nonnull Supplier<M> defaultValueSupplier) {
 		if (tree == null)
 			return defaultValueSupplier.get();

@@ -11,14 +11,14 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 public class MethodReferenceExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel qualifier;
 	private final NameExpressionModel name;
-	private final List<AbstractModel> typeArguments;
+	private final List<Model> typeArguments;
 	private final Mode mode;
 
 	public MethodReferenceExpressionModel(@Nonnull Range range,
 	                                      @Nonnull Mode mode,
 	                                      @Nonnull AbstractExpressionModel qualifier,
 	                                      @Nonnull NameExpressionModel name,
-	                                      @Nonnull List<AbstractModel> typeArguments) {
+	                                      @Nonnull List<Model> typeArguments) {
 		super(range, of(qualifier), of(name), of(typeArguments));
 		this.mode = mode;
 		this.qualifier = qualifier;
@@ -42,7 +42,7 @@ public class MethodReferenceExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getTypeArguments() {
+	public List<Model> getTypeArguments() {
 		return typeArguments;
 	}
 

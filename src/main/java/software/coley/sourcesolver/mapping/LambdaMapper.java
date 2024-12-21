@@ -6,6 +6,7 @@ import com.sun.source.tree.StatementTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.LambdaExpressionModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.UnknownStatementModel;
 import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.util.Range;
@@ -21,7 +22,7 @@ public class LambdaMapper implements Mapper<LambdaExpressionModel, LambdaExpress
 	public LambdaExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull LambdaExpressionTree tree) {
 		Range range = extractRange(table, tree);
 		List<VariableModel> parameters = tree.getParameters().stream().map(p -> context.map(VariableMapper.class, p)).toList();
-		AbstractModel body;
+		Model body;
 		LambdaExpressionModel.BodyKind kind;
 		if (tree.getBodyKind() == LambdaExpressionTree.BodyKind.STATEMENT
 				&& tree.getBody() instanceof StatementTree statementBody) {

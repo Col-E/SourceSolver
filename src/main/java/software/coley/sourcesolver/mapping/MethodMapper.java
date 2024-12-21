@@ -39,7 +39,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		List<AbstractExpressionModel> thrownTypes = tree.getThrows().stream().map(t -> context.map(ExpressionMapper.class, t)).toList();
 
 		// default value for annotation methods
-		AbstractModel defaultValue;
+		Model defaultValue;
 		Tree defaultValueTree = tree.getDefaultValue();
 		if (defaultValueTree instanceof LiteralTree literalValue) {
 			// primitives + strings

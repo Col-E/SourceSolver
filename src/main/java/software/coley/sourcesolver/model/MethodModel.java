@@ -16,7 +16,7 @@ public class MethodModel extends AbstractModel implements Annotated, NameHolder 
 	private final List<TypeParameterModel> typeParameters;
 	private final TypeModel returnType;
 	private final List<VariableModel> parameters;
-	private final AbstractModel defaultValue;
+	private final Model defaultValue;
 	private final List<AbstractExpressionModel> thrownTypes;
 	private final List<AnnotationExpressionModel> annotations;
 	private final MethodBodyModel methodBody;
@@ -27,7 +27,7 @@ public class MethodModel extends AbstractModel implements Annotated, NameHolder 
 	                   @Nonnull List<TypeParameterModel> typeParameters,
 	                   @Nonnull TypeModel returnType,
 	                   @Nonnull List<VariableModel> parameters,
-	                   @Nullable AbstractModel defaultValue,
+	                   @Nullable Model defaultValue,
 	                   @Nonnull List<AbstractExpressionModel> thrownTypes,
 	                   @Nonnull List<AnnotationExpressionModel> annotations,
 	                   @Nullable MethodBodyModel methodBody) {
@@ -80,7 +80,7 @@ public class MethodModel extends AbstractModel implements Annotated, NameHolder 
 	}
 
 	@Nullable
-	public AbstractModel getDefaultValue() {
+	public Model getDefaultValue() {
 		return defaultValue;
 	}
 

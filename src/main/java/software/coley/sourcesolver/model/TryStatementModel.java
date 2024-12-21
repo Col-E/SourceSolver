@@ -13,11 +13,11 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 public class TryStatementModel extends AbstractStatementModel {
 	private final BlockStatementModel block;
 	private final BlockStatementModel finallyBlock;
-	private final List<AbstractModel> resources;
+	private final List<Model> resources;
 	private final List<CatchModel> catches;
 
 	public TryStatementModel(@Nonnull Range range, @Nonnull BlockStatementModel block,
-	                         @Nullable BlockStatementModel finallyBlock, @Nonnull List<AbstractModel> resources,
+	                         @Nullable BlockStatementModel finallyBlock, @Nonnull List<Model> resources,
 	                         @Nonnull List<CatchModel> catches) {
 		super(range, of(block), of(finallyBlock), of(resources), of(catches));
 		this.block = block;
@@ -37,7 +37,7 @@ public class TryStatementModel extends AbstractStatementModel {
 	}
 
 	@Nonnull
-	public List<AbstractModel> getResources() {
+	public List<Model> getResources() {
 		return resources;
 	}
 

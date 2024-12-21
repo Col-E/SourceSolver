@@ -6,10 +6,10 @@ import javax.annotation.Nonnull;
 
 public class CastExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel expression;
-	private final AbstractModel type;
+	private final Model type;
 
 	public CastExpressionModel(@Nonnull Range range,
-	                           @Nonnull AbstractModel type,
+	                           @Nonnull Model type,
 	                           @Nonnull AbstractExpressionModel expression) {
 		super(range, type, expression);
 		this.expression = expression;
@@ -22,7 +22,7 @@ public class CastExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public AbstractModel getType() {
+	public Model getType() {
 		return type;
 	}
 

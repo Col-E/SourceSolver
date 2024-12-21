@@ -5,6 +5,7 @@ import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
@@ -28,7 +29,7 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 		String name = tree.getName().toString();
 
 		ExpressionTree initializer = tree.getInitializer();
-		AbstractModel valueModel = initializer == null ? null : context.map(ExpressionMapper.class, initializer);
+		Model valueModel = initializer == null ? null : context.map(ExpressionMapper.class, initializer);
 
 		return new VariableModel(extractRange(table, tree), annotationModels, modifiers, typeModel, name, valueModel);
 	}

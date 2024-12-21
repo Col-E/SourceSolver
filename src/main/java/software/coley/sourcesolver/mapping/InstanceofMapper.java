@@ -9,6 +9,7 @@ import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.AbstractPatternModel;
 import software.coley.sourcesolver.model.InstanceofExpressionModel;
+import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -21,7 +22,7 @@ public class InstanceofMapper implements Mapper<InstanceofExpressionModel, Insta
 	@Override
 	public InstanceofExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull InstanceOfTree tree) {
 		Range range = extractRange(table, tree);
-		AbstractModel type;
+		Model type;
 		Tree typeTree = tree.getType();
 		if (typeTree instanceof IdentifierTree identifier) {
 			type = context.map(IdentifierMapper.class, identifier);

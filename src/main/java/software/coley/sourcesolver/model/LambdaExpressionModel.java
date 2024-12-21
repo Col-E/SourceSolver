@@ -10,12 +10,12 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class LambdaExpressionModel extends AbstractExpressionModel {
 	private final List<VariableModel> parameters;
-	private final AbstractModel body;
+	private final Model body;
 	private final BodyKind bodyKind;
 
 	public LambdaExpressionModel(@Nonnull Range range,
 	                             @Nonnull List<VariableModel> parameters,
-	                             @Nonnull AbstractModel body,
+	                             @Nonnull Model body,
 	                             @Nonnull BodyKind bodyKind) {
 		super(range, of(parameters), of(body));
 		this.parameters = parameters;
@@ -29,7 +29,7 @@ public class LambdaExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public AbstractModel getBody() {
+	public Model getBody() {
 		return body;
 	}
 

@@ -6,9 +6,9 @@ import javax.annotation.Nonnull;
 
 public class MemberSelectExpressionModel extends AbstractExpressionModel {
 	private final String name;
-	private final AbstractModel context;
+	private final Model context;
 
-	public MemberSelectExpressionModel(@Nonnull Range range, @Nonnull String name, @Nonnull AbstractModel context) {
+	public MemberSelectExpressionModel(@Nonnull Range range, @Nonnull String name, @Nonnull Model context) {
 		super(range, context);
 		this.name = name;
 		this.context = context;
@@ -20,7 +20,7 @@ public class MemberSelectExpressionModel extends AbstractExpressionModel {
 	}
 
 	@Nonnull
-	public AbstractModel getContext() {
+	public Model getContext() {
 		return context;
 	}
 

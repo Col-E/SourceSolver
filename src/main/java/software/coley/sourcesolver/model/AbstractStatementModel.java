@@ -10,7 +10,7 @@ public abstract class AbstractStatementModel extends AbstractModel {
 		super(range);
 	}
 
-	protected AbstractStatementModel(@Nonnull Range range, AbstractModel... children) {
+	protected AbstractStatementModel(@Nonnull Range range, Model... children) {
 		super(range, children);
 	}
 
@@ -18,7 +18,7 @@ public abstract class AbstractStatementModel extends AbstractModel {
 		super(range, suppliers);
 	}
 
-	protected AbstractStatementModel(@Nonnull Range range, @Nonnull Collection<? extends AbstractModel> children) {
+	protected AbstractStatementModel(@Nonnull Range range, @Nonnull Collection<? extends Model> children) {
 		super(range, children);
 	}
 }
