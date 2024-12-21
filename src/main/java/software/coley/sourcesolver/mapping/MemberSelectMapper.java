@@ -2,7 +2,6 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.MemberSelectExpressionModel;
 import software.coley.sourcesolver.model.Model;
 

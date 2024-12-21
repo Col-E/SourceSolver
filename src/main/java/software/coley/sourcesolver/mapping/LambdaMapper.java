@@ -4,7 +4,6 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.LambdaExpressionTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.LambdaExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.UnknownStatementModel;

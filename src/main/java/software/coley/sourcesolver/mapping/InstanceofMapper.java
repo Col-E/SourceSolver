@@ -6,7 +6,6 @@ import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.AbstractPatternModel;
 import software.coley.sourcesolver.model.InstanceofExpressionModel;
 import software.coley.sourcesolver.model.Model;

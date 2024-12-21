@@ -3,7 +3,6 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.MemberReferenceTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.MethodReferenceExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NameExpressionModel;

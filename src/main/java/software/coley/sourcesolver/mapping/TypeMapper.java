@@ -7,7 +7,6 @@ import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.WildcardTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
