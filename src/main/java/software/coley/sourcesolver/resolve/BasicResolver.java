@@ -8,11 +8,11 @@ import software.coley.sourcesolver.resolve.entry.MethodEntry;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
 import software.coley.sourcesolver.resolve.result.FieldResolution;
+import software.coley.sourcesolver.resolve.result.MemberResolution;
 import software.coley.sourcesolver.resolve.result.MethodResolution;
 import software.coley.sourcesolver.resolve.result.MultiClassResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
-import software.coley.sourcesolver.resolve.result.UnknownResolution;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -77,15 +77,6 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolve(@Nonnull Model target) {
-		// TODO: Do more than these basic cases
-		//  So far:
-		//   - imports
-		//   - class declarations
-		//      - but not annotations, type parameters, etc
-		//   - field declarations
-		//      - but no child nodes
-		//   - method declarations
-		//      - but no child nodes
 		if (target instanceof ClassModel clazz) {
 			return resolveClassModel(clazz);
 		} else if (target instanceof MethodModel method) {
@@ -102,9 +93,15 @@ public class BasicResolver implements Resolver {
 				&& modifiers.getParent() instanceof MethodModel method
 				&& method.getName().equals("<clinit>")) {
 			return resolveStaticInitializer(method);
-		} else if (target instanceof NameExpressionModel nameExpression) {
-			return resolveNameUsage(nameExpression);
-		} else if (target instanceof TypeModel type)
+		} else if (target instanceof AnnotationArgumentModel annotation)
+			return unknown(); // TODO: Annotations
+		else if (target instanceof AnnotationExpressionModel annotation)
+			return unknown(); // TODO: Annotations
+		else if (target instanceof NamedModel named) {
+			return resolveNameUsage(named);
+		} else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
+			return resolveMember(memberSelectExpression);
+		else if (target instanceof TypeModel type)
 			return resolveType(type);
 		else if (target instanceof ModifiersModel)
 			return resolve(target.getParent());
@@ -116,15 +113,26 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveNameUsage(@Nonnull NameExpressionModel nameExpression) {
-		Model parent = nameExpression.getParent();
+	private Resolution resolveNameUsage(@Nonnull NamedModel named) {
+		Model parent = named.getParent();
 
-		if (parent instanceof ClassModel)
-			return resolveImportedDotName(nameExpression);
-		else if (parent instanceof ImplementsModel)
-			return resolveImportedDotName(nameExpression);
+		if (parent instanceof ClassModel
+				|| parent instanceof ImplementsModel
+				|| parent instanceof InstanceofExpressionModel
+				|| parent instanceof CastExpressionModel)
+			// The named model is used in a context where it can only be a dot-name.
+			return resolveImportedDotName(named);
 		else if (parent instanceof TypeModel parentType)
+			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
+		else if (parent instanceof MemberSelectExpressionModel) {
+			// Member selection can be:
+			//  ClassName.staticMethod() --> We want to do dot-name resolution
+			//  variable.virtualMethod() --> We want to resolve the type of 'variable' and look for the member in there
+			Resolution resolution = resolveImportedDotName(named);
+			if (!resolution.isUnknown())
+				return resolution;
+		}
 
 		// TODO: Case for local class name references
 		//  - method variables / parameters
@@ -381,6 +389,37 @@ public class BasicResolver implements Resolver {
 
 		// Otherwise resolve declared type
 		return resolveType(type);
+	}
+
+	@Nonnull
+	private Resolution resolveMember(@Nonnull MemberSelectExpressionModel memberSelect) {
+		Resolution contextResolution = resolve(memberSelect.getContext());
+
+		// TODO: We need to be able to hint to 'resolveXByName' what the expected type of the member is
+		//  - Will allow de-conflicting of:
+		//     - multiple fields of the same name but different types
+		//     - multiple methods of the same name but different types (common practice of telescoping)
+		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel methodInvocation) {
+			// Member selection is the method identifier
+			if (contextResolution instanceof ClassResolution classResolution) {
+				ClassEntry declaringClass = classResolution.getClassEntry();
+				return resolveMethodByName(declaringClass, memberSelect.getName());
+			} else if (contextResolution instanceof MemberResolution memberResolution) {
+				ClassEntry declaringClass = memberResolution.getOwnerEntry();
+				return resolveMethodByName(declaringClass, memberSelect.getName());
+			}
+		} else {
+			// Member selection should be a field identifier
+			if (contextResolution instanceof ClassResolution classResolution) {
+				ClassEntry declaringClass = classResolution.getClassEntry();
+				return resolveFieldByName(declaringClass, memberSelect.getName());
+			} else if (contextResolution instanceof MemberResolution memberResolution) {
+				ClassEntry declaringClass = memberResolution.getOwnerEntry();
+				return resolveFieldByName(declaringClass, memberSelect.getName());
+			}
+		}
+
+		return unknown();
 	}
 
 	@Nonnull

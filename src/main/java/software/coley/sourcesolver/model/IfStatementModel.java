@@ -6,6 +6,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class IfStatementModel extends AbstractStatementModel {
 	private final AbstractExpressionModel condition;
 	private final AbstractStatementModel thenCaseStatement;
@@ -15,7 +17,7 @@ public class IfStatementModel extends AbstractStatementModel {
 	                        @Nonnull AbstractExpressionModel condition,
 	                        @Nonnull AbstractStatementModel thenCaseStatement,
 	                        @Nullable AbstractStatementModel elseCaseStatement) {
-		super(range);
+		super(range, of(condition), of(thenCaseStatement), of(elseCaseStatement));
 		this.condition = condition;
 		this.thenCaseStatement = thenCaseStatement;
 		this.elseCaseStatement = elseCaseStatement;
