@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class NewClassExpressionModel extends AbstractExpressionModel implements Named {
+public class NewClassExpressionModel extends AbstractExpressionModel implements NamedModel {
 	private final AbstractExpressionModel enclosingExpression;
 	private final List<Model> typeArguments;
 	private final AbstractExpressionModel identifier;
@@ -57,7 +57,7 @@ public class NewClassExpressionModel extends AbstractExpressionModel implements 
 	@Nonnull
 	@Override
 	public String getName() {
-		return getIdentifier() instanceof Named named ? named.getName() : getIdentifier().toString();
+		return getIdentifier() instanceof NamedModel named ? named.getName() : getIdentifier().toString();
 	}
 
 	@Override

@@ -10,7 +10,7 @@ import java.util.Objects;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class VariableModel extends AbstractStatementModel implements Annotated, NameHolder {
+public class VariableModel extends AbstractStatementModel implements AnnotatedModel, NameHoldingModel {
 	private final List<AnnotationExpressionModel> annotations;
 	private final ModifiersModel modifiers;
 	private final TypeModel type;

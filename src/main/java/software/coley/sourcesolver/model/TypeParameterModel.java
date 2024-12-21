@@ -5,7 +5,7 @@ import software.coley.sourcesolver.util.Range;
 import javax.annotation.Nonnull;
 import java.util.List;
 
-public class TypeParameterModel extends AbstractModel implements Annotated {
+public class TypeParameterModel extends AbstractModel implements AnnotatedModel {
 	private final String name;
 	private final List<Model> bounds;
 	private final List<AnnotationExpressionModel> annotations;

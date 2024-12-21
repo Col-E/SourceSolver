@@ -3,7 +3,7 @@ package software.coley.sourcesolver.model;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public interface NameHolder extends Named {
+public interface NameHoldingModel extends NamedModel {
 	@Nonnull
 	@Override
 	default String getName() {

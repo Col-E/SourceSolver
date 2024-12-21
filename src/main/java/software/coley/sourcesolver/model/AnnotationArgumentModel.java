@@ -7,7 +7,7 @@ import javax.annotation.Nullable;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class AnnotationArgumentModel extends AbstractModel implements NameHolder {
+public class AnnotationArgumentModel extends AbstractModel implements NameHoldingModel {
 	private final NameExpressionModel nameModel;
 	private final AbstractExpressionModel valueModel;
 

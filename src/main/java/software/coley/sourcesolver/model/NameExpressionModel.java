@@ -4,7 +4,7 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
-public class NameExpressionModel extends AbstractExpressionModel implements Named {
+public class NameExpressionModel extends AbstractExpressionModel implements NamedModel {
 	private final String name;
 
 	public NameExpressionModel(@Nonnull Range range, @Nonnull String name) {

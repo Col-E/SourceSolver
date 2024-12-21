@@ -49,7 +49,7 @@ public abstract class AbstractModel implements Model {
 	@Nonnull
 	private static List<Model> extractChildren(@Nonnull Stream<Model> stream) {
 		return stream.filter(c -> c != null && !c.getRange().isUnknown())
-				.sorted(Comparator.comparing(Ranged::getRange))
+				.sorted(Comparator.comparing(Model::getRange))
 				.toList();
 	}
 

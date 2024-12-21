@@ -3,7 +3,7 @@ package software.coley.sourcesolver.model;
 import javax.annotation.Nonnull;
 import java.util.List;
 
-public interface Annotated {
+public interface AnnotatedModel extends Model {
 	@Nonnull
 	List<AnnotationExpressionModel> getAnnotations();
 }

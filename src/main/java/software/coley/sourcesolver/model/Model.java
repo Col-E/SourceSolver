@@ -2,12 +2,13 @@ package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.resolve.Resolver;
 import software.coley.sourcesolver.resolve.result.Resolution;
+import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 
-public interface Model extends Ranged {
+public interface Model {
 	@Nonnull
 	Resolution resolve(@Nonnull Resolver resolver);
 
@@ -25,4 +26,7 @@ public interface Model extends Ranged {
 
 	@Nullable
 	Model getParent();
+
+	@Nonnull
+	Range getRange();
 }

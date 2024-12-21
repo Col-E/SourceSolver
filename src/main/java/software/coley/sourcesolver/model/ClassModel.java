@@ -9,7 +9,7 @@ import java.util.List;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class ClassModel extends AbstractStatementModel implements Annotated, NameHolder {
+public class ClassModel extends AbstractStatementModel implements AnnotatedModel, NameHoldingModel {
 	private final List<AnnotationExpressionModel> annotations;
 	private final ModifiersModel modifiers;
 	private final String name;

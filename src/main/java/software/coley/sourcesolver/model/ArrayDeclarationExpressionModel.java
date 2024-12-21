@@ -7,7 +7,7 @@ import java.util.List;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class ArrayDeclarationExpressionModel extends AbstractExpressionModel implements Annotated {
+public class ArrayDeclarationExpressionModel extends AbstractExpressionModel implements AnnotatedModel {
 	private final TypeModel type;
 	private final List<AbstractExpressionModel> dimensions;
 	private final List<AbstractExpressionModel> initializers;

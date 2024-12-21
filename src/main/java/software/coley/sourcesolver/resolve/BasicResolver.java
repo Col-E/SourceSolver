@@ -146,7 +146,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveImportedDotName(@Nonnull Named extendsModel) {
+	private Resolution resolveImportedDotName(@Nonnull NamedModel extendsModel) {
 		return resolveImportedDotName(extendsModel.getName());
 	}
 
@@ -198,7 +198,7 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveAsIdentifier(@Nonnull Model identifier) {
 		if (identifier instanceof TypeModel typeIdentifier)
 			return resolveType(typeIdentifier);
-		else if (identifier instanceof Named named)
+		else if (identifier instanceof NamedModel named)
 			return resolveImportedDotName(named.getName());
 		return unknown();
 	}
