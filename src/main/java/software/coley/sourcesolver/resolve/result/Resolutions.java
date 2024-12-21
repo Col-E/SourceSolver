@@ -23,7 +23,18 @@ public class Resolutions {
 	@Nonnull
 	public static PrimitiveResolution ofPrimitive(@Nonnull String desc) {
 		if (desc.length() != 1) throw new IllegalStateException("Not a primitive descriptor: " + desc);
-		return new PrimitiveResolutionImpl(desc);
+		return switch (desc.charAt(0)) {
+			case 'Z' -> PrimitiveResolutionImpl.BOOLEAN;
+			case 'B' -> PrimitiveResolutionImpl.BYTE;
+			case 'S' -> PrimitiveResolutionImpl.SHORT;
+			case 'I' -> PrimitiveResolutionImpl.INT;
+			case 'J' -> PrimitiveResolutionImpl.LONG;
+			case 'C' -> PrimitiveResolutionImpl.CHAR;
+			case 'F' -> PrimitiveResolutionImpl.FLOAT;
+			case 'D' -> PrimitiveResolutionImpl.DOUBLE;
+			case 'V' -> PrimitiveResolutionImpl.VOID;
+			default -> throw new IllegalStateException("Invalid primitive descriptor: " + desc);
+		};
 	}
 
 	@Nonnull
@@ -101,6 +112,16 @@ public class Resolutions {
 	}
 
 	private record PrimitiveResolutionImpl(@Nonnull String desc) implements PrimitiveResolution, DescribableEntry {
+		private static final PrimitiveResolution BOOLEAN = new PrimitiveResolutionImpl("Z");
+		private static final PrimitiveResolution BYTE = new PrimitiveResolutionImpl("B");
+		private static final PrimitiveResolution SHORT = new PrimitiveResolutionImpl("S");
+		private static final PrimitiveResolution INT = new PrimitiveResolutionImpl("I");
+		private static final PrimitiveResolution LONG = new PrimitiveResolutionImpl("J");
+		private static final PrimitiveResolution CHAR = new PrimitiveResolutionImpl("C");
+		private static final PrimitiveResolution FLOAT = new PrimitiveResolutionImpl("F");
+		private static final PrimitiveResolution DOUBLE = new PrimitiveResolutionImpl("D");
+		private static final PrimitiveResolution VOID = new PrimitiveResolutionImpl("V");
+
 		@Nonnull
 		@Override
 		public DescribableEntry getDescribableEntry() {
