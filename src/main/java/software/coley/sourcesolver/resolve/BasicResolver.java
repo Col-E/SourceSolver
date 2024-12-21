@@ -64,15 +64,16 @@ public class BasicResolver implements Resolver {
 			return resolve(target);
 
 		// Find the deepest model at position.
-		List<Model> modelPath = new ArrayList<>();
 		Model model = unit;
-		while (model != null) {
-			modelPath.add(model);
-			model = model.getChildAtPosition(index);
+		while (true) {
+			Model child = model.getChildAtPosition(index);
+			if (child == null)
+				break;
+			model = child;
 		}
 
 		// Resolve off of the deepest model so that it is aware of the results and can cache them.
-		return modelPath.get(modelPath.size() - 1).resolve(this);
+		return model.resolve(this);
 	}
 
 	@Nonnull
@@ -97,10 +98,10 @@ public class BasicResolver implements Resolver {
 			return unknown(); // TODO: Annotations
 		else if (target instanceof AnnotationExpressionModel annotation)
 			return unknown(); // TODO: Annotations
-		else if (target instanceof NamedModel named) {
+		else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
+			return resolveMemberSelection(memberSelectExpression);
+		else if (target instanceof NamedModel named)
 			return resolveNameUsage(named);
-		} else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
-			return resolveMember(memberSelectExpression);
 		else if (target instanceof TypeModel type)
 			return resolveType(type);
 		else if (target instanceof ModifiersModel)
@@ -118,26 +119,76 @@ public class BasicResolver implements Resolver {
 
 		if (parent instanceof ClassModel
 				|| parent instanceof ImplementsModel
-				|| parent instanceof InstanceofExpressionModel
-				|| parent instanceof CastExpressionModel)
+				|| parent instanceof CastExpressionModel
+				|| parent instanceof ThrowStatementModel)
 			// The named model is used in a context where it can only be a dot-name.
+			return resolveImportedDotName(named);
+		else if (parent instanceof InstanceofExpressionModel instanceOf
+				&& instanceOf.getType() == named)
+			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
+			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
 			return resolveImportedDotName(named);
 		else if (parent instanceof TypeModel parentType)
 			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
 		else if (parent instanceof MemberSelectExpressionModel) {
 			// Member selection can be:
-			//  ClassName.staticMethod() --> We want to do dot-name resolution
-			//  variable.virtualMethod() --> We want to resolve the type of 'variable' and look for the member in there
+			//  ClassName.staticMethod() --> We want to do dot-name resolution.
+			//  variable.virtualMethod() --> We want to resolve the type of 'variable' and look for the member in there.
 			Resolution resolution = resolveImportedDotName(named);
 			if (!resolution.isUnknown())
 				return resolution;
+		} else if (parent instanceof MethodInvocationExpressionModel methodInvocation)
+			return resolveMember(methodInvocation);
+
+		String name = named.getName();
+
+		// Try looking for variables defined in the method.
+		Model containingMethod = named.getParentOfType(MethodModel.class);
+		if (containingMethod != null) {
+			// TODO: This isn't technically correct as multiple scopes in the method can define
+			//  variables of the same name, but with different types.
+			//  So we'll want a walk up one scope at a time instead of just jumping to the root method
+			//  and looking at all defined variables.
+			List<VariableModel> variables = containingMethod.getRecursiveChildrenOfType(VariableModel.class);
+			for (VariableModel variable : variables) {
+				if (variable.getName().equals(name)) {
+					Resolution resolution = resolveType(variable.getType());
+					if (!resolution.isUnknown())
+						return resolution;
+				}
+			}
 		}
 
-		// TODO: Case for local class name references
-		//  - method variables / parameters
-		//  - fields
-		//  - imported static fields
+		// Try looking for fields defined in the class.
+		//  - If it's an inner class there will be more parents of the class model type,
+		//    so we'll want to iterate on the containing class if nothing is found in this one
+		//  - Fields can be in this class, or any parent
+		ClassModel containingClass = named.getParentOfType(ClassModel.class);
+		while (containingClass != null) {
+			// TODO: When we look in outer classes we should consider the relation of static inners with outer fields
+			// TODO: We need to check static imported methods as well
+			if (resolveClassModel(containingClass) instanceof ClassResolution classResolution) {
+				ClassEntry classEntry = classResolution.getClassEntry();
+				Resolution resolution = resolveFieldByName(classEntry, name);
+				if (!resolution.isUnknown())
+					return resolution;
+			}
+
+			// Visit next parent class model (outer class if this one is an inner class)
+			containingClass = containingClass.getParentOfType(ClassModel.class);
+		}
+
+		// Try looking for imported static fields.
+		String staticImportPattern = '.' + name;
+		for (ImportModel imp : unit.getImports()) {
+			if (!imp.isStatic() || !imp.getName().endsWith(staticImportPattern))
+				continue;
+			if (resolveImportModel(imp) instanceof FieldResolution fieldResolution
+					&& fieldResolution.getFieldEntry().getName().equals(name)) {
+				return fieldResolution;
+			}
+		}
 
 		return unknown();
 	}
@@ -392,30 +443,54 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveMember(@Nonnull MemberSelectExpressionModel memberSelect) {
+	private Resolution resolveMember(@Nonnull MethodInvocationExpressionModel methodInvocation) {
+		AbstractExpressionModel select = methodInvocation.getMethodSelect();
+		if (select instanceof MemberSelectExpressionModel memberSelect)
+			// Selection is in the pattern of 'context.methodName' so solve with the context in mind.
+			return resolveMemberSelection(memberSelect);
+		else if (select instanceof NameExpressionModel name) {
+			// Selection is in the pattern of 'methodName' so solve with the containing class as context.
+			ClassModel classContext = methodInvocation.getParentOfType(ClassModel.class);
+			while (classContext != null) {
+				// TODO: When we look in outer classes we should consider the relation of static inners with outer methods
+				// TODO: We need to check static imported methods as well
+				if (resolveClassModel(classContext) instanceof ClassResolution classResolution) {
+					Resolution resolution = resolveMethodByName(classResolution.getClassEntry(), name.getName());
+					if (!resolution.isUnknown())
+						return resolution;
+				}
+				classContext = classContext.getParentOfType(ClassModel.class);
+			}
+		}
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveMemberSelection(@Nonnull MemberSelectExpressionModel memberSelect) {
 		Resolution contextResolution = resolve(memberSelect.getContext());
 
 		// TODO: We need to be able to hint to 'resolveXByName' what the expected type of the member is
 		//  - Will allow de-conflicting of:
 		//     - multiple fields of the same name but different types
 		//     - multiple methods of the same name but different types (common practice of telescoping)
-		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel methodInvocation) {
+		String memberName = memberSelect.getName();
+		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel) {
 			// Member selection is the method identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveMethodByName(declaringClass, memberSelect.getName());
+				return resolveMethodByName(declaringClass, memberName);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
 				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveMethodByName(declaringClass, memberSelect.getName());
+				return resolveMethodByName(declaringClass, memberName);
 			}
 		} else {
 			// Member selection should be a field identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveFieldByName(declaringClass, memberSelect.getName());
+				return resolveFieldByName(declaringClass, memberName);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
 				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveFieldByName(declaringClass, memberSelect.getName());
+				return resolveFieldByName(declaringClass, memberName);
 			}
 		}
 
