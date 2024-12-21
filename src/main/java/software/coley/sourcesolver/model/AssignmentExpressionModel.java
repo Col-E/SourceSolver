@@ -4,6 +4,8 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class AssignmentExpressionModel extends AbstractExpressionModel {
 	private final AbstractExpressionModel variable;
 	private final AbstractExpressionModel expression;
@@ -13,7 +15,7 @@ public class AssignmentExpressionModel extends AbstractExpressionModel {
 	                                 @Nonnull AbstractExpressionModel variable,
 	                                 @Nonnull AbstractExpressionModel expression,
 	                                 @Nonnull Operator operator) {
-		super(range, expression);
+		super(range, of(variable), of(expression));
 		this.variable = variable;
 		this.expression = expression;
 		this.operator = operator;

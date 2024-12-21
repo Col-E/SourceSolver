@@ -6,6 +6,7 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 
 public interface Model {
@@ -25,6 +26,12 @@ public interface Model {
 	@Nonnull
 	Resolution resolveAt(@Nonnull Resolver resolver, int position);
 
+	default void visit(@Nonnull ModelVisitor visitor) {
+		if (visitor.visit(this))
+			for (Model child : getChildren())
+				child.visit(visitor);
+	}
+
 	@Nullable
 	default Model getChildAtPosition(int position) {
 		for (Model child : getChildren())
@@ -33,13 +40,27 @@ public interface Model {
 		return null;
 	}
 
+	@Nonnull
+	@SuppressWarnings("unchecked")
+	default <M extends Model> List<M> getRecursiveChildrenOfType(@Nonnull Class<M> type) {
+		List<M> models = new ArrayList<>();
+		visit(child -> {
+			if (type.isAssignableFrom(child.getClass()))
+				models.add((M) child);
+			return true;
+		});
+		return models;
+	}
+
 	@Nullable
-	default Model getParentOfType(@Nonnull Class<? extends Model> type) {
-		if (getClass().isAssignableFrom(type))
-			return this;
+	@SuppressWarnings("unchecked")
+	default <M extends Model> M getParentOfType(@Nonnull Class<M> type) {
 		Model parent = getParent();
-		if (parent != null)
-			return parent.getParentOfType(type);
+		while (parent != null) {
+			if (type.isAssignableFrom(parent.getClass()))
+				return (M) parent;
+			parent = parent.getParent();
+		}
 		return null;
 	}
 

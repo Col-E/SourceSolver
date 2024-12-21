@@ -44,6 +44,8 @@ public abstract class AbstractModel implements Model {
 	protected AbstractModel(@Nonnull Range range, @Nonnull Collection<? extends Model> children) {
 		this.range = range;
 		this.children = extractChildren((Stream<Model>) children.stream());
+		for (Model child : children)
+			if (child instanceof AbstractModel abstractChild) abstractChild.parent = this;
 	}
 
 	@Nonnull
