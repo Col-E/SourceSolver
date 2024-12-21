@@ -11,7 +11,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Resolutions {
+	private static final UnknownResolution INSTANCE = new UnknownResolution() {};
+
 	private Resolutions() {}
+
+	@Nonnull
+	public static UnknownResolution unknown() {
+		return INSTANCE;
+	}
 
 	@Nonnull
 	public static PrimitiveResolution ofPrimitive(@Nonnull String desc) {
@@ -28,7 +35,7 @@ public class Resolutions {
 	public static Resolution ofClass(@Nonnull EntryPool pool, @Nonnull String name) {
 		ClassEntry entry = pool.getClass(name);
 		if (entry == null)
-			return UnknownResolution.INSTANCE;
+			return unknown();
 		return ofClass(entry);
 	}
 
@@ -56,7 +63,7 @@ public class Resolutions {
 			if (ofField(implementedEntry, fieldName, fieldDescriptor) instanceof FieldResolution resolution)
 				return resolution;
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
@@ -85,7 +92,7 @@ public class Resolutions {
 			if (ofMethod(implementedEntry, methodName, methodDescriptor) instanceof MethodResolution resolution)
 				return resolution;
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull

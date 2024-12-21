@@ -12,7 +12,6 @@ import software.coley.sourcesolver.resolve.result.MethodResolution;
 import software.coley.sourcesolver.resolve.result.MultiClassResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
-import software.coley.sourcesolver.resolve.result.Resolutions;
 import software.coley.sourcesolver.resolve.result.UnknownResolution;
 
 import javax.annotation.Nonnull;
@@ -23,6 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import static software.coley.sourcesolver.resolve.result.Resolutions.*;
 
 public class BasicResolver implements Resolver {
 	private final Map<String, ClassEntry> importedTypes;
@@ -92,8 +93,7 @@ public class BasicResolver implements Resolver {
 		} else if (target instanceof VariableModel variable) {
 			if (target.getParent() instanceof ClassModel declaringClass)
 				return resolveFieldModel(declaringClass, variable);
-			else
-				return resolveVariableType(variable);
+			return resolveVariableType(variable);
 		} else if (target instanceof PackageModel pkg) {
 			return resolvePackageModel(pkg);
 		} else if (target instanceof ImportModel imp) {
@@ -103,20 +103,39 @@ public class BasicResolver implements Resolver {
 				&& method.getName().equals("<clinit>")) {
 			return resolveStaticInitializer(method);
 		} else if (target instanceof NameExpressionModel nameExpression) {
-			if (nameExpression.getParent() instanceof ClassModel) {
-				return resolveImportedDotName(nameExpression);
-			} else if (nameExpression.getParent() instanceof ImplementsModel) {
-				return resolveImportedDotName(nameExpression);
-			}
-		}
+			return resolveNameUsage(nameExpression);
+		} else if (target instanceof TypeModel type)
+			return resolveType(type);
+		else if (target instanceof ModifiersModel)
+			return resolve(target.getParent());
 
-		return UnknownResolution.INSTANCE;
+		System.err.println(target.getClass().getSimpleName() + " : parent=" + target.getParent().getClass().getSimpleName());
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveNameUsage(@Nonnull NameExpressionModel nameExpression) {
+		AbstractModel parent = nameExpression.getParent();
+
+		if (parent instanceof ClassModel)
+			return resolveImportedDotName(nameExpression);
+		else if (parent instanceof ImplementsModel)
+			return resolveImportedDotName(nameExpression);
+		else if (parent instanceof TypeModel parentType)
+			return resolveType(parentType);
+
+		// TODO: Case for local class name references
+		//  - method variables / parameters
+		//  - fields
+		//  - imported static fields
+
+		return unknown();
 	}
 
 	@Nonnull
 	private Resolution resolveDotName(@Nonnull String name) {
 		name = name.replace('.', '/');
-		Resolution resolution = Resolutions.ofClass(pool, name);
+		Resolution resolution = ofClass(pool, name);
 		while (resolution instanceof UnknownResolution && name.indexOf('/') >= 0) {
 			int lastSlash = name.lastIndexOf('/');
 			String tail = name.substring(lastSlash) + 1;
@@ -126,7 +145,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveImportedDotName(@Nonnull NameExpressionModel extendsModel) {
+	private Resolution resolveImportedDotName(@Nonnull Named extendsModel) {
 		return resolveImportedDotName(extendsModel.getName());
 	}
 
@@ -139,9 +158,9 @@ public class BasicResolver implements Resolver {
 		// Otherwise look for a name in the imports that match.
 		for (Map.Entry<String, ClassEntry> importEntry : importedTypes.entrySet())
 			if (importEntry.getKey().endsWith('/' + name))
-				return Resolutions.ofClass(importEntry.getValue());
+				return ofClass(importEntry.getValue());
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
@@ -150,16 +169,16 @@ public class BasicResolver implements Resolver {
 		if (kind == TypeModel.Kind.PRIMITIVE
 				&& type instanceof TypeModel.Primitive primitiveType) {
 			return switch (primitiveType.getPrimitiveKind()) {
-				case BOOLEAN -> Resolutions.ofPrimitive("Z");
-				case BYTE -> Resolutions.ofPrimitive("B");
-				case SHORT -> Resolutions.ofPrimitive("S");
-				case INT -> Resolutions.ofPrimitive("I");
-				case LONG -> Resolutions.ofPrimitive("J");
-				case CHAR -> Resolutions.ofPrimitive("C");
-				case FLOAT -> Resolutions.ofPrimitive("F");
-				case DOUBLE -> Resolutions.ofPrimitive("D");
-				case VOID -> Resolutions.ofPrimitive("V");
-				default -> UnknownResolution.INSTANCE;
+				case BOOLEAN -> ofPrimitive("Z");
+				case BYTE -> ofPrimitive("B");
+				case SHORT -> ofPrimitive("S");
+				case INT -> ofPrimitive("I");
+				case LONG -> ofPrimitive("J");
+				case CHAR -> ofPrimitive("C");
+				case FLOAT -> ofPrimitive("F");
+				case DOUBLE -> ofPrimitive("D");
+				case VOID -> ofPrimitive("V");
+				default -> unknown();
 			};
 		} else if (kind == TypeModel.Kind.OBJECT || kind == TypeModel.Kind.PARAMETERIZED) {
 			return resolveAsIdentifier(type.getIdentifier());
@@ -168,10 +187,10 @@ public class BasicResolver implements Resolver {
 			AbstractModel elementType = arrayType.getRootModel();
 			Resolution elementResolution = resolveAsIdentifier(elementType);
 			if (elementResolution instanceof DescribableResolution describableElementResolution)
-				return Resolutions.ofArray(describableElementResolution, arrayType.getDimensions());
+				return ofArray(describableElementResolution, arrayType.getDimensions());
 		}
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
@@ -180,7 +199,7 @@ public class BasicResolver implements Resolver {
 			return resolveType(typeIdentifier);
 		else if (identifier instanceof Named named)
 			return resolveImportedDotName(named.getName());
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
@@ -204,16 +223,16 @@ public class BasicResolver implements Resolver {
 					ClassEntry declaringClassEntry = declaringClassResolution.getClassEntry();
 					Collection<FieldEntry> fieldsByName = declaringClassEntry.getDistinctFieldsByNameInHierarchy(memberName).values();
 					if (!fieldsByName.isEmpty())
-						return Resolutions.ofField(declaringClassEntry, fieldsByName.iterator().next());
+						return ofField(declaringClassEntry, fieldsByName.iterator().next());
 					Collection<MethodEntry> methodsByName = declaringClassEntry.getDistinctMethodsByNameInHierarchy(memberName).values();
 					if (!methodsByName.isEmpty())
-						return Resolutions.ofMethod(declaringClassEntry, methodsByName.iterator().next());
+						return ofMethod(declaringClassEntry, methodsByName.iterator().next());
 				}
 
 				// Fall back to just the class resolution.
 				return declaringClassResolution;
 			}
-			return UnknownResolution.INSTANCE;
+			return unknown();
 		}
 
 		// If we're importing a whole package, we need a multi-class resolution for all
@@ -222,7 +241,7 @@ public class BasicResolver implements Resolver {
 			// Technically you could do "com.example.OuterClass.*" but that shouldn't occur frequently enough
 			// to bother supporting it here.
 			String packageName = name.substring(0, name.lastIndexOf(".*")).replace('.', '/');
-			return Resolutions.ofClasses(pool.getClassesInPackage(packageName));
+			return ofClasses(pool.getClassesInPackage(packageName));
 		}
 
 		return resolveDotName(name);
@@ -232,7 +251,7 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveClassModel(@Nonnull ClassModel clazz) {
 		String name = clazz.getName();
 		if (unit.getPackage().isDefaultPackage())
-			return Resolutions.ofClass(pool, name);
+			return ofClass(pool, name);
 		return resolveDotName(unit.getPackage().getName() + '.' + name);
 	}
 
@@ -240,7 +259,7 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveFieldModel(@Nonnull ClassModel definingClass, @Nonnull VariableModel field) {
 		// Skip if parent context cannot be resolved.
 		if (!(definingClass.resolve(this) instanceof ClassResolution resolvedDefiningClass))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String fieldName = field.getName();
@@ -250,19 +269,19 @@ public class BasicResolver implements Resolver {
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
 		if (!(field.getType().resolve(this) instanceof DescribableResolution resolvedType))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 
 		// Resolve by name/descriptor.
-		return Resolutions.ofField(definingClassEntry, fieldName, resolvedType.getDescribableEntry().getDescriptor());
+		return ofField(definingClassEntry, fieldName, resolvedType.getDescribableEntry().getDescriptor());
 	}
 
 	@Nonnull
 	private Resolution resolveMethodModel(@Nonnull MethodModel method) {
 		// Skip if parent context cannot be resolved.
 		if (!(method.getParent() instanceof ClassModel definingClass))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 		if (!(definingClass.resolve(this) instanceof ClassResolution resolvedDefiningClass))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String methodName = method.getName();
@@ -272,7 +291,7 @@ public class BasicResolver implements Resolver {
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
 		if (!(method.getReturnType().resolve(this) instanceof DescribableResolution resolvedReturnType))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 		List<VariableModel> parameters = method.getParameters();
 		List<DescribableResolution> resolvedParameterTypes = new ArrayList<>(parameters.size());
 		for (VariableModel parameter : parameters) {
@@ -281,11 +300,11 @@ public class BasicResolver implements Resolver {
 				resolvedParameterTypes.add(resolvedParameter);
 			else
 				// If a parameter is not resolvable, we cannot resolve this method
-				return UnknownResolution.INSTANCE;
+				return unknown();
 		}
 
 		// Resolve by name/descriptor.
-		return Resolutions.ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(),
+		return ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(),
 				resolvedParameterTypes.stream().map(DescribableResolution::getDescribableEntry).toList());
 	}
 
@@ -296,7 +315,7 @@ public class BasicResolver implements Resolver {
 		if (fieldsByName.size() == 1) {
 			Map<String, FieldEntry> fieldsByNameInHierarchy = classEntry.getDistinctFieldsByNameInHierarchy(fieldName);
 			if (fieldsByNameInHierarchy.size() == 1)
-				return Resolutions.ofField(classEntry, fieldsByNameInHierarchy.values().iterator().next());
+				return ofField(classEntry, fieldsByNameInHierarchy.values().iterator().next());
 		}
 
 		// Check in super-type.
@@ -309,7 +328,7 @@ public class BasicResolver implements Resolver {
 			if (resolveFieldByName(implementedEntry, fieldName) instanceof FieldResolution resolution)
 				return resolution;
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
@@ -319,7 +338,7 @@ public class BasicResolver implements Resolver {
 		if (methodsByName.size() == 1) {
 			Map<String, MethodEntry> methodsByNameInHierarchy = classEntry.getDistinctMethodsByNameInHierarchy(methodName);
 			if (methodsByNameInHierarchy.size() == 1)
-				return Resolutions.ofMethod(classEntry, methodsByNameInHierarchy.values().iterator().next());
+				return ofMethod(classEntry, methodsByNameInHierarchy.values().iterator().next());
 		}
 
 		// Check in super-type.
@@ -332,22 +351,22 @@ public class BasicResolver implements Resolver {
 			if (resolveMethodByName(implementedEntry, methodName) instanceof MethodResolution resolution)
 				return resolution;
 
-		return UnknownResolution.INSTANCE;
+		return unknown();
 	}
 
 	@Nonnull
 	private Resolution resolveStaticInitializer(@Nonnull MethodModel method) {
 		// Skip if parent context cannot be resolved.
 		if (!(method.getParent() instanceof ClassModel definingClass))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 		if (!(definingClass.resolve(this) instanceof ClassResolution resolvedDefiningClass))
-			return UnknownResolution.INSTANCE;
+			return unknown();
 
 		// Static initializers will only be resolved in the target class.
 		List<MethodEntry> initializers = resolvedDefiningClass.getClassEntry().getMethodsByName("<clinit>");
 		if (initializers.isEmpty())
-			return UnknownResolution.INSTANCE;
-		return Resolutions.ofMethod(resolvedDefiningClass.getClassEntry(), initializers.get(0));
+			return unknown();
+		return ofMethod(resolvedDefiningClass.getClassEntry(), initializers.get(0));
 	}
 
 	@Nonnull
@@ -356,7 +375,7 @@ public class BasicResolver implements Resolver {
 
 		// If the type is 'var' then we will solve based on the assigned value expression
 		if (type.getKind() == TypeModel.Kind.VAR)
-			return UnknownResolution.INSTANCE; // TODO: Solve for variable.getValue()
+			return unknown(); // TODO: Solve for variable.getValue()
 
 		// Otherwise resolve declared type
 		return resolveType(type);
