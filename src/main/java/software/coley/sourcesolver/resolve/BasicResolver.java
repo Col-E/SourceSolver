@@ -108,7 +108,8 @@ public class BasicResolver implements Resolver {
 			return resolveType(type);
 		else if (target instanceof ModifiersModel)
 			return resolve(target.getParent());
-		// TODO: Resolve literals (as primitive type, or string type)
+		else if (target instanceof LiteralExpressionModel literal)
+			return resolveLiteral(literal);
 
 		System.err.println(target.getClass().getSimpleName() + " : parent=" + target.getParent().getClass().getSimpleName());
 		return unknown();
@@ -380,5 +381,19 @@ public class BasicResolver implements Resolver {
 
 		// Otherwise resolve declared type
 		return resolveType(type);
+	}
+
+	@Nonnull
+	private Resolution resolveLiteral(@Nonnull LiteralExpressionModel literal) {
+		return switch (literal.getKind()) {
+			case INT -> ofPrimitive("I");
+			case LONG -> ofPrimitive("J");
+			case FLOAT -> ofPrimitive("F");
+			case DOUBLE -> ofPrimitive("D");
+			case BOOLEAN -> ofPrimitive("Z");
+			case CHAR -> ofPrimitive("C");
+			case STRING -> ofClass(pool, "java/lang/String");
+			default -> unknown();
+		};
 	}
 }
