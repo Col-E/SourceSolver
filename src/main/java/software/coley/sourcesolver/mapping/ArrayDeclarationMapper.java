@@ -29,7 +29,7 @@ public class ArrayDeclarationMapper implements Mapper<ArrayDeclarationExpression
 		List<AbstractExpressionModel> dimensionModels = dimensions.stream().map(e -> context.map(ExpressionMapper.class, e)).toList();
 		List<AbstractExpressionModel> initializersModels = initializers.stream().map(e -> context.map(ExpressionMapper.class, e)).toList();
 
-		TypeModel type = context.map(TypeMapper.class, tree.getType());
+		TypeModel type = context.mapOr(TypeMapper.class, tree.getType(), TypeModel::newVar);
 
 		return new ArrayDeclarationExpressionModel(extractRange(table, tree), type, dimensionModels, initializersModels, annotationModels);
 	}

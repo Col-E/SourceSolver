@@ -6,6 +6,7 @@ import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -59,7 +60,17 @@ public class MappingContext {
 	}
 
 	@Nonnull
+	@SuppressWarnings("ConstantValue")
 	public <M extends AbstractModel, T extends Tree, X extends Mapper<M, T>> M map(@Nonnull Class<X> mapperType, @Nonnull T tree) {
+		if (tree == null) throw new IllegalStateException("Cannot map 'null' tree value to type " + mapperType.getSimpleName());
+		return getMapper(mapperType).map(this, table, tree);
+	}
+
+	@Nonnull
+	public <M extends AbstractModel, T extends Tree, X extends Mapper<M, T>> M mapOr(@Nonnull Class<X> mapperType, @Nullable T tree,
+	                                                                                 @Nonnull Supplier<M> defaultValueSupplier) {
+		if (tree == null)
+			return defaultValueSupplier.get();
 		return getMapper(mapperType).map(this, table, tree);
 	}
 

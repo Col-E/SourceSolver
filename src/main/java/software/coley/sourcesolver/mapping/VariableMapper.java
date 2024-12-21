@@ -24,7 +24,7 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
-		TypeModel typeModel = context.map(TypeMapper.class, tree.getType());
+		TypeModel typeModel = context.mapOr(TypeMapper.class, tree.getType(), TypeModel::newVar);
 		String name = tree.getName().toString();
 
 		ExpressionTree initializer = tree.getInitializer();
