@@ -57,11 +57,17 @@ public abstract class TypeModel extends AbstractModel {
 		return identifier.toString();
 	}
 
+	@Nonnull
+	public static TypeModel newVar() {
+		return new Var();
+	}
+
 	public enum Kind {
 		PRIMITIVE,
 		OBJECT,
 		PARAMETERIZED,
 		WILDCARD,
+		VAR,
 		ARRAY
 	}
 
@@ -237,6 +243,18 @@ public abstract class TypeModel extends AbstractModel {
 			int result = super.hashCode();
 			result = 31 * result + (boundModel != null ? boundModel.hashCode() : 0);
 			return result;
+		}
+	}
+
+	public static class Var extends TypeModel {
+		public Var() {
+			super(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, "var"));
+		}
+
+		@Nonnull
+		@Override
+		public Kind getKind() {
+			return Kind.VAR;
 		}
 	}
 }

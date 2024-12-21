@@ -14,6 +14,17 @@ public class Resolutions {
 	private Resolutions() {}
 
 	@Nonnull
+	public static PrimitiveResolution ofPrimitive(@Nonnull String desc) {
+		if (desc.length() != 1) throw new IllegalStateException("Not a primitive descriptor: " + desc);
+		return new PrimitiveResolutionImpl(desc);
+	}
+
+	@Nonnull
+	public static ArrayResolution ofArray(@Nonnull DescribableResolution elementType, int dimensions) {
+		return new ArrayResolutionImpl(elementType, dimensions);
+	}
+
+	@Nonnull
 	public static Resolution ofClass(@Nonnull EntryPool pool, @Nonnull String name) {
 		ClassEntry entry = pool.getClass(name);
 		if (entry == null)
@@ -80,6 +91,41 @@ public class Resolutions {
 	@Nonnull
 	public static MultiClassResolution ofClasses(@Nonnull List<ClassEntry> classesInPackage) {
 		return new MultiClassResolutionImpl(classesInPackage);
+	}
+
+	private record PrimitiveResolutionImpl(@Nonnull String desc) implements PrimitiveResolution, DescribableEntry {
+		@Nonnull
+		@Override
+		public DescribableEntry getDescribableEntry() {
+			return this;
+		}
+
+		@Nonnull
+		@Override
+		public String getDescriptor() {
+			return desc;
+		}
+	}
+
+	private record ArrayResolutionImpl(@Nonnull DescribableResolution elementResolution,
+	                                   int dimensions) implements ArrayResolution, DescribableEntry {
+		@Nonnull
+		@Override
+		public DescribableResolution getElementTypeResolution() {
+			return elementResolution;
+		}
+
+		@Nonnull
+		@Override
+		public DescribableEntry getDescribableEntry() {
+			return this;
+		}
+
+		@Nonnull
+		@Override
+		public String getDescriptor() {
+			return "[".repeat(dimensions) + elementResolution.getDescribableEntry().getDescriptor();
+		}
 	}
 
 	private record MultiClassResolutionImpl(@Nonnull List<ClassEntry> entries) implements MultiClassResolution {

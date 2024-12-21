@@ -89,9 +89,11 @@ public class BasicResolver implements Resolver {
 			return resolveClassModel(clazz);
 		} else if (target instanceof MethodModel method) {
 			return resolveMethodModel(method);
-		} else if (target instanceof VariableModel variable
-				&& target.getParent() instanceof ClassModel declaringClass) {
-			return resolveFieldModel(declaringClass, variable);
+		} else if (target instanceof VariableModel variable) {
+			if (target.getParent() instanceof ClassModel declaringClass)
+				return resolveFieldModel(declaringClass, variable);
+			else
+				return resolveVariableType(variable);
 		} else if (target instanceof PackageModel pkg) {
 			return resolvePackageModel(pkg);
 		} else if (target instanceof ImportModel imp) {
@@ -143,6 +145,45 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
+	private Resolution resolveType(@Nonnull TypeModel type) {
+		var kind = type.getKind();
+		if (kind == TypeModel.Kind.PRIMITIVE
+				&& type instanceof TypeModel.Primitive primitiveType) {
+			return switch (primitiveType.getPrimitiveKind()) {
+				case BOOLEAN -> Resolutions.ofPrimitive("Z");
+				case BYTE -> Resolutions.ofPrimitive("B");
+				case SHORT -> Resolutions.ofPrimitive("S");
+				case INT -> Resolutions.ofPrimitive("I");
+				case LONG -> Resolutions.ofPrimitive("J");
+				case CHAR -> Resolutions.ofPrimitive("C");
+				case FLOAT -> Resolutions.ofPrimitive("F");
+				case DOUBLE -> Resolutions.ofPrimitive("D");
+				case VOID -> Resolutions.ofPrimitive("V");
+				default -> UnknownResolution.INSTANCE;
+			};
+		} else if (kind == TypeModel.Kind.OBJECT || kind == TypeModel.Kind.PARAMETERIZED) {
+			return resolveAsIdentifier(type.getIdentifier());
+		} else if (kind == TypeModel.Kind.ARRAY
+				&& type instanceof TypeModel.Array arrayType) {
+			AbstractModel elementType = arrayType.getRootModel();
+			Resolution elementResolution = resolveAsIdentifier(elementType);
+			if (elementResolution instanceof DescribableResolution describableElementResolution)
+				return Resolutions.ofArray(describableElementResolution, arrayType.getDimensions());
+		}
+
+		return UnknownResolution.INSTANCE;
+	}
+
+	@Nonnull
+	private Resolution resolveAsIdentifier(@Nonnull AbstractModel identifier) {
+		if (identifier instanceof TypeModel typeIdentifier)
+			return resolveType(typeIdentifier);
+		else if (identifier instanceof Named named)
+			return resolveImportedDotName(named.getName());
+		return UnknownResolution.INSTANCE;
+	}
+
+	@Nonnull
 	private Resolution resolvePackageModel(@Nonnull PackageModel pkg) {
 		String packageName = pkg.isDefaultPackage() ? null : pkg.getName().replace('.', '/');
 		return (PackageResolution) () -> packageName;
@@ -189,11 +230,10 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveClassModel(@Nonnull ClassModel clazz) {
-		PackageResolution pkg = (PackageResolution) unit.getPackage().resolve(this);
 		String name = clazz.getName();
-		if (pkg.isDefaultPackage())
+		if (unit.getPackage().isDefaultPackage())
 			return Resolutions.ofClass(pool, name);
-		return Resolutions.ofClass(pool, pkg.getPackageName() + '/' + name);
+		return resolveDotName(unit.getPackage().getName() + '.' + name);
 	}
 
 	@Nonnull
@@ -308,5 +348,17 @@ public class BasicResolver implements Resolver {
 		if (initializers.isEmpty())
 			return UnknownResolution.INSTANCE;
 		return Resolutions.ofMethod(resolvedDefiningClass.getClassEntry(), initializers.get(0));
+	}
+
+	@Nonnull
+	private Resolution resolveVariableType(@Nonnull VariableModel variable) {
+		TypeModel type = variable.getType();
+
+		// If the type is 'var' then we will solve based on the assigned value expression
+		if (type.getKind() == TypeModel.Kind.VAR)
+			return UnknownResolution.INSTANCE; // TODO: Solve for variable.getValue()
+
+		// Otherwise resolve declared type
+		return resolveType(type);
 	}
 }
