@@ -55,37 +55,10 @@ public abstract class AbstractModel implements Model {
 
 	@Nonnull
 	@Override
-	public Resolution resolve(@Nonnull Resolver resolver) {
-		int index = range.begin();
-		if (index < 0 && parent != null)
-			index = parent.getRange().begin();
-		return resolveAt(resolver, index);
-	}
-
-	@Nonnull
-	@Override
-	public Resolution resolveAt(@Nonnull Resolver resolver, int index) {
+	public Resolution resolveAt(@Nonnull Resolver resolver, int position) {
 		if (resolution == null)
-			resolution = resolver.resolveAt(index, this);
+			resolution = resolver.resolveAt(position, this);
 		return resolution;
-	}
-
-	@Nullable
-	@Override
-	public Model getChildAtPosition(int position) {
-		for (Model child : children)
-			if (child.getRange().isWithin(position))
-				return child;
-		return null;
-	}
-
-	@Nonnull
-	@Override
-	public String getSource(@Nonnull CompilationUnitModel unit) {
-		String src = unit.getInputSource();
-		int begin = Math.max(0, range.begin());
-		int end = Math.min(src.length(), range.end());
-		return src.substring(begin, end);
 	}
 
 	@Nonnull
