@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public interface ClassEntry extends AccessedEntry, DescribableEntry {
 	@Nullable
@@ -27,6 +28,11 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 
 	@Nonnull
 	List<MethodEntry> getMethods();
+
+	@Nonnull
+	default Stream<MemberEntry> memberStream() {
+		return Stream.concat(getFields().stream(), getMethods().stream());
+	}
 
 	@Nullable
 	default FieldEntry getField(@Nonnull String name, @Nonnull String desc) {

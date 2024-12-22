@@ -20,4 +20,8 @@ public interface AccessedEntry {
 	default boolean isPackageProtected() {
 		return (getAccess() & (Modifier.PRIVATE | Modifier.PROTECTED | Modifier.PUBLIC)) == 0;
 	}
+
+	default boolean isStatic() {
+		return (getAccess() & Modifier.STATIC) != 0;
+	}
 }

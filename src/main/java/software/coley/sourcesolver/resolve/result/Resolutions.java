@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.resolve.result;
 
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
+import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
@@ -107,8 +108,23 @@ public class Resolutions {
 	}
 
 	@Nonnull
-	public static MultiClassResolution ofClasses(@Nonnull List<ClassEntry> classesInPackage) {
-		return new MultiClassResolutionImpl(classesInPackage);
+	public static MultiClassResolution ofClasses(@Nonnull List<ClassEntry> classEntries) {
+		return new MultiClassResolutionImpl(classEntries);
+	}
+
+	@Nonnull
+	public static MultiMemberResolution ofMembers(@Nonnull List<ClassMemberPair> memberEntries) {
+		return new MultiMemberResolutionImpl(memberEntries);
+	}
+
+	@Nonnull
+	public static Resolution ofMember(@Nonnull ClassMemberPair pair) {
+		ClassEntry ownerEntry = pair.ownerEntry();
+		if (pair.memberEntry() instanceof FieldEntry fieldEntry)
+			return ofField(ownerEntry, fieldEntry);
+		else if (pair.memberEntry() instanceof MethodEntry methodEntry)
+			return ofMethod(ownerEntry, methodEntry);
+		return unknown();
 	}
 
 	private record PrimitiveResolutionImpl(@Nonnull String desc) implements PrimitiveResolution, DescribableEntry {
@@ -161,6 +177,15 @@ public class Resolutions {
 		@Override
 		public List<ClassEntry> getClassEntries() {
 			return entries;
+		}
+	}
+
+	private record MultiMemberResolutionImpl(
+			@Nonnull List<ClassMemberPair> memberEntries) implements MultiMemberResolution {
+		@Nonnull
+		@Override
+		public List<ClassMemberPair> getMemberEntries() {
+			return memberEntries;
 		}
 	}
 

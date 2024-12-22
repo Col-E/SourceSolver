@@ -2,8 +2,10 @@ package software.coley.sourcesolver.resolve;
 
 import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
+import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
+import software.coley.sourcesolver.resolve.entry.MemberEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
@@ -11,6 +13,7 @@ import software.coley.sourcesolver.resolve.result.FieldResolution;
 import software.coley.sourcesolver.resolve.result.MemberResolution;
 import software.coley.sourcesolver.resolve.result.MethodResolution;
 import software.coley.sourcesolver.resolve.result.MultiClassResolution;
+import software.coley.sourcesolver.resolve.result.MultiMemberResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
 
@@ -274,24 +277,34 @@ public class BasicResolver implements Resolver {
 		String name = imp.getName();
 
 		if (imp.isStatic()) {
+			// Split the import name into 'owner:member'
 			int lastDot = name.lastIndexOf('.');
+			String className = name.substring(0, lastDot);
 			String memberName = name.substring(lastDot + 1);
-			name = name.substring(0, lastDot);
-			if (resolveDotName(name) instanceof ClassResolution declaringClassResolution) {
-				// Find the first matching field/method by the give name.
-				// Star imports cannot be mapped to any given member.
-				if (name.lastIndexOf('*') < 0) {
-					ClassEntry declaringClassEntry = declaringClassResolution.getClassEntry();
-					Collection<FieldEntry> fieldsByName = declaringClassEntry.getDistinctFieldsByNameInHierarchy(memberName).values();
-					if (!fieldsByName.isEmpty())
-						return ofField(declaringClassEntry, fieldsByName.iterator().next());
-					Collection<MethodEntry> methodsByName = declaringClassEntry.getDistinctMethodsByNameInHierarchy(memberName).values();
-					if (!methodsByName.isEmpty())
-						return ofMethod(declaringClassEntry, methodsByName.iterator().next());
-				}
 
-				// Fall back to just the class resolution.
-				return declaringClassResolution;
+			// If the class can be resolved, yield the methods matching the given member name
+			if (resolveDotName(className) instanceof ClassResolution declaringClassResolution) {
+				if (memberName.lastIndexOf('*') >= 0) {
+					// Star import, so all members of the class should be returned.
+					List<ClassMemberPair> memberEntries = new ArrayList<>();
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> {
+						memberEntries.addAll(owner.memberStream()
+								.filter(e -> !e.isPrivate() && e.isStatic())
+								.map(e -> new ClassMemberPair(owner, e))
+								.toList());
+					});
+					return ofMembers(memberEntries);
+				} else {
+					// Specific name import, so only members with the same name should be returned.
+					List<ClassMemberPair> memberEntries = new ArrayList<>();
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> {
+						memberEntries.addAll(owner.memberStream()
+								.filter(e -> !e.isPrivate() && e.isStatic() && e.getName().equals(memberName))
+								.map(e -> new ClassMemberPair(owner, e))
+								.toList());
+					});
+					return ofMembers(memberEntries);
+				}
 			}
 			return unknown();
 		}
