@@ -3,10 +3,12 @@ package software.coley.sourcesolver.resolve;
 import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
 import software.coley.sourcesolver.resolve.entry.MemberEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
 import software.coley.sourcesolver.resolve.result.FieldResolution;
@@ -20,7 +22,6 @@ import software.coley.sourcesolver.resolve.result.Resolution;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +142,9 @@ public class BasicResolver implements Resolver {
 			Resolution resolution = resolveImportedDotName(named);
 			if (!resolution.isUnknown())
 				return resolution;
-		} else if (parent instanceof MethodInvocationExpressionModel methodInvocation)
+		} else if (parent instanceof MethodInvocationExpressionModel methodInvocation
+				&& named == methodInvocation.getMethodSelect())
+			// The named model is the method name.
 			return resolveMember(methodInvocation);
 
 		String name = named.getName();
@@ -150,9 +153,12 @@ public class BasicResolver implements Resolver {
 		Model containingMethod = named.getParentOfType(MethodModel.class);
 		if (containingMethod != null) {
 			// TODO: This isn't technically correct as multiple scopes in the method can define
-			//  variables of the same name, but with different types.
+			//   variables of the same name, but with different types.
 			//  So we'll want a walk up one scope at a time instead of just jumping to the root method
-			//  and looking at all defined variables.
+			//   and looking at all defined variables.
+			//  Each scope step up we take, we still want to ensure its variables flow into the scope where
+			//   our named model exists within. Consider "if (!(foo instanceof String bar)) { ... }" where the 'bar'
+			//   is actually only accessible in a "else { ... }" block or following the "if" block if the block returns.
 			List<VariableModel> variables = containingMethod.getRecursiveChildrenOfType(VariableModel.class);
 			for (VariableModel variable : variables) {
 				if (variable.getName().equals(name)) {
@@ -167,31 +173,9 @@ public class BasicResolver implements Resolver {
 		//  - If it's an inner class there will be more parents of the class model type,
 		//    so we'll want to iterate on the containing class if nothing is found in this one
 		//  - Fields can be in this class, or any parent
-		ClassModel containingClass = named.getParentOfType(ClassModel.class);
-		while (containingClass != null) {
-			// TODO: When we look in outer classes we should consider the relation of static inners with outer fields
-			// TODO: We need to check static imported methods as well
-			if (resolveClassModel(containingClass) instanceof ClassResolution classResolution) {
-				ClassEntry classEntry = classResolution.getClassEntry();
-				Resolution resolution = resolveFieldByName(classEntry, name);
-				if (!resolution.isUnknown())
-					return resolution;
-			}
-
-			// Visit next parent class model (outer class if this one is an inner class)
-			containingClass = containingClass.getParentOfType(ClassModel.class);
-		}
-
-		// Try looking for imported static fields.
-		String staticImportPattern = '.' + name;
-		for (ImportModel imp : unit.getImports()) {
-			if (!imp.isStatic() || !imp.getName().endsWith(staticImportPattern))
-				continue;
-			if (resolveImportModel(imp) instanceof FieldResolution fieldResolution
-					&& fieldResolution.getFieldEntry().getName().equals(name)) {
-				return fieldResolution;
-			}
-		}
+		Resolution resolution = resolveMemberByNameInModel(named, named.getName(), MemberTarget.FIELDS);
+		if (resolution.isUnknown())
+			return resolution;
 
 		return unknown();
 	}
@@ -338,15 +322,15 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String fieldName = field.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
-		if (resolveFieldByName(definingClassEntry, fieldName) instanceof FieldResolution resolution)
+		if (resolveFieldByNameInClass(definingClassEntry, fieldName) instanceof FieldResolution resolution)
 			return resolution;
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
-		if (!(field.getType().resolve(this) instanceof DescribableResolution resolvedType))
-			return unknown();
+		if (field.getType().resolve(this) instanceof DescribableResolution resolvedType)
+			return ofField(definingClassEntry, fieldName, resolvedType.getDescribableEntry().getDescriptor());
 
-		// Resolve by name/descriptor.
-		return ofField(definingClassEntry, fieldName, resolvedType.getDescribableEntry().getDescriptor());
+		// Cannot resolve field.
+		return unknown();
 	}
 
 	@Nonnull
@@ -360,7 +344,7 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String methodName = method.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
-		if (resolveMethodByName(definingClassEntry, methodName) instanceof MethodResolution resolution)
+		if (resolveMethodByNameInClass(definingClassEntry, methodName) instanceof MethodResolution resolution)
 			return resolution;
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
@@ -383,7 +367,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private static Resolution resolveFieldByName(@Nonnull ClassEntry classEntry, @Nonnull String fieldName) {
+	private static Resolution resolveFieldByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String fieldName) {
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = classEntry.getFieldsByName(fieldName);
 		if (fieldsByName.size() == 1) {
@@ -394,36 +378,116 @@ public class BasicResolver implements Resolver {
 
 		// Check in super-type.
 		if (classEntry.getSuperEntry() != null
-				&& resolveFieldByName(classEntry.getSuperEntry(), fieldName) instanceof FieldResolution resolution)
+				&& resolveFieldByNameInClass(classEntry.getSuperEntry(), fieldName) instanceof FieldResolution resolution)
 			return resolution;
 
 		// Check in interfaces.
 		for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-			if (resolveFieldByName(implementedEntry, fieldName) instanceof FieldResolution resolution)
+			if (resolveFieldByNameInClass(implementedEntry, fieldName) instanceof FieldResolution resolution)
 				return resolution;
 
 		return unknown();
 	}
 
 	@Nonnull
-	private static Resolution resolveMethodByName(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
-		// Check if the method is declared in this class, and is unique in the hierarchy in terms of signature.
+	private static Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
+		return resolveMethodByNameInClass(classEntry, methodName, null);
+	}
+
+	private static Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
+	                                                     @Nullable List<DescribableEntry> argumentTypes) {
+		// Check if the method is declared in this class.
+		//  - Only one match by name   --> match
+		//  - Multiple matches by name --> filter by matching signature --> match
 		List<MethodEntry> methodsByName = classEntry.getMethodsByName(methodName);
-		if (methodsByName.size() == 1) {
-			Map<String, MethodEntry> methodsByNameInHierarchy = classEntry.getDistinctMethodsByNameInHierarchy(methodName);
-			if (methodsByNameInHierarchy.size() == 1)
-				return ofMethod(classEntry, methodsByNameInHierarchy.values().iterator().next());
+		if (methodsByName.size() == 1)
+			return ofMethod(classEntry, methodsByName.get(0));
+		if (methodsByName.size() > 1 && argumentTypes != null) {
+			/*
+			TODO: Need to be able to split up the method descriptor and compare each type
+			for (MethodEntry methodEntry : methodsByName) {
+				if (argumentTypes.size() != methodEntry.getArguments().size())
+					continue;
+				if (eachIsAssignable(argumentTypes, methodEntry.getArguments())
+					return ofMethod(classEntry, methodEntry);
+			}
+			 */
 		}
 
 		// Check in super-type.
 		if (classEntry.getSuperEntry() != null
-				&& resolveMethodByName(classEntry.getSuperEntry(), methodName) instanceof MethodResolution resolution)
+				&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, argumentTypes) instanceof MethodResolution resolution)
 			return resolution;
 
 		// Check in interfaces.
 		for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-			if (resolveMethodByName(implementedEntry, methodName) instanceof MethodResolution resolution)
+			if (resolveMethodByNameInClass(implementedEntry, methodName, argumentTypes) instanceof MethodResolution resolution)
 				return resolution;
+
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveMemberByNameInModel(@Nonnull Model origin, @Nonnull String name, @Nonnull MemberTarget target) {
+		boolean isFieldsTarget = target == MemberTarget.FIELDS;
+
+		ClassModel classContext = origin.getParentOfType(ClassModel.class);
+		boolean wasLastClassContextStatic = false;
+		while (classContext != null) {
+			if (resolveClassModel(classContext) instanceof ClassResolution classResolution) {
+				// When we get the class entry, we want to filter it to only view static content if we are coming from
+				// the context of a static inner class. If it is a non-static class or a top-level class
+				// then no filtering is needed.
+				ClassEntry classEntry = wasLastClassContextStatic ?
+						new StaticFilteredClassEntry(classResolution.getClassEntry()) : classResolution.getClassEntry();
+				Resolution resolution = isFieldsTarget ?
+						resolveFieldByNameInClass(classEntry, name) :
+						resolveMethodByNameInClass(classEntry, name);
+				if (!resolution.isUnknown())
+					return resolution;
+				wasLastClassContextStatic = classEntry.isStatic();
+			}
+			classContext = classContext.getParentOfType(ClassModel.class);
+		}
+
+		// Try looking for imported static members.
+		String namedStaticImportPattern = '.' + name;
+		for (ImportModel imp : unit.getImports()) {
+			if (!imp.isStatic())
+				continue;
+
+			// Examples:
+			//   import static com.foo.Utils.FIELD_NAME
+			//   import static com.foo.Utils.*
+			if (imp.getName().endsWith(namedStaticImportPattern) || imp.getName().endsWith(".*")) {
+				Resolution importResolution = resolveImportModel(imp);
+				if (isFieldsTarget) {
+					// Resolve against imported fields
+					if (importResolution instanceof FieldResolution fieldResolution
+							&& fieldResolution.getFieldEntry().getName().equals(name)) {
+						return fieldResolution;
+					} else if (importResolution instanceof MultiMemberResolution multiMemberresolution) {
+						for (ClassMemberPair pair : multiMemberresolution.getMemberEntries()) {
+							MemberEntry memberEntry = pair.memberEntry();
+							if (memberEntry.isField() && memberEntry.getName().equals(name))
+								return ofMember(pair);
+						}
+					}
+				} else {
+					// Resolve against imported methods
+					if (importResolution instanceof MethodResolution fieldResolution
+							&& fieldResolution.getMethodEntry().getName().equals(name)) {
+						return fieldResolution;
+					} else if (importResolution instanceof MultiMemberResolution multiMemberresolution) {
+						for (ClassMemberPair pair : multiMemberresolution.getMemberEntries()) {
+							MemberEntry memberEntry = pair.memberEntry();
+							if (memberEntry.isMethod() && memberEntry.getName().equals(name))
+								return ofMember(pair);
+						}
+					}
+				}
+			}
+		}
 
 		return unknown();
 	}
@@ -461,49 +525,57 @@ public class BasicResolver implements Resolver {
 		if (select instanceof MemberSelectExpressionModel memberSelect)
 			// Selection is in the pattern of 'context.methodName' so solve with the context in mind.
 			return resolveMemberSelection(memberSelect);
-		else if (select instanceof NameExpressionModel name) {
+		else if (select instanceof NameExpressionModel named) {
 			// Selection is in the pattern of 'methodName' so solve with the containing class as context.
-			ClassModel classContext = methodInvocation.getParentOfType(ClassModel.class);
-			while (classContext != null) {
-				// TODO: When we look in outer classes we should consider the relation of static inners with outer methods
-				// TODO: We need to check static imported methods as well
-				if (resolveClassModel(classContext) instanceof ClassResolution classResolution) {
-					Resolution resolution = resolveMethodByName(classResolution.getClassEntry(), name.getName());
-					if (!resolution.isUnknown())
-						return resolution;
-				}
-				classContext = classContext.getParentOfType(ClassModel.class);
-			}
+			Resolution resolution = resolveMemberByNameInModel(methodInvocation, named.getName(), MemberTarget.METHODS);
+			if (resolution.isUnknown())
+				return resolution;
 		}
 		return unknown();
 	}
 
 	@Nonnull
 	private Resolution resolveMemberSelection(@Nonnull MemberSelectExpressionModel memberSelect) {
-		Resolution contextResolution = resolve(memberSelect.getContext());
-
-		// TODO: We need to be able to hint to 'resolveXByName' what the expected type of the member is
-		//  - Will allow de-conflicting of:
-		//     - multiple fields of the same name but different types
-		//     - multiple methods of the same name but different types (common practice of telescoping)
 		String memberName = memberSelect.getName();
-		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel) {
+		Resolution contextResolution = memberSelect.getContext().resolve(this);
+		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel methodInvocation) {
+			// TODO: Resolve the implied return type based on the methodInvocation's use case
+			//  and use that as an additional hint to 'resolveMethodByNameInClass'
+
+			// Resolve the method's arguments.
+			List<AbstractExpressionModel> arguments = methodInvocation.getArguments();
+			List<DescribableEntry> describableArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
+			for (AbstractExpressionModel argument : arguments) {
+				Resolution resolution = argument.resolve(this);
+				if (resolution instanceof DescribableResolution describableResolution) {
+					describableArguments.add(describableResolution.getDescribableEntry());
+				} else {
+					// If any of the arguments cannot be described, then we will treat it as if
+					// we don't know anything about the arguments at all.
+					describableArguments = null;
+					break;
+				}
+			}
+
 			// Member selection is the method identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveMethodByName(declaringClass, memberName);
+				return resolveMethodByNameInClass(declaringClass, memberName, describableArguments);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
 				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveMethodByName(declaringClass, memberName);
+				return resolveMethodByNameInClass(declaringClass, memberName, describableArguments);
 			}
 		} else {
+			// TODO: Resolve the implied field type based on the use case of the selection
+			//  and use that as an additional hint to 'resolveFieldByNameInClass'
+
 			// Member selection should be a field identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveFieldByName(declaringClass, memberName);
+				return resolveFieldByNameInClass(declaringClass, memberName);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
 				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveFieldByName(declaringClass, memberName);
+				return resolveFieldByNameInClass(declaringClass, memberName);
 			}
 		}
 
@@ -522,5 +594,9 @@ public class BasicResolver implements Resolver {
 			case STRING -> ofClass(pool, "java/lang/String");
 			default -> unknown();
 		};
+	}
+
+	private enum MemberTarget {
+		FIELDS, METHODS
 	}
 }
