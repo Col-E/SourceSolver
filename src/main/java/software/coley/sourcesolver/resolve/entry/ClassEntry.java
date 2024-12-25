@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -16,6 +17,28 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 
 	@Nonnull
 	List<ClassEntry> getImplementedEntries();
+
+	@Override
+	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
+		if (other instanceof ClassEntry otherClass)
+			return isAssignableFrom(otherClass);
+		return false;
+	}
+
+	default boolean isAssignableFrom(@Nonnull ClassEntry child) {
+		if (Objects.equals(getName(), child.getName()))
+			return true;
+
+		ClassEntry superEntry = child.getSuperEntry();
+		if (superEntry != null && isAssignableFrom(superEntry))
+			return true;
+
+		for (ClassEntry implementedEntry : child.getImplementedEntries())
+			if (isAssignableFrom(implementedEntry))
+				return true;
+
+		return false;
+	}
 
 	/**
 	 * @return Name of class in internal format.

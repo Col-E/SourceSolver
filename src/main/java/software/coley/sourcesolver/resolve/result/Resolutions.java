@@ -1,11 +1,13 @@
 package software.coley.sourcesolver.resolve.result;
 
+import software.coley.sourcesolver.resolve.entry.ArrayEntry;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -22,25 +24,18 @@ public class Resolutions {
 	}
 
 	@Nonnull
-	public static PrimitiveResolution ofPrimitive(@Nonnull String desc) {
-		if (desc.length() != 1) throw new IllegalStateException("Not a primitive descriptor: " + desc);
-		return switch (desc.charAt(0)) {
-			case 'Z' -> PrimitiveResolutionImpl.BOOLEAN;
-			case 'B' -> PrimitiveResolutionImpl.BYTE;
-			case 'S' -> PrimitiveResolutionImpl.SHORT;
-			case 'I' -> PrimitiveResolutionImpl.INT;
-			case 'J' -> PrimitiveResolutionImpl.LONG;
-			case 'C' -> PrimitiveResolutionImpl.CHAR;
-			case 'F' -> PrimitiveResolutionImpl.FLOAT;
-			case 'D' -> PrimitiveResolutionImpl.DOUBLE;
-			case 'V' -> PrimitiveResolutionImpl.VOID;
-			default -> throw new IllegalStateException("Invalid primitive descriptor: " + desc);
-		};
+	public static PrimitiveResolution ofPrimitive(@Nonnull String descriptor) {
+		return ofPrimitive(PrimitiveEntry.getPrimitive(descriptor));
+	}
+
+	@Nonnull
+	public static PrimitiveResolution ofPrimitive(@Nonnull PrimitiveEntry primitive) {
+		return new PrimitiveResolutionImpl(primitive);
 	}
 
 	@Nonnull
 	public static ArrayResolution ofArray(@Nonnull DescribableResolution elementType, int dimensions) {
-		return new ArrayResolutionImpl(elementType, dimensions);
+		return new ArrayResolutionImpl(ArrayEntry.getArray(dimensions, elementType.getDescribableEntry()));
 	}
 
 	@Nonnull
@@ -127,48 +122,30 @@ public class Resolutions {
 		return unknown();
 	}
 
-	private record PrimitiveResolutionImpl(@Nonnull String desc) implements PrimitiveResolution, DescribableEntry {
-		private static final PrimitiveResolution BOOLEAN = new PrimitiveResolutionImpl("Z");
-		private static final PrimitiveResolution BYTE = new PrimitiveResolutionImpl("B");
-		private static final PrimitiveResolution SHORT = new PrimitiveResolutionImpl("S");
-		private static final PrimitiveResolution INT = new PrimitiveResolutionImpl("I");
-		private static final PrimitiveResolution LONG = new PrimitiveResolutionImpl("J");
-		private static final PrimitiveResolution CHAR = new PrimitiveResolutionImpl("C");
-		private static final PrimitiveResolution FLOAT = new PrimitiveResolutionImpl("F");
-		private static final PrimitiveResolution DOUBLE = new PrimitiveResolutionImpl("D");
-		private static final PrimitiveResolution VOID = new PrimitiveResolutionImpl("V");
-
+	private record PrimitiveResolutionImpl(@Nonnull PrimitiveEntry primitive) implements PrimitiveResolution {
 		@Nonnull
 		@Override
-		public DescribableEntry getDescribableEntry() {
-			return this;
-		}
-
-		@Nonnull
-		@Override
-		public String getDescriptor() {
-			return desc;
+		public PrimitiveEntry getDescribableEntry() {
+			return primitive;
 		}
 	}
 
-	private record ArrayResolutionImpl(@Nonnull DescribableResolution elementResolution,
-	                                   int dimensions) implements ArrayResolution, DescribableEntry {
+	private record ArrayResolutionImpl(@Nonnull ArrayEntry array) implements ArrayResolution {
 		@Nonnull
 		@Override
 		public DescribableResolution getElementTypeResolution() {
-			return elementResolution;
+			DescribableEntry element = array.getElementEntry();
+			if (element instanceof ClassEntry classElement)
+				return ofClass(classElement);
+			else if (element instanceof PrimitiveEntry primitiveElement)
+				return ofPrimitive(primitiveElement);
+			throw new IllegalStateException("Unknown element type: " + element.getClass().getSimpleName());
 		}
 
 		@Nonnull
 		@Override
-		public DescribableEntry getDescribableEntry() {
-			return this;
-		}
-
-		@Nonnull
-		@Override
-		public String getDescriptor() {
-			return "[".repeat(dimensions) + elementResolution.getDescribableEntry().getDescriptor();
+		public ArrayEntry getDescribableEntry() {
+			return array;
 		}
 	}
 

@@ -9,4 +9,9 @@ public interface MemberEntry extends AccessedEntry, DescribableEntry {
 
 	@Nonnull
 	String getName();
+
+	@Override
+	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
+		return false;
+	}
 }
