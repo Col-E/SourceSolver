@@ -1,14 +1,7 @@
 package software.coley.sourcesolver.resolve;
 
 import software.coley.sourcesolver.model.*;
-import software.coley.sourcesolver.resolve.entry.ClassEntry;
-import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
-import software.coley.sourcesolver.resolve.entry.DescribableEntry;
-import software.coley.sourcesolver.resolve.entry.EntryPool;
-import software.coley.sourcesolver.resolve.entry.FieldEntry;
-import software.coley.sourcesolver.resolve.entry.MemberEntry;
-import software.coley.sourcesolver.resolve.entry.MethodEntry;
-import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
+import software.coley.sourcesolver.resolve.entry.*;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
 import software.coley.sourcesolver.resolve.result.FieldResolution;
@@ -25,8 +18,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
+import static software.coley.sourcesolver.resolve.entry.PrimitiveEntry.*;
 import static software.coley.sourcesolver.resolve.result.Resolutions.*;
 
 public class BasicResolver implements Resolver {
@@ -104,16 +99,23 @@ public class BasicResolver implements Resolver {
 			return unknown(); // TODO: Annotations
 		else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
 			return resolveMemberSelection(memberSelectExpression);
-		else if (target instanceof NamedModel named)
+		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel) {
+			return resolveMethodReturnType(methodInvocationExpressionModel);
+		} else if (target instanceof NamedModel named)
 			return resolveNameUsage(named);
 		else if (target instanceof TypeModel type)
 			return resolveType(type);
+		else if (target instanceof CastExpressionModel cast)
+			return resolve(cast.getType());
 		else if (target instanceof ModifiersModel)
 			return resolve(target.getParent());
 		else if (target instanceof LiteralExpressionModel literal)
 			return resolveLiteral(literal);
+		else if (target instanceof ParenthesizedExpressionModel parenthesizedExpression)
+			return parenthesizedExpression.getExpression().resolve(this);
+		else if (target instanceof BinaryExpressionModel binaryExpression)
+			return resolveBinaryExpression(binaryExpression);
 
-		System.err.println(target.getClass().getSimpleName() + " : parent=" + target.getParent().getClass().getSimpleName());
 		return unknown();
 	}
 
@@ -139,6 +141,7 @@ public class BasicResolver implements Resolver {
 			// Member selection can be:
 			//  ClassName.staticMethod() --> We want to do dot-name resolution.
 			//  variable.virtualMethod() --> We want to resolve the type of 'variable' and look for the member in there.
+			//   - Variable resolving is handled by fallthrough of else-if handling further below.
 			Resolution resolution = resolveImportedDotName(named);
 			if (!resolution.isUnknown())
 				return resolution;
@@ -174,7 +177,7 @@ public class BasicResolver implements Resolver {
 		//    so we'll want to iterate on the containing class if nothing is found in this one
 		//  - Fields can be in this class, or any parent
 		Resolution resolution = resolveMemberByNameInModel(named, named.getName(), MemberTarget.FIELDS);
-		if (resolution.isUnknown())
+		if (!resolution.isUnknown())
 			return resolution;
 
 		return unknown();
@@ -322,7 +325,7 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String fieldName = field.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
-		if (resolveFieldByNameInClass(definingClassEntry, fieldName) instanceof FieldResolution resolution)
+		if (resolveFieldByNameInClass(definingClassEntry, fieldName, null) instanceof FieldResolution resolution)
 			return resolution;
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
@@ -367,61 +370,89 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private static Resolution resolveFieldByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String fieldName) {
+	private Resolution resolveFieldByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String fieldName,
+	                                             @Nullable DescribableEntry typeEntryHint) {
+		// Edge case for implicit "this" class variable.
+		if (fieldName.equals("this"))
+			return ofClass(classEntry);
+
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = classEntry.getFieldsByName(fieldName);
-		if (fieldsByName.size() == 1) {
-			Map<String, FieldEntry> fieldsByNameInHierarchy = classEntry.getDistinctFieldsByNameInHierarchy(fieldName);
-			if (fieldsByNameInHierarchy.size() == 1)
-				return ofField(classEntry, fieldsByNameInHierarchy.values().iterator().next());
-		}
+		if (fieldsByName.size() == 1)
+			return ofField(classEntry, fieldsByName.get(0));
 
 		// Check in super-type.
 		if (classEntry.getSuperEntry() != null
-				&& resolveFieldByNameInClass(classEntry.getSuperEntry(), fieldName) instanceof FieldResolution resolution)
+				&& resolveFieldByNameInClass(classEntry.getSuperEntry(), fieldName, typeEntryHint) instanceof FieldResolution resolution)
 			return resolution;
 
 		// Check in interfaces.
 		for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-			if (resolveFieldByNameInClass(implementedEntry, fieldName) instanceof FieldResolution resolution)
+			if (resolveFieldByNameInClass(implementedEntry, fieldName, typeEntryHint) instanceof FieldResolution resolution)
 				return resolution;
 
 		return unknown();
 	}
 
 	@Nonnull
-	private static Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
-		return resolveMethodByNameInClass(classEntry, methodName, null);
+	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
+		return resolveMethodByNameInClass(classEntry, methodName, null, null);
 	}
 
-	private static Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
-	                                                     @Nullable List<DescribableEntry> argumentTypes) {
+	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
+	                                              @Nullable DescribableEntry returnTypeEntry,
+	                                              @Nullable List<DescribableEntry> argumentTypeEntries) {
 		// Check if the method is declared in this class.
 		//  - Only one match by name   --> match
 		//  - Multiple matches by name --> filter by matching signature --> match
 		List<MethodEntry> methodsByName = classEntry.getMethodsByName(methodName);
 		if (methodsByName.size() == 1)
 			return ofMethod(classEntry, methodsByName.get(0));
-		if (methodsByName.size() > 1 && argumentTypes != null) {
-			/*
-			TODO: Need to be able to split up the method descriptor and compare each type
-			for (MethodEntry methodEntry : methodsByName) {
-				if (argumentTypes.size() != methodEntry.getArguments().size())
-					continue;
-				if (eachIsAssignable(argumentTypes, methodEntry.getArguments())
-					return ofMethod(classEntry, methodEntry);
+		if (methodsByName.size() > 1 && (returnTypeEntry != null || argumentTypeEntries != null)) {
+			// Try and prune candidates by filtering against presumed return/argument types.
+			for (int i = methodsByName.size() - 1; i >= 0; i--) {
+				MethodEntry methodEntry = methodsByName.get(i);
+
+				// Prune method candidates with mismatching return types.
+				if (returnTypeEntry != null) {
+					DescribableEntry describableReturn = pool.getDescribable(methodEntry.getReturnDescriptor());
+					if (describableReturn != null && !describableReturn.isAssignableFrom(returnTypeEntry)) {
+						methodsByName.remove(methodEntry);
+						continue;
+					}
+				}
+
+				// Prune method candidates with mismatching argument types.
+				if (argumentTypeEntries != null) {
+					List<String> argumentDescriptors = methodEntry.getParameterDescriptors();
+					if (argumentTypeEntries.size() != argumentDescriptors.size()) {
+						methodsByName.remove(methodEntry);
+						continue;
+					}
+					for (int j = 0; j < argumentDescriptors.size(); j++) {
+						String parameterDescriptor = argumentDescriptors.get(j);
+						DescribableEntry describableParameter = pool.getDescribable(parameterDescriptor);
+						if (describableParameter != null && !describableParameter.isAssignableFrom(argumentTypeEntries.get(j))) {
+							methodsByName.remove(methodEntry);
+							break;
+						}
+					}
+				}
 			}
-			 */
+
+			// Check again after pruning if there is only a single candidate.
+			if (methodsByName.size() == 1)
+				return ofMethod(classEntry, methodsByName.get(0));
 		}
 
 		// Check in super-type.
 		if (classEntry.getSuperEntry() != null
-				&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, argumentTypes) instanceof MethodResolution resolution)
+				&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
 			return resolution;
 
 		// Check in interfaces.
 		for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-			if (resolveMethodByNameInClass(implementedEntry, methodName, argumentTypes) instanceof MethodResolution resolution)
+			if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
 				return resolution;
 
 		return unknown();
@@ -441,8 +472,9 @@ public class BasicResolver implements Resolver {
 				ClassEntry classEntry = wasLastClassContextStatic ?
 						new StaticFilteredClassEntry(classResolution.getClassEntry()) : classResolution.getClassEntry();
 				Resolution resolution = isFieldsTarget ?
-						resolveFieldByNameInClass(classEntry, name) :
-						resolveMethodByNameInClass(classEntry, name);
+						resolveFieldByNameInClass(classEntry, name, null) :
+						resolveMethodByNameInClass(classEntry, name, null,
+								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */);
 				if (!resolution.isUnknown())
 					return resolution;
 				wasLastClassContextStatic = classEntry.isStatic();
@@ -528,7 +560,7 @@ public class BasicResolver implements Resolver {
 		else if (select instanceof NameExpressionModel named) {
 			// Selection is in the pattern of 'methodName' so solve with the containing class as context.
 			Resolution resolution = resolveMemberByNameInModel(methodInvocation, named.getName(), MemberTarget.METHODS);
-			if (resolution.isUnknown())
+			if (!resolution.isUnknown())
 				return resolution;
 		}
 		return unknown();
@@ -541,41 +573,44 @@ public class BasicResolver implements Resolver {
 		if (memberSelect.getParent() instanceof MethodInvocationExpressionModel methodInvocation) {
 			// TODO: Resolve the implied return type based on the methodInvocation's use case
 			//  and use that as an additional hint to 'resolveMethodByNameInClass'
+			//   - But only if necessary
+			DescribableEntry returnType = null;
 
 			// Resolve the method's arguments.
-			List<AbstractExpressionModel> arguments = methodInvocation.getArguments();
-			List<DescribableEntry> describableArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
-			for (AbstractExpressionModel argument : arguments) {
-				Resolution resolution = argument.resolve(this);
-				if (resolution instanceof DescribableResolution describableResolution) {
-					describableArguments.add(describableResolution.getDescribableEntry());
-				} else {
-					// If any of the arguments cannot be described, then we will treat it as if
-					// we don't know anything about the arguments at all.
-					describableArguments = null;
-					break;
-				}
-			}
+			//  TODO: Only do this if necessary
+			List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(methodInvocation);
 
 			// Member selection is the method identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveMethodByNameInClass(declaringClass, memberName, describableArguments);
+				return resolveMethodByNameInClass(declaringClass, memberName, returnType, describableArguments);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
 				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveMethodByNameInClass(declaringClass, memberName, describableArguments);
+				return resolveMethodByNameInClass(declaringClass, memberName, returnType, describableArguments);
 			}
 		} else {
 			// TODO: Resolve the implied field type based on the use case of the selection
 			//  and use that as an additional hint to 'resolveFieldByNameInClass'
+			DescribableEntry usageType = null;
 
 			// Member selection should be a field identifier
 			if (contextResolution instanceof ClassResolution classResolution) {
+				// The identifier is in the context of a class identifier such as:
+				//  - StringConstants.TARGET_NAME
 				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveFieldByNameInClass(declaringClass, memberName);
+				return resolveFieldByNameInClass(declaringClass, memberName, usageType);
 			} else if (contextResolution instanceof MemberResolution memberResolution) {
-				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveFieldByNameInClass(declaringClass, memberName);
+				// The identifier is in the context of another member identifier such as:
+				//  - someField.targetName
+				DescribableEntry fieldType = pool.getDescribable(memberResolution.getDescribableEntry().getDescriptor());
+				if (fieldType instanceof ClassEntry fieldClassType)
+					return resolveFieldByNameInClass(fieldClassType, memberName, usageType);
+				else if (fieldType instanceof ArrayEntry) {
+					// Special case handling for arrays
+					if (memberName.equals("length"))
+						return ofPrimitive(INT);
+					return resolveFieldByNameInClass(Objects.requireNonNull(pool.getClass("java/lang/Object")), memberName, usageType);
+				}
 			}
 		}
 
@@ -583,17 +618,77 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
+	private Resolution resolveMethodReturnType(@Nonnull MethodInvocationExpressionModel methodInvocation) {
+		if (resolveMember(methodInvocation) instanceof MethodResolution resolvedInvocation) {
+			DescribableEntry returnValueEntry = pool.getDescribable(resolvedInvocation.getMethodEntry().getReturnDescriptor());
+			if (returnValueEntry instanceof ArrayEntry array)
+				return ofArray(array);
+			else if (returnValueEntry instanceof PrimitiveEntry primitive)
+				return ofPrimitive(primitive);
+			else if (returnValueEntry instanceof ClassEntry clazz)
+				return ofClass(clazz);
+		}
+
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveBinaryExpression(@Nonnull BinaryExpressionModel binary) {
+		return switch (binary.getOperator()) {
+			case PLUS, MINUS, MULTIPLY, DIVIDE, REMAINDER,
+					BIT_OR, BIT_AND, BIT_XOR,
+					SHIFT_LEFT, SHIFT_RIGHT, SHIFT_RIGHT_UNSIGNED ->
+					ofPrimitive(INT); // TODO: Can be other wider types too based on contents of left/right models
+			case EQUALS, NOT_EQUALS,
+					CONDITIONAL_OR, CONDITIONAL_AND,
+					RELATION_LESS, RELATION_GREATER,
+					RELATION_LESS_EQUAL, RELATION_GREATER_EQUAL,
+					RELATION_INSTANCEOF -> ofPrimitive(BOOLEAN);
+			case UNKNOWN -> unknown();
+		};
+	}
+
+	@Nonnull
 	private Resolution resolveLiteral(@Nonnull LiteralExpressionModel literal) {
 		return switch (literal.getKind()) {
-			case INT -> ofPrimitive("I");
-			case LONG -> ofPrimitive("J");
-			case FLOAT -> ofPrimitive("F");
-			case DOUBLE -> ofPrimitive("D");
-			case BOOLEAN -> ofPrimitive("Z");
-			case CHAR -> ofPrimitive("C");
+			case INT -> ofPrimitive(INT);
+			case LONG -> ofPrimitive(LONG);
+			case FLOAT -> ofPrimitive(FLOAT);
+			case DOUBLE -> ofPrimitive(DOUBLE);
+			case BOOLEAN -> ofPrimitive(BOOLEAN);
+			case CHAR -> ofPrimitive(CHAR);
 			case STRING -> ofClass(pool, "java/lang/String");
 			default -> unknown();
 		};
+	}
+
+	@Nullable
+	private List<DescribableEntry> collectMethodArgumentsInParentContext(@Nonnull Model origin) {
+		MethodInvocationExpressionModel methodInvocation = origin instanceof MethodInvocationExpressionModel invoke
+				? invoke : origin.getParentOfType(MethodInvocationExpressionModel.class);
+		if (methodInvocation == null)
+			return null;
+
+		List<AbstractExpressionModel> arguments = methodInvocation.getArguments();
+		List<DescribableEntry> describableArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
+		for (AbstractExpressionModel argument : arguments) {
+			Resolution resolution = argument.resolve(this);
+			if (resolution instanceof DescribableResolution describableResolution) {
+				DescribableEntry argumentDescribableEntry = describableResolution.getDescribableEntry();
+				if (argumentDescribableEntry instanceof FieldEntry)
+					// Because a field entry is describable, but does not support assignable checking we
+					// need to re-interpret the descriptor with contents from the entry-pool.
+					describableArguments.add(pool.getDescribable(argumentDescribableEntry.getDescriptor()));
+				else
+					describableArguments.add(argumentDescribableEntry);
+			} else {
+				// If any of the arguments cannot be described, then we will treat it as if
+				// we don't know anything about the arguments at all.
+				return null;
+			}
+		}
+
+		return describableArguments;
 	}
 
 	private enum MemberTarget {

@@ -39,6 +39,11 @@ public class Resolutions {
 	}
 
 	@Nonnull
+	public static ArrayResolution ofArray(@Nonnull ArrayEntry array) {
+		return new ArrayResolutionImpl(array);
+	}
+
+	@Nonnull
 	public static Resolution ofClass(@Nonnull EntryPool pool, @Nonnull String name) {
 		ClassEntry entry = pool.getClass(name);
 		if (entry == null)
