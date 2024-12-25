@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.resolve.entry.PrimitiveEntry.*;
 import static software.coley.sourcesolver.resolve.result.Resolutions.*;
@@ -443,6 +444,17 @@ public class BasicResolver implements Resolver {
 			// Check again after pruning if there is only a single candidate.
 			if (methodsByName.size() == 1)
 				return ofMethod(classEntry, methodsByName.get(0));
+
+			// Check and see if there is an exact descriptor match.
+			//  TODO: Case where the returnValue but not args are given, case where both are given
+			if (argumentTypeEntries != null) {
+				String argsDesc = "(" + argumentTypeEntries.stream().map(DescribableEntry::getDescriptor).collect(Collectors.joining("")) + ")";
+				methodsByName = methodsByName.stream()
+						.filter(e -> e.getDescriptor().startsWith(argsDesc))
+						.collect(Collectors.toList());
+				if (methodsByName.size() == 1)
+					return ofMethod(classEntry, methodsByName.get(0));
+			}
 		}
 
 		// Check in super-type.
