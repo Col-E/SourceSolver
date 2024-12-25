@@ -1,7 +1,5 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import org.objectweb.asm.Type;
-
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
