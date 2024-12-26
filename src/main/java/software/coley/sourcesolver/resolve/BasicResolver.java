@@ -190,7 +190,7 @@ public class BasicResolver implements Resolver {
 		Resolution resolution = ofClass(pool, name);
 		while (resolution.isUnknown() && name.indexOf('/') >= 0) {
 			int lastSlash = name.lastIndexOf('/');
-			String tail = name.substring(lastSlash) + 1;
+			String tail = name.substring(lastSlash + 1);
 			name = name.substring(0, lastSlash) + '$' + tail;
 		}
 		return resolution;
