@@ -46,6 +46,8 @@ public class BasicResolver implements Resolver {
 						.forEach(entry -> map.put(entry.getName(), entry));
 			}
 		}
+		for (ClassEntry entry : pool.getClassesInPackage("java/lang"))
+			map.put(entry.getName(), entry);
 		return map;
 	}
 
