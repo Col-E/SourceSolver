@@ -3,6 +3,7 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
@@ -42,20 +43,20 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 				typeParameters.stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		Tree extendsClause = tree.getExtendsClause();
-		NameExpressionModel extendsModel = extendsClause == null ? new NameExpressionModel(Range.UNKNOWN, "Object") : context.map(NameMapper.class, extendsClause);
+		NameExpressionModel extendsModel = extendsClause == null ? new NameExpressionModel(Range.UNKNOWN, "Object") : mapMaybeGeneric(context, extendsClause);
 
 		List<? extends Tree> implementsClauses = tree.getImplementsClause();
 		ImplementsModel implementsModel = implementsClauses.isEmpty() ?
 				ImplementsModel.EMPTY :
 				new ImplementsModel(extractRange(table, implementsClauses), implementsClauses.stream()
-						.map(e -> context.map(NameMapper.class, e))
+						.map(e -> mapMaybeGeneric(context, e))
 						.toList());
 
 		List<? extends Tree> permitsClause = tree.getPermitsClause();
 		PermitsModel permitsModel = permitsClause.isEmpty() ?
 				PermitsModel.EMPTY :
 				new PermitsModel(extractRange(table, permitsClause), permitsClause.stream()
-						.map(e -> context.map(NameMapper.class, e))
+						.map(e -> mapMaybeGeneric(context, e))
 						.toList());
 
 		List<VariableModel> fieldModels = new ArrayList<>();
@@ -78,5 +79,15 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 
 		return new ClassModel(extractRange(table, tree), annotationModels, modifiersModel,
 				className.toString(), typeParameterModels, extendsModel, implementsModel, permitsModel, fieldModels, methodModels, innerClassModels);
+	}
+
+	@Nonnull
+	private NameExpressionModel mapMaybeGeneric(@Nonnull MappingContext context, @Nonnull Tree tree) {
+		if (tree instanceof ParameterizedTypeTree parameterizedType)
+			// Used for extending/implementing types with type arguments, such as:
+			//  extends AbstractList<E>
+			//  implements List<E>
+			return context.map(NameMapper.class, parameterizedType.getType());
+		return context.map(NameMapper.class, tree);
 	}
 }

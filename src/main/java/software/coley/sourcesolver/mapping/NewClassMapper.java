@@ -1,6 +1,5 @@
 package software.coley.sourcesolver.mapping;
 
-import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.tools.javac.tree.EndPosTable;
