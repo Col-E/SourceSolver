@@ -618,6 +618,11 @@ public class BasicResolver implements Resolver {
 						return ofPrimitive(INT);
 					return resolveFieldByNameInClass(Objects.requireNonNull(pool.getClass("java/lang/Object")), memberName, usageType);
 				}
+			} else if (contextResolution instanceof ArrayResolution arrayResolution) {
+				// The identifier is in the context of another member identifier representing an array variable such as:
+				//  - args.length
+				if (memberName.equals("length"))
+					return ofPrimitive(INT);
 			}
 		}
 
