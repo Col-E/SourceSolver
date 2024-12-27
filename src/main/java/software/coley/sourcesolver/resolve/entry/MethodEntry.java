@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,5 +37,9 @@ public interface MethodEntry extends MemberEntry {
 
 	default boolean isMethod() {
 		return true;
+	}
+
+	default boolean isVarargs() {
+		return (getAccess() & Modifier.TRANSIENT /* same modifier mask as varargs */) != 0;
 	}
 }

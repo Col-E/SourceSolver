@@ -423,11 +423,50 @@ public class BasicResolver implements Resolver {
 				// Prune method candidates with mismatching argument types.
 				if (argumentTypeEntries != null) {
 					List<String> argumentDescriptors = methodEntry.getParameterDescriptors();
-					if (argumentTypeEntries.size() != argumentDescriptors.size()) {
-						methodsByName.remove(methodEntry);
-						continue;
+					int hintedArgCount = argumentTypeEntries.size();
+					int actualArgCount = argumentDescriptors.size();
+					int maxArgToCheck;
+					if (methodEntry.isVarargs()) {
+						// For vararg methods we only want to check the args up to the varargs parameter
+						// in the loop further below. We will handle variable arg type checking specially here.
+						maxArgToCheck = actualArgCount - 1;
+						if (hintedArgCount < maxArgToCheck) {
+							// If the hinted arg count more than one less than the actual arg count, that means we hit a situation like:
+							//  Actual:  A, B, C, V...
+							//  Hinted:  ?, ?
+							// In this case, it cannot possibly be a match.
+							methodsByName.remove(methodEntry);
+							break;
+						}
+
+						// All hinted variable arguments must be assignable to the actual variable argument's element type.
+						String varargParameterDescriptor = argumentDescriptors.get(argumentDescriptors.size() - 1);
+						if (varargParameterDescriptor.charAt(0) == '[')
+							varargParameterDescriptor = varargParameterDescriptor.substring(1);
+						DescribableEntry varargElementType = pool.getDescribable(varargParameterDescriptor);
+						if (varargElementType != null) {
+							boolean methodRemoved = false;
+							for (int j = maxArgToCheck; j < hintedArgCount; j++) {
+								if (!varargElementType.isAssignableFrom(argumentTypeEntries.get(j))) {
+									methodRemoved = true;
+									methodsByName.remove(methodEntry);
+									break;
+								}
+							}
+							if (methodRemoved)
+								break;
+						}
+					} else {
+						// Not a vararg method, we want to check against all arguments.
+						maxArgToCheck = actualArgCount;
+
+						// If the argument count does not match, it is not a valid consideration.
+						if (hintedArgCount != actualArgCount) {
+							methodsByName.remove(methodEntry);
+							continue;
+						}
 					}
-					for (int j = 0; j < argumentDescriptors.size(); j++) {
+					for (int j = 0; j < maxArgToCheck; j++) {
 						String parameterDescriptor = argumentDescriptors.get(j);
 						DescribableEntry describableParameter = pool.getDescribable(parameterDescriptor);
 						if (describableParameter != null && !describableParameter.isAssignableFrom(argumentTypeEntries.get(j))) {

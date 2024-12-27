@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Resolutions {
-	private static final UnknownResolution INSTANCE = new UnknownResolution() {};
+	private static final UnknownResolution INSTANCE = new UnknownResolutionImpl();
 
 	private Resolutions() {}
 
@@ -208,4 +208,6 @@ public class Resolutions {
 			return methodEntry;
 		}
 	}
+
+	private record UnknownResolutionImpl() implements UnknownResolution {}
 }
