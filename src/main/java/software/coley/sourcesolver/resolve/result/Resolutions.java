@@ -14,13 +14,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Resolutions {
-	private static final UnknownResolution INSTANCE = new UnknownResolutionImpl();
+	private static final UnknownResolution UNKNOWN_RESOLUTION = new UnknownResolutionImpl();
+	private static final NullResolution NULL_RESOLUTION = new NullResolutionImpl();
 
 	private Resolutions() {}
 
 	@Nonnull
 	public static UnknownResolution unknown() {
-		return INSTANCE;
+		return UNKNOWN_RESOLUTION;
+	}
+
+	@Nonnull
+	public static NullResolution nul() {
+		return NULL_RESOLUTION;
 	}
 
 	@Nonnull
@@ -210,4 +216,5 @@ public class Resolutions {
 	}
 
 	private record UnknownResolutionImpl() implements UnknownResolution {}
+	private record NullResolutionImpl() implements NullResolution {}
 }

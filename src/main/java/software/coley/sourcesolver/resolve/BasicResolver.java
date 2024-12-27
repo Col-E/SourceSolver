@@ -717,6 +717,7 @@ public class BasicResolver implements Resolver {
 			case BOOLEAN -> ofPrimitive(BOOLEAN);
 			case CHAR -> ofPrimitive(CHAR);
 			case STRING -> ofClass(pool, "java/lang/String");
+			case NULL -> nul();
 			default -> unknown();
 		};
 	}

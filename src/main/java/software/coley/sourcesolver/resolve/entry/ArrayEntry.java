@@ -15,6 +15,8 @@ public interface ArrayEntry extends DescribableEntry {
 
 	@Override
 	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
+		if (other instanceof NullEntry)
+			return true;
 		if (other instanceof ArrayEntry otherArray)
 			return isAssignableFrom(otherArray);
 		return false;

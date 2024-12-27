@@ -20,6 +20,8 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 
 	@Override
 	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
+		if (other instanceof NullEntry)
+			return true;
 		if (other instanceof ClassEntry otherClass)
 			return isAssignableFrom(otherClass);
 		return false;
