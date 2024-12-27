@@ -2,15 +2,7 @@ package software.coley.sourcesolver.resolve;
 
 import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.resolve.entry.*;
-import software.coley.sourcesolver.resolve.result.ClassResolution;
-import software.coley.sourcesolver.resolve.result.DescribableResolution;
-import software.coley.sourcesolver.resolve.result.FieldResolution;
-import software.coley.sourcesolver.resolve.result.MemberResolution;
-import software.coley.sourcesolver.resolve.result.MethodResolution;
-import software.coley.sourcesolver.resolve.result.MultiClassResolution;
-import software.coley.sourcesolver.resolve.result.MultiMemberResolution;
-import software.coley.sourcesolver.resolve.result.PackageResolution;
-import software.coley.sourcesolver.resolve.result.Resolution;
+import software.coley.sourcesolver.resolve.result.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -138,6 +130,9 @@ public class BasicResolver implements Resolver {
 		else if (parent instanceof TypeModel parentType)
 			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
+		else if (parent instanceof PackageModel parentPackage)
+			// The named model is part of the package declaration.
+			return resolvePackageModel(parentPackage);
 		else if (parent instanceof MemberSelectExpressionModel) {
 			// Member selection can be:
 			//  ClassName.staticMethod() --> We want to do dot-name resolution.
