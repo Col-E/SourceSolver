@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class NewClassExpressionModel extends AbstractExpressionModel implements NamedModel {
 	private final AbstractExpressionModel enclosingExpression;
 	private final List<Model> typeArguments;
@@ -21,7 +23,7 @@ public class NewClassExpressionModel extends AbstractExpressionModel implements 
 	                               @Nonnull AbstractExpressionModel identifier,
 	                               @Nonnull List<AbstractExpressionModel> arguments,
 	                               @Nullable ClassModel body) {
-		super(range);
+		super(range, of(enclosingExpression), of(typeArguments), of(identifier), of(arguments), of(body));
 		this.enclosingExpression = enclosingExpression;
 		this.typeArguments = typeArguments;
 		this.identifier = identifier;

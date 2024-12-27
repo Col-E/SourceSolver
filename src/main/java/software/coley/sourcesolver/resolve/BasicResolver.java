@@ -94,9 +94,11 @@ public class BasicResolver implements Resolver {
 			return unknown(); // TODO: Annotations
 		else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
 			return resolveMemberSelection(memberSelectExpression);
-		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel) {
+		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
 			return resolveMethodReturnType(methodInvocationExpressionModel);
-		} else if (target instanceof NamedModel named)
+		else if (target instanceof NewClassExpressionModel newClass)
+			return resolveImportedDotName(newClass);
+		else if (target instanceof NamedModel named)
 			return resolveNameUsage(named);
 		else if (target instanceof TypeModel type)
 			return resolveType(type);
@@ -129,6 +131,10 @@ public class BasicResolver implements Resolver {
 			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
 			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
 			return resolveImportedDotName(named);
+		else if (parent instanceof NewClassExpressionModel newExpr
+				&& newExpr.getIdentifier() == named)
+			// The named model is the identifier of a 'new T()' expression so resolve as T.
+			return resolveImportedDotName(newExpr);
 		else if (parent instanceof TypeModel parentType)
 			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
