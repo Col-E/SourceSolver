@@ -628,64 +628,31 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMemberInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin, @Nonnull String memberName) {
-		if (origin.getParent() instanceof MethodInvocationExpressionModel methodInvocation) {
-			// TODO: Resolve the implied return type based on the methodInvocation's use case
-			//  and use that as an additional hint to 'resolveMethodByNameInClass'
-			//   - But only if necessary
-			DescribableEntry returnType = null;
-
-			// Resolve the method's arguments.
-			//  TODO: Only do this if necessary
-			List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(methodInvocation);
-
-			// Member selection is the method identifier
-			if (contextResolution instanceof ClassResolution classResolution) {
-				ClassEntry declaringClass = classResolution.getClassEntry();
-				return resolveMethodByNameInClass(declaringClass, memberName, returnType, describableArguments);
-			} else if (contextResolution instanceof MemberResolution memberResolution) {
-				ClassEntry declaringClass = memberResolution.getOwnerEntry();
-				return resolveMethodByNameInClass(declaringClass, memberName, returnType, describableArguments);
-			}
+		if (origin.getParent() instanceof MethodInvocationExpressionModel) {
+			// Member name is in the context of a method invocation
+			return resolveMethodInContext(contextResolution, origin, memberName);
 		} else {
 			if (contextResolution instanceof ClassResolution classResolution) {
+				// Member name can be a field or method identifier in the context of the resolved class.
+				//  - parseInt(...) // From a static import
+				//  - Constants.MY_CONST // From a static field reference
 				ClassEntry declaringClass = classResolution.getClassEntry();
 				if (origin instanceof MethodInvocationExpressionModel) {
-					// TODO: Resolve the implied return type based on the methodInvocation's use case
-					//  and use that as an additional hint to 'resolveMethodByNameInClass'
-					//   - But only if necessary
-					DescribableEntry returnType = null;
-
-					// Resolve the method's arguments.
-					//  TODO: Only do this if necessary
-					List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(origin);
-
-					// Member selection should be in the context of a class identifier such as:
-					//  - StringConstants.TARGET_NAME
-					return resolveMethodByNameInClass(declaringClass, memberName, returnType, describableArguments);
+					return resolveMethodInContext(contextResolution, origin, memberName);
 				} else {
-					// TODO: Resolve the implied field type based on the use case of the selection
-					//  and use that as an additional hint to 'resolveFieldByNameInClass'
-					DescribableEntry usageType = null;
-
-					// Member selection should be a field identifier in the context of a class identifier such as:
-					//  - StringConstants.TARGET_NAME
-					return resolveFieldByNameInClass(declaringClass, memberName, usageType);
+					return resolveFieldInContext(contextResolution, origin, declaringClass, memberName);
 				}
 			} else if (contextResolution instanceof FieldResolution fieldResolution) {
-				// TODO: Resolve the implied field type based on the use case of the selection
-				//  and use that as an additional hint to 'resolveFieldByNameInClass'
-				DescribableEntry usageType = null;
-
 				// The identifier is in the context of another member identifier such as:
 				//  - someField.targetName
 				DescribableEntry fieldType = pool.getDescribable(fieldResolution.getDescribableEntry().getDescriptor());
 				if (fieldType instanceof ClassEntry fieldClassType) {
-					return resolveFieldByNameInClass(fieldClassType, memberName, usageType);
+					return resolveFieldInContext(contextResolution, origin, fieldClassType, memberName);
 				} else if (fieldType instanceof ArrayEntry) {
 					// Special case handling for arrays
 					if (memberName.equals("length"))
 						return ofPrimitive(INT);
-					return resolveFieldByNameInClass(Objects.requireNonNull(pool.getClass("java/lang/Object")), memberName, usageType);
+					return resolveFieldInContext(contextResolution, origin, Objects.requireNonNull(pool.getClass("java/lang/Object")), memberName);
 				}
 			} else if (contextResolution instanceof ArrayResolution) {
 				// The identifier is in the context of another member identifier representing an array variable such as:
@@ -693,6 +660,42 @@ public class BasicResolver implements Resolver {
 				if (memberName.equals("length"))
 					return ofPrimitive(INT);
 			}
+		}
+
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveFieldInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
+	                                         @Nonnull ClassEntry declaringClass, @Nonnull String fieldName) {
+		// TODO: Resolve the implied field type based on the use case of the selection
+		//  and use that as an additional hint to 'resolveFieldByNameInClass'
+		DescribableEntry usageType = null;
+
+		// Member selection should be a field identifier in the context of a class identifier such as:
+		//  - StringConstants.TARGET_NAME
+		return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
+	}
+
+	@Nonnull
+	private Resolution resolveMethodInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
+	                                          @Nonnull String methodName) {
+		// TODO: Resolve the implied return type based on the methodInvocation's use case
+		//  and use that as an additional hint to 'resolveMethodByNameInClass'
+		//   - But only if necessary
+		DescribableEntry returnType = null;
+
+		// Resolve the method's arguments.
+		//  TODO: Only do this if necessary
+		List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(origin);
+
+		// Member selection is the method identifier
+		if (contextResolution instanceof ClassResolution classResolution) {
+			ClassEntry declaringClass = classResolution.getClassEntry();
+			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+		} else if (contextResolution instanceof MemberResolution memberResolution) {
+			ClassEntry declaringClass = memberResolution.getOwnerEntry();
+			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
 		}
 
 		return unknown();
