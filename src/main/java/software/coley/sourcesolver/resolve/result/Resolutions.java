@@ -1,8 +1,8 @@
 package software.coley.sourcesolver.resolve.result;
 
+import jakarta.annotation.Nonnull;
 import software.coley.sourcesolver.resolve.entry.*;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -129,21 +129,29 @@ public class Resolutions {
 	}
 
 	@Nonnull
-	public static MultiClassResolution ofClasses(@Nonnull List<ClassEntry> classEntries) {
+	public static Resolution ofClasses(@Nonnull List<ClassEntry> classEntries) {
+		if (classEntries.isEmpty())
+			return unknown();
 		return new MultiClassResolutionImpl(classEntries);
 	}
 
 	@Nonnull
-	public static MultiMemberResolution ofMembers(@Nonnull List<ClassMemberPair> memberEntries) {
+	public static Resolution ofMembers(@Nonnull List<ClassMemberPair> memberEntries) {
+		if (memberEntries.isEmpty())
+			return unknown();
 		return new MultiMemberResolutionImpl(memberEntries);
 	}
 
 	@Nonnull
 	public static Resolution ofMember(@Nonnull ClassMemberPair pair) {
-		ClassEntry ownerEntry = pair.ownerEntry();
-		if (pair.memberEntry() instanceof FieldEntry fieldEntry)
+		return ofMember(pair.ownerEntry(), pair.memberEntry());
+	}
+
+	@Nonnull
+	public static Resolution ofMember(@Nonnull ClassEntry ownerEntry, @Nonnull MemberEntry memberEntry) {
+		if (memberEntry instanceof FieldEntry fieldEntry)
 			return ofField(ownerEntry, fieldEntry);
-		else if (pair.memberEntry() instanceof MethodEntry methodEntry)
+		else if (memberEntry instanceof MethodEntry methodEntry)
 			return ofMethod(ownerEntry, methodEntry);
 		return unknown();
 	}
