@@ -80,6 +80,7 @@ public class MappingContext {
 		setMapper(ArrayDeclarationMapper.class, new ArrayDeclarationMapper());
 		setMapper(BinaryMapper.class, new BinaryMapper());
 		setMapper(BlockMapper.class, new BlockMapper());
+		setMapper(CaseLabelMapper.class, new CaseLabelMapper());
 		setMapper(CaseMapper.class, new CaseMapper());
 		setMapper(CastMapper.class, new CastMapper());
 		setMapper(CatchMapper.class, new CatchMapper());

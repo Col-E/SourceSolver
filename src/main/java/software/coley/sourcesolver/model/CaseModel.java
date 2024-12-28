@@ -11,16 +11,25 @@ import java.util.stream.Collectors;
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class CaseModel extends AbstractModel {
+	private final List<AbstractCaseLabelModel> labels; // case <label>
 	private final List<AbstractExpressionModel> expressions; // case <expression>
 	private final List<AbstractStatementModel> statements; // body of cases
 	private final Model body; // body of cases
 
-	public CaseModel(@Nonnull Range range, @Nonnull List<AbstractExpressionModel> expressions,
-	                 @Nonnull List<AbstractStatementModel> statements, @Nullable Model body) {
-		super(range, of(expressions), of(statements), of(body));
+	public CaseModel(@Nonnull Range range, @Nonnull List<AbstractCaseLabelModel> labels,
+	                 @Nonnull List<AbstractExpressionModel> expressions,
+	                 @Nonnull List<AbstractStatementModel> statements,
+	                 @Nullable Model body) {
+		super(range, of(labels), of(expressions), of(statements), of(body));
+		this.labels = labels;
 		this.expressions = expressions;
 		this.statements = statements;
 		this.body = body;
+	}
+
+	@Nonnull
+	public List<AbstractCaseLabelModel> getLabels() {
+		return labels;
 	}
 
 	@Nonnull
@@ -45,6 +54,7 @@ public class CaseModel extends AbstractModel {
 
 		CaseModel caseModel = (CaseModel) o;
 
+		if (!labels.equals(caseModel.labels)) return false;
 		if (!expressions.equals(caseModel.expressions)) return false;
 		if (!statements.equals(caseModel.statements)) return false;
 		return Objects.equals(body, caseModel.body);
@@ -52,7 +62,8 @@ public class CaseModel extends AbstractModel {
 
 	@Override
 	public int hashCode() {
-		int result = expressions.hashCode();
+		int result = labels.hashCode();
+		result = 31 * result + expressions.hashCode();
 		result = 31 * result + statements.hashCode();
 		result = 31 * result + (body != null ? body.hashCode() : 0);
 		return result;
