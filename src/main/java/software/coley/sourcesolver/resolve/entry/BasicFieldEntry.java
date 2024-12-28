@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class BasicFieldEntry implements FieldEntry {

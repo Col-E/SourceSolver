@@ -3,7 +3,7 @@ package software.coley.sourcesolver.mapping;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.Parser;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Supplies a {@link MappingContext}.

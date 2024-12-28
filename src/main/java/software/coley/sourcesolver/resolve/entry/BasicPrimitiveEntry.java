@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record BasicPrimitiveEntry(@Nonnull Kind kind, @Nonnull String descriptor) implements PrimitiveEntry {
 	@Nonnull

@@ -6,7 +6,7 @@ import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.BinaryExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 

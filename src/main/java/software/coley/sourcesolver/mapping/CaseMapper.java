@@ -11,7 +11,7 @@ import software.coley.sourcesolver.model.AbstractStatementModel;
 import software.coley.sourcesolver.model.CaseModel;
 import software.coley.sourcesolver.model.Model;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 

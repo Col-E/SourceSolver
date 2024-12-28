@@ -10,7 +10,7 @@ import software.coley.sourcesolver.model.AnnotationArgumentModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.NameExpressionModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 

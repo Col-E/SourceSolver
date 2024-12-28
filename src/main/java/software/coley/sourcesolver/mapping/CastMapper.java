@@ -11,7 +11,7 @@ import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 

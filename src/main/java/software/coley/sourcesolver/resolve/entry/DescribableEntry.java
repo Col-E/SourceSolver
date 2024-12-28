@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Metadata model that can be represented with a type descriptor.

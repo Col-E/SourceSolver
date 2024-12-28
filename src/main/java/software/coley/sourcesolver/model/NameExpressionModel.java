@@ -2,7 +2,7 @@ package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public class NameExpressionModel extends AbstractExpressionModel implements NamedModel {
 	private final String name;

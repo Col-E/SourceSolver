@@ -12,7 +12,7 @@ import software.coley.sourcesolver.model.UnknownPatternModel;
 import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

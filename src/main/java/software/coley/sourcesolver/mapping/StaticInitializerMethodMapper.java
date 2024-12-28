@@ -9,7 +9,7 @@ import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

@@ -1,7 +1,7 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.stream.Collectors;
 

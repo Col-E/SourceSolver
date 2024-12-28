@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.resolve.result;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 /**
  * Resolution of a package.

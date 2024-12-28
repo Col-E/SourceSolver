@@ -1,7 +1,7 @@
 package software.coley.sourcesolver.model;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 /**
  * A model that has an identifier as an expression.

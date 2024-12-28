@@ -3,8 +3,8 @@ package software.coley.sourcesolver.resolve;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.resolve.result.Resolution;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 /**
  * Outlines resolving capabilities.

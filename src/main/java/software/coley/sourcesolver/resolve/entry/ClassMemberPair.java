@@ -1,5 +1,5 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record ClassMemberPair(@Nonnull ClassEntry ownerEntry, @Nonnull MemberEntry memberEntry) {}

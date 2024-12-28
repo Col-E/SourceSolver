@@ -7,8 +7,8 @@ import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;

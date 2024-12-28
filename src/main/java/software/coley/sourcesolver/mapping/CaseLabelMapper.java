@@ -12,7 +12,7 @@ import software.coley.sourcesolver.model.DefaultCaseLabelModel;
 import software.coley.sourcesolver.model.PatternCaseLabelModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 

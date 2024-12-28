@@ -2,7 +2,7 @@ package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Model switch pattern matching as described in the JDK 21 preview feature implementation.

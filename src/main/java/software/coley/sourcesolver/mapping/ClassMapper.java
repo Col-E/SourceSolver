@@ -11,7 +11,7 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import javax.lang.model.element.Name;
 import java.util.ArrayList;
 import java.util.Collections;

@@ -4,7 +4,7 @@ import com.sun.source.tree.IdentifierTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.NameExpressionModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 

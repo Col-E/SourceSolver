@@ -4,8 +4,8 @@ import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.resolve.entry.*;
 import software.coley.sourcesolver.resolve.result.*;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

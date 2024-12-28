@@ -2,7 +2,7 @@ package software.coley.sourcesolver.model;
 
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collection;
 
 public abstract class AbstractCaseLabelModel extends AbstractModel {

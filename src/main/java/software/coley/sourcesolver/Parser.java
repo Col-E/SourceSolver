@@ -11,8 +11,8 @@ import software.coley.sourcesolver.mapping.MappingContext;
 import software.coley.sourcesolver.mapping.MappingContextProvider;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import javax.tools.JavaFileManager;
 import java.lang.reflect.Field;
 

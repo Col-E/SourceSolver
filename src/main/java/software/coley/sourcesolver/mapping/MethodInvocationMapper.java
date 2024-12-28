@@ -7,7 +7,7 @@ import software.coley.sourcesolver.model.MethodInvocationExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

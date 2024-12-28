@@ -4,7 +4,7 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.Model;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Outlines the conversion of a javac tree element to our own model alternative.

@@ -12,7 +12,7 @@ import software.coley.sourcesolver.model.SwitchExpressionModel;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

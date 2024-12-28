@@ -5,7 +5,7 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.MemberSelectExpressionModel;
 import software.coley.sourcesolver.model.Model;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 

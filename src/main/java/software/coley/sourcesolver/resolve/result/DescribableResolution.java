@@ -2,7 +2,7 @@ package software.coley.sourcesolver.resolve.result;
 
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Resolution of some content that can be represented with a descriptor.

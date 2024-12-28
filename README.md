@@ -38,3 +38,5 @@ jdk.compiler/com.sun.tools.javac.parser
 jdk.compiler/com.sun.tools.javac.tree
 jdk.compiler/com.sun.tools.javac.util
 ```
+
+Because the `jdk.compiler` module does not have exports for these packages except to other internal modules, we cannot provide you a `module-info` to do this automatically. Sorry.

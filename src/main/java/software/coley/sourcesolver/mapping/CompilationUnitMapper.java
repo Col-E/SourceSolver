@@ -10,7 +10,7 @@ import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.model.ImportModel;
 import software.coley.sourcesolver.model.PackageModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;

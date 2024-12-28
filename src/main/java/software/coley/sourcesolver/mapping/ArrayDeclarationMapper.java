@@ -8,7 +8,7 @@ import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ArrayDeclarationExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;

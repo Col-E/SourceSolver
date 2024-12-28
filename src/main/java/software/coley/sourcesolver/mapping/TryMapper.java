@@ -9,7 +9,7 @@ import software.coley.sourcesolver.model.CatchModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.TryStatementModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static software.coley.sourcesolver.util.Range.extractRange;

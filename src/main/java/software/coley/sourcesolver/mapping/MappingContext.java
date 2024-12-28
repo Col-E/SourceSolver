@@ -4,8 +4,8 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.Model;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Supplier;

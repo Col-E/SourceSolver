@@ -9,7 +9,7 @@ import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 

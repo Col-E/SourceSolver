@@ -3,8 +3,8 @@ package software.coley.sourcesolver.model;
 import com.sun.source.tree.LiteralTree;
 import software.coley.sourcesolver.util.Range;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Objects;
 
 public class LiteralExpressionModel extends AbstractExpressionModel {

@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.resolve.entry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;

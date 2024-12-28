@@ -1,6 +1,6 @@
 package software.coley.sourcesolver.model;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * A model that has an identifier.
