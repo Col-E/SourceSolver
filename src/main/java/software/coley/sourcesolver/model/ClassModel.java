@@ -14,7 +14,7 @@ public class ClassModel extends AbstractStatementModel implements AnnotatedModel
 	private final ModifiersModel modifiers;
 	private final String name;
 	private final List<TypeParameterModel> typeParameters;
-	private final NameExpressionModel extendsModel;
+	private final NamedModel extendsModel;
 	private final ImplementsModel implementsModel;
 	private final PermitsModel permitsModel;
 	private final List<VariableModel> fields;
@@ -26,7 +26,7 @@ public class ClassModel extends AbstractStatementModel implements AnnotatedModel
 	                  @Nonnull ModifiersModel modifiers,
 	                  @Nonnull String name,
 	                  @Nonnull List<TypeParameterModel> typeParameters,
-	                  @Nonnull NameExpressionModel extendsModel,
+	                  @Nonnull NamedModel extendsModel,
 	                  @Nonnull ImplementsModel implementsModel,
 	                  @Nonnull PermitsModel permitsModel,
 	                  @Nonnull List<VariableModel> fields,
@@ -69,7 +69,7 @@ public class ClassModel extends AbstractStatementModel implements AnnotatedModel
 	}
 
 	@Nonnull
-	public NameExpressionModel getExtends() {
+	public NamedModel getExtends() {
 		return extendsModel;
 	}
 

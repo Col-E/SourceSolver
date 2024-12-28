@@ -71,7 +71,7 @@ public abstract class TypeModel extends AbstractModel {
 		ARRAY
 	}
 
-	public static class Primitive extends TypeModel {
+	public static class Primitive extends TypeModel implements NamedModel {
 		private TypeKind primitiveKind;
 
 		public Primitive(@Nonnull Range range, @Nonnull Model identifierModel) {
@@ -103,9 +103,15 @@ public abstract class TypeModel extends AbstractModel {
 			}
 			return primitiveKind;
 		}
+
+		@Nonnull
+		@Override
+		public String getName() {
+			return getIdentifier().toString();
+		}
 	}
 
-	public static class NamedObject extends TypeModel {
+	public static class NamedObject extends TypeModel implements NamedModel {
 		public NamedObject(@Nonnull Range range, @Nonnull Model identifierModel) {
 			super(range, identifierModel);
 		}
@@ -114,6 +120,12 @@ public abstract class TypeModel extends AbstractModel {
 		@Override
 		public Kind getKind() {
 			return Kind.OBJECT;
+		}
+
+		@Nonnull
+		@Override
+		public String getName() {
+			return getIdentifier().toString();
 		}
 	}
 
@@ -160,7 +172,7 @@ public abstract class TypeModel extends AbstractModel {
 		}
 	}
 
-	public static class Parameterized extends TypeModel {
+	public static class Parameterized extends TypeModel implements NamedModel {
 		private final List<Model> typeArguments;
 
 		public Parameterized(@Nonnull Range range, @Nonnull Model identifierModel,
@@ -178,6 +190,12 @@ public abstract class TypeModel extends AbstractModel {
 		@Override
 		public Kind getKind() {
 			return Kind.PARAMETERIZED;
+		}
+
+		@Nonnull
+		@Override
+		public String getName() {
+			return getIdentifier().toString();
 		}
 
 		@Override

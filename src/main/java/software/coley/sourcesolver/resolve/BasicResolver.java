@@ -98,7 +98,7 @@ public class BasicResolver implements Resolver {
 		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
 			return resolveMethodReturnType(methodInvocationExpressionModel);
 		else if (target instanceof NewClassExpressionModel newClass)
-			return resolveImportedDotName(newClass);
+			return resolveNamed(newClass);
 		else if (target instanceof NamedModel named)
 			return resolveNameUsage(named);
 		else if (target instanceof TypeModel type)
@@ -128,18 +128,24 @@ public class BasicResolver implements Resolver {
 		if (parent instanceof ClassModel
 				|| parent instanceof ImplementsModel
 				|| parent instanceof CastExpressionModel
-				|| parent instanceof ThrowStatementModel)
+				|| parent instanceof ThrowStatementModel
+				|| parent instanceof TypeParameterModel)
 			// The named model is used in a context where it can only be a dot-name.
-			return resolveImportedDotName(named);
+			return resolveNamed(named);
 		else if (parent instanceof InstanceofExpressionModel instanceOf
 				&& instanceOf.getType() == named)
 			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
 			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
-			return resolveImportedDotName(named);
+			return resolveNamed(named);
+		else if (parent instanceof MethodModel method
+				&& (named.equals(method.getReturnType())))
+			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
+			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
+			return resolveNamed(named);
 		else if (parent instanceof NewClassExpressionModel newExpr
 				&& newExpr.getIdentifier() == named)
 			// The named model is the identifier of a 'new T()' expression so resolve as T.
-			return resolveImportedDotName(newExpr);
+			return resolveNamed(newExpr);
 		else if (parent instanceof TypeModel parentType)
 			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
@@ -151,7 +157,7 @@ public class BasicResolver implements Resolver {
 			//  ClassName.staticMethod() --> We want to do dot-name resolution.
 			//  variable.virtualMethod() --> We want to resolve the type of 'variable' and look for the member in there.
 			//   - Variable resolving is handled by fallthrough of else-if handling further below.
-			Resolution resolution = resolveImportedDotName(named);
+			Resolution resolution = resolveNamed(named);
 			if (!resolution.isUnknown())
 				return resolution;
 		} else if (parent instanceof MethodInvocationExpressionModel methodInvocation
@@ -205,12 +211,18 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolveImportedDotName(@Nonnull NamedModel extendsModel) {
-		return resolveImportedDotName(extendsModel.getName());
+	private Resolution resolveNamed(@Nonnull NamedModel named) {
+		Resolution resolution = resolveNameAsQualifiedOrImported(named.getName());
+		if (!resolution.isUnknown())
+			return resolution;
+		resolution = resolveAsTypeArgument(named, named.getName());
+		if (!resolution.isUnknown())
+			return resolution;
+		return unknown();
 	}
 
 	@Nonnull
-	private Resolution resolveImportedDotName(@Nonnull String name) {
+	private Resolution resolveNameAsQualifiedOrImported(@Nonnull String name) {
 		// If it is a qualified name, just do a dot-name lookup.
 		if (name.indexOf('.') > 0)
 			return resolveDotName(name);
@@ -220,6 +232,24 @@ public class BasicResolver implements Resolver {
 			if (importEntry.getKey().endsWith('/' + name))
 				return ofClass(importEntry.getValue());
 
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveAsTypeArgument(@Nonnull Model origin, @Nonnull String name) {
+		ClassModel cls = origin.getParentOfType(ClassModel.class);
+		while (cls != null) {
+			// Find a type parameter with a matching name and compute the common resolution type
+			// of all of its bounds. If there are no bounds then it the bounds are just 'Object'.
+			for (TypeParameterModel typeParameter : cls.getTypeParameters()) {
+				if (typeParameter.getName().equals(name))
+					return typeParameter.getBounds().stream()
+							.map(b -> b.resolve(this))
+							.reduce(Resolution::mergeWith)
+							.orElse(ofClass(Objects.requireNonNull(pool.getClass("java/lang/Object"))));
+			}
+			cls = cls.getParentOfType(ClassModel.class);
+		}
 		return unknown();
 	}
 
@@ -258,7 +288,7 @@ public class BasicResolver implements Resolver {
 		if (identifier instanceof TypeModel typeIdentifier)
 			return resolveType(typeIdentifier);
 		else if (identifier instanceof NamedModel named)
-			return resolveImportedDotName(named.getName());
+			return resolveNamed(named);
 		return unknown();
 	}
 
@@ -309,7 +339,7 @@ public class BasicResolver implements Resolver {
 			return ofClasses(pool.getClassesInPackage(packageName));
 		}
 
-		return resolveDotName(name);
+		return resolveNameAsQualifiedOrImported(name);
 	}
 
 	@Nonnull

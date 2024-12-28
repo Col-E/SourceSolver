@@ -4,6 +4,9 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class TypeParameterModel extends AbstractModel implements AnnotatedModel {
 	private final String name;
@@ -12,7 +15,7 @@ public class TypeParameterModel extends AbstractModel implements AnnotatedModel 
 
 	public TypeParameterModel(@Nonnull Range range, @Nonnull String name,
 	                          @Nonnull List<Model> bounds, @Nonnull List<AnnotationExpressionModel> annotations) {
-		super(range);
+		super(range, of(bounds), of(annotations));
 		this.name = name;
 		this.bounds = bounds;
 		this.annotations = annotations;
@@ -58,7 +61,8 @@ public class TypeParameterModel extends AbstractModel implements AnnotatedModel 
 
 	@Override
 	public String toString() {
-		// TODO: Flesh this out
-		return super.toString();
+		if (bounds.isEmpty())
+			return name;
+		return name + " extends " + bounds.stream().map(Object::toString).collect(Collectors.joining(", "));
 	}
 }

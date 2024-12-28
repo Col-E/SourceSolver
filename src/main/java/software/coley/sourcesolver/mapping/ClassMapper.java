@@ -8,15 +8,7 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.AnnotationExpressionModel;
-import software.coley.sourcesolver.model.ClassModel;
-import software.coley.sourcesolver.model.ImplementsModel;
-import software.coley.sourcesolver.model.MethodModel;
-import software.coley.sourcesolver.model.ModifiersModel;
-import software.coley.sourcesolver.model.NameExpressionModel;
-import software.coley.sourcesolver.model.PermitsModel;
-import software.coley.sourcesolver.model.TypeParameterModel;
-import software.coley.sourcesolver.model.VariableModel;
+import software.coley.sourcesolver.model.*;
 import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
@@ -43,7 +35,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 				typeParameters.stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		Tree extendsClause = tree.getExtendsClause();
-		NameExpressionModel extendsModel = extendsClause == null ? new NameExpressionModel(Range.UNKNOWN, "Object") : mapMaybeGeneric(context, extendsClause);
+		NamedModel extendsModel = extendsClause == null ? new NameExpressionModel(Range.UNKNOWN, "Object") : mapMaybeGeneric(context, extendsClause);
 
 		List<? extends Tree> implementsClauses = tree.getImplementsClause();
 		ImplementsModel implementsModel = implementsClauses.isEmpty() ?
@@ -82,12 +74,13 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 	}
 
 	@Nonnull
-	private NameExpressionModel mapMaybeGeneric(@Nonnull MappingContext context, @Nonnull Tree tree) {
+	private NamedModel mapMaybeGeneric(@Nonnull MappingContext context, @Nonnull Tree tree) {
 		if (tree instanceof ParameterizedTypeTree parameterizedType)
 			// Used for extending/implementing types with type arguments, such as:
 			//  extends AbstractList<E>
 			//  implements List<E>
-			return context.map(NameMapper.class, parameterizedType.getType());
+			// We cast to named because the type impls that can be extended/implemented are always named.
+			return (NamedModel) context.map(TypeMapper.class, parameterizedType);
 		return context.map(NameMapper.class, tree);
 	}
 }

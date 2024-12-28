@@ -11,15 +11,15 @@ import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class ImplementsModel extends AbstractModel {
 	public static final ImplementsModel EMPTY = new ImplementsModel(Range.UNKNOWN, Collections.emptyList());
-	private final List<NameExpressionModel> implementedClassNames;
+	private final List<NamedModel> implementedClassNames;
 
-	public ImplementsModel(@Nonnull Range range, @Nonnull List<NameExpressionModel> implementedClassNames) {
+	public ImplementsModel(@Nonnull Range range, @Nonnull List<NamedModel> implementedClassNames) {
 		super(range, of(implementedClassNames));
 		this.implementedClassNames = Collections.unmodifiableList(implementedClassNames);
 	}
 
 	@Nonnull
-	public List<NameExpressionModel> getImplementedClassNames() {
+	public List<NamedModel> getImplementedClassNames() {
 		return implementedClassNames;
 	}
 
@@ -43,7 +43,7 @@ public class ImplementsModel extends AbstractModel {
 		if (implementedClassNames.isEmpty())
 			return "";
 		return "implements " + implementedClassNames.stream()
-				.map(NameExpressionModel::getName)
+				.map(NamedModel::getName)
 				.collect(Collectors.joining(", "));
 	}
 }
