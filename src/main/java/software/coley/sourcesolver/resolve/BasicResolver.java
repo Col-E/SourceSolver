@@ -750,9 +750,12 @@ public class BasicResolver implements Resolver {
 		if (contextResolution instanceof ClassResolution classResolution) {
 			ClassEntry declaringClass = classResolution.getClassEntry();
 			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
-		} else if (contextResolution instanceof MemberResolution memberResolution) {
-			ClassEntry declaringClass = memberResolution.getOwnerEntry();
-			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+		} else if (contextResolution instanceof FieldResolution fieldResolution) {
+			if (pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor()) instanceof ClassEntry declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+		} else if (contextResolution instanceof MethodResolution methodResolution) {
+			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
 		}
 
 		return unknown();
