@@ -721,35 +721,52 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveSwitchExpression(@Nonnull SwitchExpressionModel switchExpr) {
-		List<Resolution> caseResolutions = switchExpr.getCases().stream().map(m -> {
-			Collection<? extends Model> models = m.getBody() != null ? Collections.singletonList(m.getBody()) : m.getExpressions();
-			for (Model model : models) {
-				// If the model is an expression, it *should* be resolvable to a type.
-				if (model instanceof AbstractExpressionModel) {
-					Resolution expressionResolution = model.resolve(this);
-					if (!expressionResolution.isUnknown())
-						return expressionResolution;
-				}
+		List<Resolution> caseResolutions = switchExpr.getCases().stream()
+				.map(m -> {
+					Collection<? extends Model> models = m.getBody() != null ? Collections.singletonList(m.getBody()) : m.getExpressions();
+					for (Model model : models) {
+						// If the model is an expression, it *should* be resolvable to a type.
+						if (model instanceof AbstractExpressionModel) {
+							Resolution expressionResolution = model.resolve(this);
+							if (!expressionResolution.isUnknown())
+								return expressionResolution;
+						}
 
-				// Attempt to resolve what the yielded value will be.
-				List<YieldStatementModel> yieldChildren = model.getRecursiveChildrenOfType(YieldStatementModel.class);
-				for (YieldStatementModel yieldChild : yieldChildren) {
-					Resolution resolvedYieldValueType = yieldChild.resolve(this);
-					if (!resolvedYieldValueType.isUnknown())
-						return resolvedYieldValueType;
-				}
+						// Attempt to resolve what the yielded value will be.
+						List<YieldStatementModel> yieldChildren = model.getRecursiveChildrenOfType(YieldStatementModel.class);
+						for (YieldStatementModel yieldChild : yieldChildren) {
+							Resolution resolvedYieldValueType = yieldChild.resolve(this);
+							if (!resolvedYieldValueType.isUnknown())
+								return resolvedYieldValueType;
+						}
 
-				// Otherwise if there are no yields, then check and see if an exception is thrown.
-				// This is a common case for default branches, and we'll use a special resolution to indicate
-				// that this path will always throw.
-				List<ThrowStatementModel> throwsChildren = model.getRecursiveChildrenOfType(ThrowStatementModel.class);
-				if (!throwsChildren.isEmpty())
-					return throwing();
-			}
+						// Otherwise if there are no yields, then check and see if an exception is thrown.
+						// This is a common case for default branches, and we'll use a special resolution to indicate
+						// that this path will always throw.
+						List<ThrowStatementModel> throwsChildren = model.getRecursiveChildrenOfType(ThrowStatementModel.class);
+						if (!throwsChildren.isEmpty())
+							return throwing();
+					}
 
-			// Case couldn't be resolved.
-			return unknown();
-		}).filter(r -> !(r instanceof ThrowingResolution || r instanceof NullResolution)).toList();
+					// Case couldn't be resolved.
+					return unknown();
+				})
+				.filter(r -> !(r instanceof ThrowingResolution || r instanceof NullResolution))
+				.map(r -> {
+					// Need to map any member resolution to its usage type.
+					if (r instanceof FieldResolution fieldResolution) {
+						DescribableEntry fieldDescription = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
+						if (fieldDescription != null)
+							return ofDescribable(fieldDescription);
+						return unknown();
+					} else if (r instanceof MethodResolution methodResolution) {
+						DescribableEntry methodReturnDescription = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
+						if (methodReturnDescription != null)
+							return ofDescribable(methodReturnDescription);
+						return unknown();
+					} else {return r;}
+				})
+				.toList();
 
 		// If we have no cases or any case is strictly an unknown resolution then we cannot resolve the yielded type.
 		if (caseResolutions.isEmpty() || caseResolutions.stream().anyMatch(Resolution::isUnknown))
