@@ -409,6 +409,10 @@ public class BasicResolver implements Resolver {
 		if (fieldName.equals("this"))
 			return ofClass(classEntry);
 
+		// Edge case for cases like "String.class"
+		if (fieldName.equals("class"))
+			return ofClass(Objects.requireNonNull(pool.getClass("java/lang/Class")));
+
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = classEntry.getFieldsByName(fieldName);
 		if (fieldsByName.size() == 1)
