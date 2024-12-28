@@ -73,26 +73,26 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolve(@Nonnull Model target) {
-		if (target instanceof ClassModel clazz) {
+		if (target instanceof ClassModel clazz)
 			return resolveClassModel(clazz);
-		} else if (target instanceof MethodModel method) {
+		else if (target instanceof MethodModel method)
 			return resolveMethodModel(method);
-		} else if (target instanceof VariableModel variable) {
+		else if (target instanceof VariableModel variable) {
 			if (target.getParent() instanceof ClassModel declaringClass)
 				return resolveFieldModel(declaringClass, variable);
 			return resolveVariableType(variable);
-		} else if (target instanceof PackageModel pkg) {
+		} else if (target instanceof PackageModel pkg)
 			return resolvePackageModel(pkg);
-		} else if (target instanceof ImportModel imp) {
+		else if (target instanceof ImportModel imp)
 			return resolveImportModel(imp);
-		} else if (target instanceof ModifiersModel modifiers
+		else if (target instanceof ModifiersModel modifiers
 				&& modifiers.getParent() instanceof MethodModel method
-				&& method.getName().equals("<clinit>")) {
+				&& method.getName().equals("<clinit>"))
 			return resolveStaticInitializer(method);
-		} else if (target instanceof AnnotationArgumentModel annotation)
-			return unknown(); // TODO: Annotations
+		else if (target instanceof AnnotationArgumentModel argument)
+			return resolveAnnotationArgument(argument);
 		else if (target instanceof AnnotationExpressionModel annotation)
-			return unknown(); // TODO: Annotations
+			return annotation.getNameModel().resolve(this);
 		else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
 			return resolveMemberSelection(memberSelectExpression);
 		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
@@ -140,6 +140,10 @@ public class BasicResolver implements Resolver {
 		else if (parent instanceof MethodModel method
 				&& (named.equals(method.getReturnType()) || method.getThrownTypes().contains(named)))
 			// Only solve as a name if the name is used as a type name in the method model.
+			return resolveNamed(named);
+		else if (parent instanceof AnnotationExpressionModel anno
+				&& named.equals(anno.getNameModel()))
+			// Only solve as a name if the name is used as the annotation's type.
 			return resolveNamed(named);
 		else if (parent instanceof NewClassExpressionModel newExpr
 				&& newExpr.getIdentifier() == named)
@@ -350,6 +354,17 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
+	private Resolution resolveAnnotationArgument(@Nonnull AnnotationArgumentModel argument) {
+		// We want to resolve the named argument.
+		// In some cases the argument will have no name for the implicit 'value' case.
+		// Once we resolve the declaring annotation type, we can look in it for matching methods.
+		Resolution containingAnnotationResolution = Objects.requireNonNull(argument.getParent()).resolve(this);
+		if (!containingAnnotationResolution.isUnknown())
+			return resolveMethodInContext(containingAnnotationResolution, argument, argument.getName());
+		return unknown();
+	}
+
+	@Nonnull
 	private Resolution resolveFieldModel(@Nonnull ClassModel definingClass, @Nonnull VariableModel field) {
 		// Skip if parent context cannot be resolved.
 		if (!(definingClass.resolve(this) instanceof ClassResolution resolvedDefiningClass))
@@ -547,8 +562,13 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMemberByNameInModel(@Nonnull Model origin, @Nonnull String name, @Nonnull MemberTarget target) {
-		boolean isFieldsTarget = target == MemberTarget.FIELDS;
+		// If the name is used within an annotation use-case, we only want to look in the declared annotation.
+		if (origin.getParent() instanceof AnnotationArgumentModel annotationArgument
+				&& annotationArgument.getName().equals(name))
+			return annotationArgument.resolve(this);
 
+		// Look for members of the requested target type in the surrounding class context.
+		boolean isFieldsTarget = target == MemberTarget.FIELDS;
 		ClassModel classContext = origin.getParentOfType(ClassModel.class);
 		boolean wasLastClassContextStatic = false;
 		while (classContext != null) {

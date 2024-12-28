@@ -6,13 +6,15 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class AnnotationExpressionModel extends AbstractExpressionModel implements NameHoldingModel {
 	private final NameExpressionModel name;
 	private final List<AnnotationArgumentModel> arguments;
 
 	public AnnotationExpressionModel(@Nonnull Range range, @Nonnull NameExpressionModel name,
 	                                 @Nonnull List<AnnotationArgumentModel> arguments) {
-		super(range);
+		super(range, of(name), of(arguments));
 		this.name = name;
 		this.arguments = arguments;
 	}
