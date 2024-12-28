@@ -465,7 +465,7 @@ public class BasicResolver implements Resolver {
 								}
 							}
 							if (methodRemoved)
-								break;
+								continue;
 						}
 					} else {
 						// Not a vararg method, we want to check against all arguments.
