@@ -2,6 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,35 +19,21 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 	@Nonnull
 	List<ClassEntry> getImplementedEntries();
 
-	@Override
-	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
-		if (other instanceof NullEntry)
-			return true;
-		if (other instanceof ClassEntry otherClass)
-			return isAssignableFrom(otherClass);
-		return false;
-	}
-
-	default boolean isAssignableFrom(@Nonnull ClassEntry child) {
-		if (Objects.equals(getName(), child.getName()))
-			return true;
-
-		ClassEntry superEntry = child.getSuperEntry();
-		if (superEntry != null && isAssignableFrom(superEntry))
-			return true;
-
-		for (ClassEntry implementedEntry : child.getImplementedEntries())
-			if (isAssignableFrom(implementedEntry))
-				return true;
-
-		return false;
-	}
-
 	/**
 	 * @return Name of class in internal format.
 	 */
 	@Nonnull
 	String getName();
+
+	@Nonnull
+	@Override
+	default String getDescriptor() {
+		return 'L' + getName() + ';';
+	}
+
+	default boolean isInterface() {
+		return (getAccess() & Modifier.INTERFACE) != 0;
+	}
 
 	@Nonnull
 	List<FieldEntry> getFields();
@@ -136,30 +123,68 @@ public interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return matched;
 	}
 
-	@Nonnull
-	default Map<String, MethodEntry> getDistinctMethodsByNameInHierarchy(@Nonnull String name) {
-		Map<String, MethodEntry> methods = new TreeMap<>();
-		visitHierarchy(cls -> {
-			for (MethodEntry method : cls.getMethods())
-				if (method.getName().equals(name))
-					methods.put(method.getDescriptor() + ' ' + method.getName(), method);
-		});
-		return methods;
-	}
-
 	default void visitHierarchy(@Nonnull Consumer<ClassEntry> consumer) {
 		consumer.accept(this);
 		ClassEntry superEntry = getSuperEntry();
 		if (superEntry != null)
 			superEntry.visitHierarchy(consumer);
-		for (ClassEntry implementedEntry : getImplementedEntries()) {
+		for (ClassEntry implementedEntry : getImplementedEntries())
 			implementedEntry.visitHierarchy(consumer);
-		}
+	}
+
+	@Override
+	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
+		// Any null value can be assigned to a class value type
+		if (other instanceof NullEntry)
+			return true;
+
+		// Must be assignable
+		if (other instanceof ClassEntry otherClass)
+			return isAssignableFrom(otherClass);
+
+		return false;
+	}
+
+	default boolean isAssignableFrom(@Nonnull ClassEntry child) {
+		// If our names match, or we are object the child's type can be assigned to ours.
+		if (Objects.equals(getName(), child.getName()) || getName().equals("java/lang/Object"))
+			return true;
+
+		// Check if their parent is assignable to our type.
+		ClassEntry superEntry = child.getSuperEntry();
+		if (superEntry != null && isAssignableFrom(superEntry))
+			return true;
+
+		// Check if their super-interfaces are assignable to our type.
+		for (ClassEntry implementedEntry : child.getImplementedEntries())
+			if (isAssignableFrom(implementedEntry))
+				return true;
+
+		return false;
 	}
 
 	@Nonnull
-	@Override
-	default String getDescriptor() {
-		return 'L' + getName() + ';';
+	default ClassEntry getCommonParent(@Nonnull ClassEntry other) {
+		// Check if we are the common parent, or if they are.
+		if (isAssignableFrom(other))
+			return this;
+		if (other.isAssignableFrom(this))
+			return other;
+
+		// Yield object as common type if we are both interfaces and are not assignable in either direction.
+		if (isInterface() || other.isInterface()) {
+			while (!other.getName().equals("java/lang/Object")) {
+				other = other.getSuperEntry();
+				if (other == null)
+					throw new IllegalStateException("Object not found in class hierarchy");
+			}
+			return other;
+		}
+
+		// Check again as the parent class.
+		ClassEntry superEntry = getSuperEntry();
+		if (superEntry != null)
+			return superEntry.getCommonParent(other);
+		throw new IllegalStateException("Could not compute common parent, did not observe 'java/lang/Object' boundary");
 	}
 }

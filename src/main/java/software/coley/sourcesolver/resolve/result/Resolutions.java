@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 public class Resolutions {
 	private static final UnknownResolution UNKNOWN_RESOLUTION = new UnknownResolutionImpl();
+	private static final ThrowingResolution THROWS_RESOLUTION = new ThrowingResolutionImpl();
 	private static final NullResolution NULL_RESOLUTION = new NullResolutionImpl();
 
 	private Resolutions() {}
@@ -22,6 +23,11 @@ public class Resolutions {
 	@Nonnull
 	public static UnknownResolution unknown() {
 		return UNKNOWN_RESOLUTION;
+	}
+
+	@Nonnull
+	public static ThrowingResolution throwing() {
+		return THROWS_RESOLUTION;
 	}
 
 	@Nonnull
@@ -216,5 +222,8 @@ public class Resolutions {
 	}
 
 	private record UnknownResolutionImpl() implements UnknownResolution {}
+
+	private record ThrowingResolutionImpl() implements ThrowingResolution {}
+
 	private record NullResolutionImpl() implements NullResolution {}
 }

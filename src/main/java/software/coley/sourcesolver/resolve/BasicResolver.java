@@ -7,6 +7,7 @@ import software.coley.sourcesolver.resolve.result.*;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -103,15 +104,19 @@ public class BasicResolver implements Resolver {
 		else if (target instanceof TypeModel type)
 			return resolveType(type);
 		else if (target instanceof CastExpressionModel cast)
-			return resolve(cast.getType());
+			return cast.getType().resolve(this);
 		else if (target instanceof ModifiersModel)
-			return resolve(target.getParent());
+			return target.getParent().resolve(this);
 		else if (target instanceof LiteralExpressionModel literal)
 			return resolveLiteral(literal);
 		else if (target instanceof ParenthesizedExpressionModel parenthesizedExpression)
 			return parenthesizedExpression.getExpression().resolve(this);
 		else if (target instanceof BinaryExpressionModel binaryExpression)
 			return resolveBinaryExpression(binaryExpression);
+		else if (target instanceof SwitchExpressionModel switchExpression)
+			return resolveSwitchExpression(switchExpression);
+		else if (target instanceof YieldStatementModel yieldStatementModel)
+			return yieldStatementModel.getExpression().resolve(this);
 
 		return unknown();
 	}
@@ -568,8 +573,11 @@ public class BasicResolver implements Resolver {
 						} else if (importResolution instanceof MultiMemberResolution multiMemberresolution) {
 							for (ClassMemberPair pair : multiMemberresolution.getMemberEntries()) {
 								MemberEntry memberEntry = pair.memberEntry();
-								if (memberEntry.isMethod() && memberEntry.getName().equals(name))
-									return resolveMemberInContext(ofClass(pair.ownerEntry()), invocation, name);
+								if (memberEntry.isMethod() && memberEntry.getName().equals(name)) {
+									Resolution entryResolution = resolveMemberInContext(ofClass(pair.ownerEntry()), invocation, name);
+									if (!entryResolution.isUnknown())
+										return entryResolution;
+								}
 							}
 						}
 					}
@@ -714,6 +722,48 @@ public class BasicResolver implements Resolver {
 		}
 
 		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveSwitchExpression(@Nonnull SwitchExpressionModel switchExpr) {
+		List<Resolution> caseResolutions = switchExpr.getCases().stream().map(m -> {
+			Collection<? extends Model> models = m.getBody() != null ? Collections.singletonList(m.getBody()) : m.getExpressions();
+			for (Model model : models) {
+				// If the model is an expression, it *should* be resolvable to a type.
+				if (model instanceof AbstractExpressionModel) {
+					Resolution expressionResolution = model.resolve(this);
+					if (!expressionResolution.isUnknown())
+						return expressionResolution;
+				}
+
+				// Attempt to resolve what the yielded value will be.
+				List<YieldStatementModel> yieldChildren = model.getRecursiveChildrenOfType(YieldStatementModel.class);
+				for (YieldStatementModel yieldChild : yieldChildren) {
+					Resolution resolvedYieldValueType = yieldChild.resolve(this);
+					if (!resolvedYieldValueType.isUnknown())
+						return resolvedYieldValueType;
+				}
+
+				// Otherwise if there are no yields, then check and see if an exception is thrown.
+				// This is a common case for default branches, and we'll use a special resolution to indicate
+				// that this path will always throw.
+				List<ThrowStatementModel> throwsChildren = model.getRecursiveChildrenOfType(ThrowStatementModel.class);
+				if (!throwsChildren.isEmpty())
+					return throwing();
+			}
+
+			// Case couldn't be resolved.
+			return unknown();
+		}).filter(r -> !(r instanceof ThrowingResolution || r instanceof NullResolution)).toList();
+
+		// If we have no cases or any case is strictly an unknown resolution then we cannot resolve the yielded type.
+		if (caseResolutions.isEmpty() || caseResolutions.stream().anyMatch(Resolution::isUnknown))
+			return unknown();
+
+		// Find the common type/resolution.
+		return caseResolutions.stream()
+				.reduce(Resolution::mergeWith)
+				.orElse(unknown());
 	}
 
 	@Nonnull

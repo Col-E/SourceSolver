@@ -4,11 +4,13 @@ import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 
+import static software.coley.sourcesolver.model.ChildSupplier.of;
+
 public class YieldStatementModel extends AbstractStatementModel {
 	private final AbstractExpressionModel expression;
 
 	public YieldStatementModel(@Nonnull Range range, @Nonnull AbstractExpressionModel expression) {
-		super(range);
+		super(range, of(expression));
 		this.expression = expression;
 	}
 
