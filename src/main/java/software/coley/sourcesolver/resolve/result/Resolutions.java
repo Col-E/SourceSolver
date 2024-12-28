@@ -1,13 +1,6 @@
 package software.coley.sourcesolver.resolve.result;
 
-import software.coley.sourcesolver.resolve.entry.ArrayEntry;
-import software.coley.sourcesolver.resolve.entry.ClassEntry;
-import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
-import software.coley.sourcesolver.resolve.entry.DescribableEntry;
-import software.coley.sourcesolver.resolve.entry.EntryPool;
-import software.coley.sourcesolver.resolve.entry.FieldEntry;
-import software.coley.sourcesolver.resolve.entry.MethodEntry;
-import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
+import software.coley.sourcesolver.resolve.entry.*;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -33,6 +26,17 @@ public class Resolutions {
 	@Nonnull
 	public static NullResolution nul() {
 		return NULL_RESOLUTION;
+	}
+
+	@Nonnull
+	public static Resolution ofDescribable(@Nonnull DescribableEntry describable) {
+		return switch (describable) {
+			case PrimitiveEntry primitiveEntry -> ofPrimitive(primitiveEntry);
+			case ClassEntry classEntry -> ofClass(classEntry);
+			case ArrayEntry arrayEntry -> ofArray(arrayEntry);
+			case NullEntry ignored -> nul();
+			case MemberEntry ignored -> unknown(); // Cannot resolve without owner context
+		};
 	}
 
 	@Nonnull

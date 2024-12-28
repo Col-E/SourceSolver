@@ -2,7 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
-public interface NullEntry extends DescribableEntry{
+public non-sealed interface NullEntry extends DescribableEntry{
 	NullEntry INSTANCE = new BasicNullEntry();
 
 	@Nonnull

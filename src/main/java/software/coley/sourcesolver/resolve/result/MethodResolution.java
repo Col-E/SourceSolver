@@ -1,6 +1,5 @@
 package software.coley.sourcesolver.resolve.result;
 
-import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
 
 import javax.annotation.Nonnull;
@@ -11,7 +10,7 @@ non-sealed public interface MethodResolution extends MemberResolution {
 
 	@Nonnull
 	@Override
-	default DescribableEntry getDescribableEntry() {
+	default MethodEntry getDescribableEntry() {
 		return getMethodEntry();
 	}
 }

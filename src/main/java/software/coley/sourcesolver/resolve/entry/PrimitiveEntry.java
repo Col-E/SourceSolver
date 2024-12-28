@@ -2,7 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
-public interface PrimitiveEntry extends DescribableEntry {
+public non-sealed interface PrimitiveEntry extends DescribableEntry {
 	PrimitiveEntry VOID = new BasicPrimitiveEntry(Kind.VOID, "V");
 	PrimitiveEntry BOOLEAN = new BasicPrimitiveEntry(Kind.BOOLEAN, "Z");
 	PrimitiveEntry CHAR = new BasicPrimitiveEntry(Kind.CHAR, "C");

@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-public interface ClassEntry extends AccessedEntry, DescribableEntry {
+public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	@Nullable
 	ClassEntry getSuperEntry();
 

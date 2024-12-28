@@ -2,7 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
-public interface ArrayEntry extends DescribableEntry {
+public non-sealed interface ArrayEntry extends DescribableEntry {
 	@Nonnull
 	static ArrayEntry getArray(int dimensions, @Nonnull DescribableEntry element) {
 		return new BasicArrayEntry(dimensions, element);
