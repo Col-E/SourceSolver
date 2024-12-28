@@ -143,6 +143,60 @@ public class Resolutions {
 		return unknown();
 	}
 
+	@Nonnull
+	public static Resolution mergeWith(@Nonnull Resolution left, @Nonnull Resolution right) {
+		return mergeWith(MergeOp.MERGE_TYPES, left, right);
+	}
+
+	@Nonnull
+	public static Resolution mergeWith(@Nonnull MergeOp mergeOp, @Nonnull Resolution left, @Nonnull Resolution right) {
+		// Edge case for addition/concat in source contexts.
+		//  - 1 + 1   --> int
+		//  - 1 + "1" --> String
+		//  - 1 + 1.0 --> double
+		if (mergeOp == MergeOp.ADDITION_OR_CONCAT) {
+			Resolution merged = mergeWith(MergeOp.MERGE_TYPES, left, right);
+			if (merged.isUnknown()) {
+				if (left instanceof ClassResolution leftClass
+						&& leftClass.getClassEntry().extendsOrImplementsName("java/lang/String"))
+					return leftClass;
+				if (right instanceof ClassResolution rightClass
+						&& rightClass.getClassEntry().extendsOrImplementsName("java/lang/String"))
+					return rightClass;
+			}
+			return merged;
+		}
+
+		// Merged becomes unknown if either are also unknown.
+		if (left.isUnknown() || right.isUnknown())
+			return unknown();
+
+		// Merged becomes the wider primitive if both are primitives.
+		if (left instanceof PrimitiveResolution primitiveFirst && right instanceof PrimitiveResolution primitiveSecond)
+			return primitiveFirst.getDescribableEntry().isAssignableFrom(primitiveSecond.getDescribableEntry()) ?
+					primitiveFirst : primitiveSecond;
+
+		// Merged becomes the common parent class.
+		if (left instanceof ClassResolution classFirst && right instanceof ClassResolution classSecond)
+			return ofClass(classFirst.getClassEntry().getCommonParent(classSecond.getClassEntry()));
+
+		// Merged becomes the common parent class of the array element type.
+		//  - Only if the dimension counts are the same.
+		if (left instanceof ArrayResolution arrayFirst && right instanceof ArrayResolution arraySecond &&
+				arrayFirst.getDescribableEntry().getDimensions() == arraySecond.getDescribableEntry().getDimensions()) {
+			Resolution mergedElemenentResolution = mergeWith(arrayFirst.getElementTypeResolution(), arraySecond.getElementTypeResolution());
+			if (mergedElemenentResolution instanceof DescribableResolution describableElementResolution)
+				return ofArray(describableElementResolution, arrayFirst.getDescribableEntry().getDimensions());
+		}
+
+		// Incompatible types therefore we cannot merge.
+		return unknown();
+	}
+
+	public enum MergeOp {
+		MERGE_TYPES, ADDITION_OR_CONCAT
+	}
+
 	private record PrimitiveResolutionImpl(@Nonnull PrimitiveEntry primitive) implements PrimitiveResolution {
 		@Nonnull
 		@Override

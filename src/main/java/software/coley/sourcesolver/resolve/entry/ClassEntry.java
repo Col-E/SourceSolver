@@ -132,6 +132,17 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 			implementedEntry.visitHierarchy(consumer);
 	}
 
+	default boolean extendsOrImplementsName(@Nonnull String name) {
+		if (getName().equals(name))
+			return true;
+		if (getSuperEntry() != null && getSuperEntry().extendsOrImplementsName(name))
+			return true;
+		for (ClassEntry implementedEntry : getImplementedEntries())
+			if (implementedEntry.extendsOrImplementsName(name))
+				return true;
+		return false;
+	}
+
 	@Override
 	default boolean isAssignableFrom(@Nonnull DescribableEntry other) {
 		// Any null value can be assigned to a class value type

@@ -16,6 +16,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.resolve.entry.PrimitiveEntry.*;
+import static software.coley.sourcesolver.resolve.result.Resolutions.MergeOp.ADDITION_OR_CONCAT;
 import static software.coley.sourcesolver.resolve.result.Resolutions.*;
 
 public class BasicResolver implements Resolver {
@@ -248,7 +249,7 @@ public class BasicResolver implements Resolver {
 				if (typeParameter.getName().equals(name))
 					return typeParameter.getBounds().stream()
 							.map(b -> b.resolve(this))
-							.reduce(Resolution::mergeWith)
+							.reduce(Resolutions::mergeWith)
 							.orElse(ofClass(Objects.requireNonNull(pool.getClass("java/lang/Object"))));
 			}
 			cls = cls.getParentOfType(ClassModel.class);
@@ -827,17 +828,18 @@ public class BasicResolver implements Resolver {
 
 		// Find the common type/resolution.
 		return caseResolutions.stream()
-				.reduce(Resolution::mergeWith)
+				.reduce(Resolutions::mergeWith)
 				.orElse(unknown());
 	}
 
 	@Nonnull
 	private Resolution resolveBinaryExpression(@Nonnull BinaryExpressionModel binary) {
 		return switch (binary.getOperator()) {
-			case PLUS, MINUS, MULTIPLY, DIVIDE, REMAINDER,
+			case PLUS -> mergeWith(ADDITION_OR_CONCAT, binary.getLeft().resolve(this), binary.getRight().resolve(this));
+			case MINUS, MULTIPLY, DIVIDE, REMAINDER,
 					BIT_OR, BIT_AND, BIT_XOR,
 					SHIFT_LEFT, SHIFT_RIGHT, SHIFT_RIGHT_UNSIGNED ->
-					ofPrimitive(INT); // TODO: Can be other wider types too based on contents of left/right models
+					mergeWith(binary.getLeft().resolve(this), binary.getRight().resolve(this));
 			case EQUALS, NOT_EQUALS,
 					CONDITIONAL_OR, CONDITIONAL_AND,
 					RELATION_LESS, RELATION_GREATER,
