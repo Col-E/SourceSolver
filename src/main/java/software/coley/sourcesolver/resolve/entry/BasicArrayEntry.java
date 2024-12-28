@@ -2,6 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class BasicArrayEntry implements ArrayEntry {
 	private final int dimensions;
 	private final DescribableEntry elementEntry;

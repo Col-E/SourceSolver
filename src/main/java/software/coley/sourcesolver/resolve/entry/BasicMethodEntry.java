@@ -2,6 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class BasicMethodEntry implements MethodEntry {
 	private final String name;
 	private final String descriptor;

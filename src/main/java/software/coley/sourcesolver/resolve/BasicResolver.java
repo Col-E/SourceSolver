@@ -280,27 +280,22 @@ public class BasicResolver implements Resolver {
 
 			// If the class can be resolved, yield the methods matching the given member name
 			if (resolveDotName(className) instanceof ClassResolution declaringClassResolution) {
+				List<ClassMemberPair> memberEntries = new ArrayList<>();
 				if (memberName.lastIndexOf('*') >= 0) {
 					// Star import, so all members of the class should be returned.
-					List<ClassMemberPair> memberEntries = new ArrayList<>();
-					declaringClassResolution.getClassEntry().visitHierarchy(owner -> {
-						memberEntries.addAll(owner.memberStream()
-								.filter(e -> !e.isPrivate() && e.isStatic())
-								.map(e -> new ClassMemberPair(owner, e))
-								.toList());
-					});
-					return ofMembers(memberEntries);
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.memberStream()
+							.filter(e -> !e.isPrivate() && e.isStatic())
+							.map(e -> new ClassMemberPair(owner, e))
+							.toList()));
+
 				} else {
 					// Specific name import, so only members with the same name should be returned.
-					List<ClassMemberPair> memberEntries = new ArrayList<>();
-					declaringClassResolution.getClassEntry().visitHierarchy(owner -> {
-						memberEntries.addAll(owner.memberStream()
-								.filter(e -> !e.isPrivate() && e.isStatic() && e.getName().equals(memberName))
-								.map(e -> new ClassMemberPair(owner, e))
-								.toList());
-					});
-					return ofMembers(memberEntries);
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.memberStream()
+							.filter(e -> !e.isPrivate() && e.isStatic() && e.getName().equals(memberName))
+							.map(e -> new ClassMemberPair(owner, e))
+							.toList()));
 				}
+				return ofMembers(memberEntries);
 			}
 			return unknown();
 		}
@@ -388,7 +383,7 @@ public class BasicResolver implements Resolver {
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = classEntry.getFieldsByName(fieldName);
 		if (fieldsByName.size() == 1)
-			return ofField(classEntry, fieldsByName.get(0));
+			return ofField(classEntry, fieldsByName.getFirst());
 
 		// Check in super-type.
 		if (classEntry.getSuperEntry() != null
@@ -416,7 +411,7 @@ public class BasicResolver implements Resolver {
 		//  - Multiple matches by name --> filter by matching signature --> match
 		List<MethodEntry> methodsByName = classEntry.getMethodsByName(methodName);
 		if (methodsByName.size() == 1)
-			return ofMethod(classEntry, methodsByName.get(0));
+			return ofMethod(classEntry, methodsByName.getFirst());
 		if (methodsByName.size() > 1 && (returnTypeEntry != null || argumentTypeEntries != null)) {
 			// Try and prune candidates by filtering against presumed return/argument types.
 			for (int i = methodsByName.size() - 1; i >= 0; i--) {
@@ -451,7 +446,7 @@ public class BasicResolver implements Resolver {
 						}
 
 						// All hinted variable arguments must be assignable to the actual variable argument's element type.
-						String varargParameterDescriptor = argumentDescriptors.get(argumentDescriptors.size() - 1);
+						String varargParameterDescriptor = argumentDescriptors.getLast();
 						if (varargParameterDescriptor.charAt(0) == '[')
 							varargParameterDescriptor = varargParameterDescriptor.substring(1);
 						DescribableEntry varargElementType = pool.getDescribable(varargParameterDescriptor);
@@ -490,7 +485,7 @@ public class BasicResolver implements Resolver {
 
 			// Check again after pruning if there is only a single candidate.
 			if (methodsByName.size() == 1)
-				return ofMethod(classEntry, methodsByName.get(0));
+				return ofMethod(classEntry, methodsByName.getFirst());
 
 			// Check and see if there is an exact descriptor match.
 			//  TODO: Case where the returnValue but not args are given, case where both are given
@@ -500,7 +495,7 @@ public class BasicResolver implements Resolver {
 						.filter(e -> e.getDescriptor().startsWith(argsDesc))
 						.collect(Collectors.toList());
 				if (methodsByName.size() == 1)
-					return ofMethod(classEntry, methodsByName.get(0));
+					return ofMethod(classEntry, methodsByName.getFirst());
 			}
 		}
 
@@ -600,7 +595,7 @@ public class BasicResolver implements Resolver {
 		List<MethodEntry> initializers = resolvedDefiningClass.getClassEntry().getMethodsByName("<clinit>");
 		if (initializers.isEmpty())
 			return unknown();
-		return ofMethod(resolvedDefiningClass.getClassEntry(), initializers.get(0));
+		return ofMethod(resolvedDefiningClass.getClassEntry(), initializers.getFirst());
 	}
 
 	@Nonnull

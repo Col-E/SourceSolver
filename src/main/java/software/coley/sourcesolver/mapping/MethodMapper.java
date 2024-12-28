@@ -29,7 +29,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		List<TypeParameterModel> typeParameters = tree.getTypeParameters().stream().map(t -> context.map(TypeParameterMapper.class, t)).toList();
 
 		// Return type + parameters
-		//  - Constructors are a special case so we manually make a 'void' return for those
+		//  - Constructors are a special case, so we manually make a 'void' return for those
 		TypeModel returnType = tree.getReturnType() == null ?
 				new TypeModel.Primitive(Range.UNKNOWN, new LiteralExpressionModel(Range.UNKNOWN, LiteralExpressionModel.Kind.VOID, "void")) :
 				context.map(TypeMapper.class, tree.getReturnType());
@@ -41,18 +41,12 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		// default value for annotation methods
 		Model defaultValue;
 		Tree defaultValueTree = tree.getDefaultValue();
-		if (defaultValueTree instanceof LiteralTree literalValue) {
-			// primitives + strings
-			defaultValue = context.map(LiteralMapper.class, literalValue);
-		} else if (defaultValueTree instanceof MemberSelectTree enumValue) {
-			// enums
-			defaultValue = context.map(MemberSelectMapper.class, enumValue);
-		} else if (defaultValueTree instanceof AnnotationTree annotationValue) {
-			// inner annotations
-			defaultValue = context.map(AnnotationUseMapper.class, annotationValue);
-		} else {
-			defaultValue = null;
-		}
+		defaultValue = switch (defaultValueTree) {
+			case LiteralTree literalValue -> context.map(LiteralMapper.class, literalValue);
+			case MemberSelectTree enumValue -> context.map(MemberSelectMapper.class, enumValue);
+			case AnnotationTree annotationValue -> context.map(AnnotationUseMapper.class, annotationValue);
+			case null, default -> null;
+		};
 
 		// Note: If the type is malformed, then the name is going to be <error>
 		//  example: void[] array;

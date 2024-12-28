@@ -11,6 +11,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
 	private final EndPosTable table;

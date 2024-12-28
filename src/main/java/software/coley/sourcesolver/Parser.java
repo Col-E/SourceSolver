@@ -62,7 +62,7 @@ public class Parser {
 		if (source == null)
 			throw new IllegalArgumentException("Must provide source to parse");
 
-		// Build parser for source and extract the end-pos table so we can resolve AST ranges
+		// Build parser for source and extract the end-pos table so that we can resolve AST ranges
 		JavacParser parser = factory.newParser(source,
 				false /* keepJavadoc */,
 				true  /* keepEndPos */,
