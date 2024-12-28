@@ -93,6 +93,7 @@ public class MappingContext {
 		setMapper(InstanceofMapper.class, new InstanceofMapper());
 		setMapper(LambdaMapper.class, new LambdaMapper());
 		setMapper(LiteralMapper.class, new LiteralMapper());
+		setMapper(MemberReferenceMapper.class, new MemberReferenceMapper());
 		setMapper(MemberSelectMapper.class, new MemberSelectMapper());
 		setMapper(MethodBodyMapper.class, new MethodBodyMapper());
 		setMapper(MethodInvocationMapper.class, new MethodInvocationMapper());
