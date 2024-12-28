@@ -110,6 +110,8 @@ public class BasicResolver implements Resolver {
 			return target.getParent().resolve(this);
 		else if (target instanceof LiteralExpressionModel literal)
 			return resolveLiteral(literal);
+		else if (target instanceof ArrayDeclarationExpressionModel array)
+			return array.getType().resolve(this);
 		else if (target instanceof ParenthesizedExpressionModel parenthesizedExpression)
 			return parenthesizedExpression.getExpression().resolve(this);
 		else if (target instanceof BinaryExpressionModel binaryExpression)
