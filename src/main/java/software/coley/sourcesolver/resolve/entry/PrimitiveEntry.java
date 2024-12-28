@@ -2,6 +2,11 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Metadata model for a primitive type.
+ *
+ * @author Matt Coley
+ */
 public non-sealed interface PrimitiveEntry extends DescribableEntry {
 	PrimitiveEntry VOID = new BasicPrimitiveEntry(Kind.VOID, "V");
 	PrimitiveEntry BOOLEAN = new BasicPrimitiveEntry(Kind.BOOLEAN, "Z");
@@ -13,6 +18,15 @@ public non-sealed interface PrimitiveEntry extends DescribableEntry {
 	PrimitiveEntry LONG = new BasicPrimitiveEntry(Kind.LONG, "J");
 	PrimitiveEntry DOUBLE = new BasicPrimitiveEntry(Kind.DOUBLE, "D");
 
+	/**
+	 * @param descriptor
+	 * 		Primitive descriptor.
+	 *
+	 * @return Instance of respective primitive.
+	 *
+	 * @throws IllegalStateException
+	 * 		When the descriptor is not a valid primitive.
+	 */
 	@Nonnull
 	static PrimitiveEntry getPrimitive(@Nonnull String descriptor) {
 		if (descriptor.length() != 1) throw new IllegalStateException("Not a primitive descriptor: " + descriptor);
@@ -41,9 +55,15 @@ public non-sealed interface PrimitiveEntry extends DescribableEntry {
 		return getKind().ordinal() >= other.getKind().ordinal();
 	}
 
+	/**
+	 * @return Primitive kind.
+	 */
 	@Nonnull
 	Kind getKind();
 
+	/**
+	 * Primitive types.
+	 */
 	enum Kind {
 		VOID,
 		BOOLEAN,

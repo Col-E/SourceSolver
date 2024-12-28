@@ -8,9 +8,27 @@ import com.sun.tools.javac.util.JCDiagnostic;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 
+/**
+ * Simple range model.
+ *
+ * @param begin
+ * 		Start of range.
+ * @param end
+ * 		End of range.
+ *
+ * @author Matt Coley
+ */
 public record Range(int begin, int end) implements Comparable<Range> {
 	public static final Range UNKNOWN = new Range(-1, -1);
 
+	/**
+	 * @param table
+	 * 		Table to lookup tree positions within.
+	 * @param tree
+	 * 		Tree to calculate range of.
+	 *
+	 * @return Range covering tree.
+	 */
 	@Nonnull
 	public static Range extractRange(@Nonnull EndPosTable table, @Nonnull Tree tree) {
 		if (tree instanceof JCTree treeImpl) {
@@ -21,6 +39,14 @@ public record Range(int begin, int end) implements Comparable<Range> {
 				+ tree.getClass().getName());
 	}
 
+	/**
+	 * @param table
+	 * 		Table to lookup tree positions within.
+	 * @param trees
+	 * 		Trees to calculate range of.
+	 *
+	 * @return Range covering all trees.
+	 */
 	@Nonnull
 	public static Range extractRange(@Nonnull EndPosTable table, @Nonnull Collection<? extends Tree> trees) {
 		if (trees.isEmpty())
@@ -40,10 +66,26 @@ public record Range(int begin, int end) implements Comparable<Range> {
 		return new Range(min, max);
 	}
 
+	/**
+	 * @param position
+	 * 		Position to check.
+	 *
+	 * @return {@code true} when the position is in the inclusive range.
+	 */
 	public boolean isWithin(int position) {
 		return isWithin(position, true, true);
 	}
 
+	/**
+	 * @param position
+	 * 		Position to check.
+	 * @param startInclusive
+	 *        {@code true} for an inclusive lower bound.
+	 * @param endInclusive
+	 *        {@code true} for an inclusive upper bound.
+	 *
+	 * @return {@code true} when the position is in the range.
+	 */
 	public boolean isWithin(int position, boolean startInclusive, boolean endInclusive) {
 		if (startInclusive ? position < begin : position <= begin)
 			return false;
@@ -51,6 +93,9 @@ public record Range(int begin, int end) implements Comparable<Range> {
 		return endInclusive ? position <= end : position < end;
 	}
 
+	/**
+	 * @return {@code true} when the range has bogus values.
+	 */
 	public boolean isUnknown() {
 		return begin < 0 || end < 0;
 	}

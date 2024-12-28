@@ -12,11 +12,13 @@ import software.coley.sourcesolver.util.Range;
 import javax.annotation.Nonnull;
 import java.util.Collections;
 
+import static software.coley.sourcesolver.util.Range.extractRange;
+
 public class StaticInitializerMethodMapper implements Mapper<MethodModel, BlockTree> {
 	@Nonnull
 	@Override
 	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull BlockTree tree) {
-		Range methodRange = context.range(tree); // Will contain the whole "static { ... }"
+		Range methodRange = extractRange(table, tree); // Will contain the whole "static { ... }"
 		Range keywordRange = new Range(methodRange.begin(), methodRange.begin() + 6);
 		Range blockRange = new Range(context.getSource().indexOf('{', methodRange.begin()), methodRange.end());
 		TypeModel.Primitive returnType = new TypeModel.Primitive(keywordRange, new NameExpressionModel(Range.UNKNOWN, "void"));

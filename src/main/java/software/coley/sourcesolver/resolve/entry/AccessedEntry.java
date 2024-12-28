@@ -2,7 +2,15 @@ package software.coley.sourcesolver.resolve.entry;
 
 import java.lang.reflect.Modifier;
 
+/**
+ * Metadata model of an item with access modifiers.
+ *
+ * @author Matt Coley
+ */
 public interface AccessedEntry {
+	/**
+	 * @return Access modifiers of this entry.
+	 */
 	int getAccess();
 
 	default boolean isPublic() {

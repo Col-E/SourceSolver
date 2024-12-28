@@ -226,7 +226,7 @@ public class ResolveTests {
 		if (resolution instanceof ClassResolution classResolution) {
 			if (name != null) assertEquals(name, classResolution.getClassEntry().getName());
 		} else if (resolution instanceof PrimitiveResolution primitiveResolution) {
-			if (name != null) assertEquals(name, primitiveResolution.getDescribableEntry().getDescriptor());
+			if (name != null) assertEquals(name, primitiveResolution.getPrimitiveEntry().getDescriptor());
 		} else {
 			fail("Resolution was not of a class: " + resolution);
 		}

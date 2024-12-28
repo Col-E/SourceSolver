@@ -3,13 +3,18 @@ package software.coley.sourcesolver.model;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+/**
+ * A model that has an identifier as an expression.
+ *
+ * @author Matt Coley
+ */
 public interface NameHoldingModel extends NamedModel {
 	@Nonnull
 	@Override
 	default String getName() {
 		NameExpressionModel model = getNameModel();
 		if (model == null)
-			throw new UnsupportedOperationException(getClass().getName() + " must override 'getName'");
+			throw new UnsupportedOperationException(getClass().getName() + " must override 'getName' to cover null-model cases");
 		return model.getName();
 	}
 

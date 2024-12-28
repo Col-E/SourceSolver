@@ -5,7 +5,15 @@ import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Resolution of a class.
+ *
+ * @author Matt Coley
+ */
 non-sealed public interface ClassResolution extends DescribableResolution {
+	/**
+	 * @return The resolved class type.
+	 */
 	@Nonnull
 	ClassEntry getClassEntry();
 

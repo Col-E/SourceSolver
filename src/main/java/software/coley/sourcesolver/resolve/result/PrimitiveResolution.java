@@ -4,8 +4,21 @@ import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Resolution of a primitive type.
+ *
+ * @author Matt Coley
+ */
 non-sealed public interface PrimitiveResolution extends DescribableResolution {
+	/**
+	 * @return The resolved primitive type.
+	 */
+	@Nonnull
+	PrimitiveEntry getPrimitiveEntry();
+
 	@Nonnull
 	@Override
-	PrimitiveEntry getDescribableEntry();
+	default PrimitiveEntry getDescribableEntry() {
+		return getPrimitiveEntry();
+	}
 }

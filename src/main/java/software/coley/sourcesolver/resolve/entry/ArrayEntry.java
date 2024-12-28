@@ -2,14 +2,20 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Metadata model of an array type.
+ *
+ * @author Matt Coley
+ */
 public non-sealed interface ArrayEntry extends DescribableEntry {
-	@Nonnull
-	static ArrayEntry getArray(int dimensions, @Nonnull DescribableEntry element) {
-		return new BasicArrayEntry(dimensions, element);
-	}
-
+	/**
+	 * @return Dimensions of the array.
+	 */
 	int getDimensions();
 
+	/**
+	 * @return Element type of the array.
+	 */
 	@Nonnull
 	DescribableEntry getElementEntry();
 

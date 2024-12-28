@@ -5,13 +5,24 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface MethodEntry extends MemberEntry {
+/**
+ * Metadata model for a method declaration.
+ *
+ * @author Matt Coley
+ */
+public non-sealed interface MethodEntry extends MemberEntry {
+	/**
+	 * @return Descriptor of the method's return type.
+	 */
 	@Nonnull
 	default String getReturnDescriptor() {
 		String methodDescriptor = getDescriptor();
 		return methodDescriptor.substring(methodDescriptor.lastIndexOf(')') + 1);
 	}
 
+	/**
+	 * @return List of descriptors of all the method's parameters.
+	 */
 	@Nonnull
 	default List<String> getParameterDescriptors() {
 		List<String> parameterDescriptors = new ArrayList<>();
@@ -31,10 +42,12 @@ public interface MethodEntry extends MemberEntry {
 		return parameterDescriptors;
 	}
 
+	@Override
 	default boolean isField() {
 		return false;
 	}
 
+	@Override
 	default boolean isMethod() {
 		return true;
 	}

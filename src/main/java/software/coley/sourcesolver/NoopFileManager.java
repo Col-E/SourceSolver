@@ -8,6 +8,11 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Minimal file manager implementation for javac.
+ *
+ * @author Matt Coley
+ */
 public class NoopFileManager implements JavaFileManager {
 	@Override
 	public ClassLoader getClassLoader(Location location) {

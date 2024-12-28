@@ -6,6 +6,11 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Utility for creating resolution values.
+ *
+ * @author Matt Coley
+ */
 public class Resolutions {
 	private static final UnknownResolution UNKNOWN_RESOLUTION = new UnknownResolutionImpl();
 	private static final ThrowingResolution THROWS_RESOLUTION = new ThrowingResolutionImpl();
@@ -51,7 +56,7 @@ public class Resolutions {
 
 	@Nonnull
 	public static ArrayResolution ofArray(@Nonnull DescribableResolution elementType, int dimensions) {
-		return new ArrayResolutionImpl(ArrayEntry.getArray(dimensions, elementType.getDescribableEntry()));
+		return new ArrayResolutionImpl(elementType.getDescribableEntry().toArrayEntry(dimensions));
 	}
 
 	@Nonnull
@@ -173,7 +178,7 @@ public class Resolutions {
 
 		// Merged becomes the wider primitive if both are primitives.
 		if (left instanceof PrimitiveResolution primitiveFirst && right instanceof PrimitiveResolution primitiveSecond)
-			return primitiveFirst.getDescribableEntry().isAssignableFrom(primitiveSecond.getDescribableEntry()) ?
+			return primitiveFirst.getPrimitiveEntry().isAssignableFrom(primitiveSecond.getPrimitiveEntry()) ?
 					primitiveFirst : primitiveSecond;
 
 		// Merged becomes the common parent class.
@@ -183,10 +188,10 @@ public class Resolutions {
 		// Merged becomes the common parent class of the array element type.
 		//  - Only if the dimension counts are the same.
 		if (left instanceof ArrayResolution arrayFirst && right instanceof ArrayResolution arraySecond &&
-				arrayFirst.getDescribableEntry().getDimensions() == arraySecond.getDescribableEntry().getDimensions()) {
+				arrayFirst.getDimensions() == arraySecond.getDimensions()) {
 			Resolution mergedElemenentResolution = mergeWith(arrayFirst.getElementTypeResolution(), arraySecond.getElementTypeResolution());
 			if (mergedElemenentResolution instanceof DescribableResolution describableElementResolution)
-				return ofArray(describableElementResolution, arrayFirst.getDescribableEntry().getDimensions());
+				return ofArray(describableElementResolution, arrayFirst.getDimensions());
 		}
 
 		// Incompatible types therefore we cannot merge.
@@ -200,12 +205,18 @@ public class Resolutions {
 	private record PrimitiveResolutionImpl(@Nonnull PrimitiveEntry primitive) implements PrimitiveResolution {
 		@Nonnull
 		@Override
-		public PrimitiveEntry getDescribableEntry() {
+		public PrimitiveEntry getPrimitiveEntry() {
 			return primitive;
 		}
 	}
 
 	private record ArrayResolutionImpl(@Nonnull ArrayEntry array) implements ArrayResolution {
+		@Nonnull
+		@Override
+		public ArrayEntry getArrayEntry() {
+			return array;
+		}
+
 		@Nonnull
 		@Override
 		public DescribableResolution getElementTypeResolution() {
@@ -215,12 +226,6 @@ public class Resolutions {
 			else if (element instanceof PrimitiveEntry primitiveElement)
 				return ofPrimitive(primitiveElement);
 			throw new IllegalStateException("Unknown element type: " + element.getClass().getSimpleName());
-		}
-
-		@Nonnull
-		@Override
-		public ArrayEntry getDescribableEntry() {
-			return array;
 		}
 	}
 
@@ -262,6 +267,12 @@ public class Resolutions {
 		public FieldEntry getFieldEntry() {
 			return fieldEntry;
 		}
+
+		@Nonnull
+		@Override
+		public ClassResolution getOwnerResolution() {
+			return ofClass(ownerEntry);
+		}
 	}
 
 	private record MethodResolutionImpl(@Nonnull ClassEntry ownerEntry,
@@ -276,6 +287,12 @@ public class Resolutions {
 		@Override
 		public MethodEntry getMethodEntry() {
 			return methodEntry;
+		}
+
+		@Nonnull
+		@Override
+		public ClassResolution getOwnerResolution() {
+			return ofClass(ownerEntry);
 		}
 	}
 

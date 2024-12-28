@@ -28,6 +28,7 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 
 	/**
 	 * @return Expression including the calling context expression, and method name.
+	 *
 	 * @see NameExpressionModel
 	 * @see MemberSelectExpressionModel
 	 */

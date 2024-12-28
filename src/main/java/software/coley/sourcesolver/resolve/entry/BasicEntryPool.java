@@ -10,14 +10,6 @@ import java.util.Map;
 public class BasicEntryPool implements EntryPool {
 	private final Map<String, ClassEntry> classEntries = new HashMap<>();
 
-	@Nonnull
-	@Override
-	public EntryPool copy() {
-		BasicEntryPool copy = new BasicEntryPool();
-		copy.classEntries.putAll(classEntries);
-		return copy;
-	}
-
 	@Override
 	public void register(@Nonnull ClassEntry entry) {
 		classEntries.put(entry.getName(), entry);

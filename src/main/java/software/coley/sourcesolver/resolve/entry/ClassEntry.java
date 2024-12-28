@@ -5,17 +5,24 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+/**
+ * Metadata model of a class type.
+ */
 public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
+	/**
+	 * @return Metadata model of the super-type, if available.
+	 */
 	@Nullable
 	ClassEntry getSuperEntry();
 
+	/**
+	 * @return Metadata models of all implemented interface types.
+	 */
 	@Nonnull
 	List<ClassEntry> getImplementedEntries();
 
@@ -35,22 +42,51 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return (getAccess() & Modifier.INTERFACE) != 0;
 	}
 
+	/**
+	 * @return Metadata models of all declared fields.
+	 */
 	@Nonnull
 	List<FieldEntry> getFields();
 
+
+	/**
+	 * @return Metadata models of all declared methods.
+	 */
 	@Nonnull
 	List<MethodEntry> getMethods();
 
+
+	/**
+	 * @return Stream of all metadata models for declared fields and methods.
+	 */
 	@Nonnull
 	default Stream<MemberEntry> memberStream() {
 		return Stream.concat(getFields().stream(), getMethods().stream());
 	}
 
+	/**
+	 * @param name
+	 * 		Field name.
+	 * @param desc
+	 * 		Field descriptor.
+	 *
+	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 */
 	@Nullable
 	default FieldEntry getField(@Nonnull String name, @Nonnull String desc) {
 		return getField(name, desc, null);
 	}
 
+	/**
+	 * @param name
+	 * 		Field name.
+	 * @param desc
+	 * 		Field descriptor.
+	 * @param filter
+	 * 		Optional filter to limit matches.
+	 *
+	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 */
 	@Nullable
 	default FieldEntry getField(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<FieldEntry> filter) {
 		for (FieldEntry field : getFields())
@@ -70,6 +106,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return null;
 	}
 
+	/**
+	 * @param name
+	 * 		Field name.
+	 *
+	 * @return All declared fields with the given name.
+	 */
 	@Nonnull
 	default List<FieldEntry> getFieldsByName(@Nonnull String name) {
 		List<FieldEntry> matched = new ArrayList<>();
@@ -79,22 +121,29 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return matched;
 	}
 
-	@Nonnull
-	default Map<String, FieldEntry> getDistinctFieldsByNameInHierarchy(@Nonnull String name) {
-		Map<String, FieldEntry> fields = new TreeMap<>();
-		visitHierarchy(cls -> {
-			for (FieldEntry field : cls.getFields())
-				if (field.getName().equals(name))
-					fields.put(field.getDescriptor() + ' ' + field.getName(), field);
-		});
-		return fields;
-	}
-
+	/**
+	 * @param name
+	 * 		Method name.
+	 * @param desc
+	 * 		Method descriptor.
+	 *
+	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 */
 	@Nullable
 	default MethodEntry getMethod(@Nonnull String name, @Nonnull String desc) {
 		return getMethod(name, desc, null);
 	}
 
+	/**
+	 * @param name
+	 * 		Method name.
+	 * @param desc
+	 * 		Method descriptor.
+	 * @param filter
+	 * 		Optional filter to limit matches.
+	 *
+	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 */
 	@Nullable
 	default MethodEntry getMethod(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<MethodEntry> filter) {
 		for (MethodEntry method : getMethods())
@@ -114,6 +163,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return null;
 	}
 
+	/**
+	 * @param name
+	 * 		Method name.
+	 *
+	 * @return All declared methods with the given name.
+	 */
 	@Nonnull
 	default List<MethodEntry> getMethodsByName(@Nonnull String name) {
 		List<MethodEntry> matched = new ArrayList<>();
@@ -123,6 +178,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return matched;
 	}
 
+	/**
+	 * Visits the current class, and all parent classes <i>(extended or implemented)</i>.
+	 *
+	 * @param consumer
+	 * 		Consumer to visit each class.
+	 */
 	default void visitHierarchy(@Nonnull Consumer<ClassEntry> consumer) {
 		consumer.accept(this);
 		ClassEntry superEntry = getSuperEntry();
@@ -132,6 +193,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 			implementedEntry.visitHierarchy(consumer);
 	}
 
+	/**
+	 * @param name
+	 * 		Class name.
+	 *
+	 * @return {@code true} if this class extends or implements the requested class.
+	 */
 	default boolean extendsOrImplementsName(@Nonnull String name) {
 		if (getName().equals(name))
 			return true;
@@ -174,6 +241,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 		return false;
 	}
 
+	/**
+	 * @param other
+	 * 		Some other class entry.
+	 *
+	 * @return Common parent type shared between the two.
+	 */
 	@Nonnull
 	default ClassEntry getCommonParent(@Nonnull ClassEntry other) {
 		// Check if we are the common parent, or if they are.

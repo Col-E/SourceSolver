@@ -9,6 +9,12 @@ import javax.annotation.Nullable;
 import java.io.PrintWriter;
 import java.util.function.Consumer;
 
+/**
+ * Logger implementation which ignores errors in the tree model.
+ *
+ * @author Matt Coley
+ * @see #setErrorListener(Consumer) Errors can be observed via a listener.
+ */
 public class ErrorIgnoringLog extends Log {
 	private Consumer<Throwable> errorListener;
 
@@ -24,6 +30,10 @@ public class ErrorIgnoringLog extends Log {
 		super(context, out, err);
 	}
 
+	/**
+	 * @param errorListener
+	 * 		Listener to observe errors.
+	 */
 	public void setErrorListener(@Nullable Consumer<Throwable> errorListener) {
 		this.errorListener = errorListener;
 	}

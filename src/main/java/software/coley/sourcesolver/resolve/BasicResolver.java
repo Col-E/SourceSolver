@@ -19,11 +19,22 @@ import static software.coley.sourcesolver.resolve.entry.PrimitiveEntry.*;
 import static software.coley.sourcesolver.resolve.result.Resolutions.MergeOp.ADDITION_OR_CONCAT;
 import static software.coley.sourcesolver.resolve.result.Resolutions.*;
 
+/**
+ * Base resolver implementation.
+ *
+ * @author Matt Coley
+ */
 public class BasicResolver implements Resolver {
 	private final Map<String, ClassEntry> importedTypes;
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
 
+	/**
+	 * @param unit
+	 * 		Root element model.
+	 * @param pool
+	 * 		Pool to access class metadata.
+	 */
 	public BasicResolver(@Nonnull CompilationUnitModel unit, @Nonnull EntryPool pool) {
 		this.unit = unit;
 		this.pool = pool;
@@ -31,8 +42,11 @@ public class BasicResolver implements Resolver {
 		importedTypes = Collections.unmodifiableMap(populateImports());
 	}
 
+	/**
+	 * @return Map of internal names to class entries for all imported <i>(implicit and explicit)</i> classes in the compilation unit.
+	 */
 	@Nonnull
-	private Map<String, ClassEntry> populateImports() {
+	protected Map<String, ClassEntry> populateImports() {
 		Map<String, ClassEntry> map = new TreeMap<>();
 		if (unit.getPackage().resolve(this) instanceof PackageResolution resolvedPackage) {
 			pool.getClassesInPackage(resolvedPackage.getPackageName())
@@ -55,14 +69,14 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	@Override
-	public Resolution resolveAt(int index, @Nullable Model target) {
+	public Resolution resolveAt(int position, @Nullable Model target) {
 		if (target != null)
 			return resolve(target);
 
 		// Find the deepest model at position.
 		Model model = unit;
 		while (true) {
-			Model child = model.getChildAtPosition(index);
+			Model child = model.getChildAtPosition(position);
 			if (child == null)
 				break;
 			model = child;
@@ -620,7 +634,7 @@ public class BasicResolver implements Resolver {
 					if (origin instanceof MethodInvocationExpressionModel invocation) {
 						if (importResolution instanceof MethodResolution methodResolution
 								&& methodResolution.getMethodEntry().getName().equals(name)) {
-							return resolveMemberInContext(ofClass(methodResolution.getOwnerEntry()), invocation, name);
+							return resolveMemberInContext(methodResolution.getOwnerResolution(), invocation, name);
 						} else if (importResolution instanceof MultiMemberResolution multiMemberresolution) {
 							for (ClassMemberPair pair : multiMemberresolution.getMemberEntries()) {
 								MemberEntry memberEntry = pair.memberEntry();

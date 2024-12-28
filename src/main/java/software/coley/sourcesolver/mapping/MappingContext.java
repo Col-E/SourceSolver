@@ -3,7 +3,6 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.Model;
-import software.coley.sourcesolver.util.Range;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -11,12 +10,23 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+/**
+ * Centralized mapping control.
+ *
+ * @author Matt Coley
+ */
 @SuppressWarnings("ClassCanBeRecord")
 public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
 	private final EndPosTable table;
 	private final String source;
 
+	/**
+	 * @param table
+	 * 		Table to lookup tree positions within.
+	 * @param source
+	 * 		Original source code being parsed.
+	 */
 	public MappingContext(@Nonnull EndPosTable table, @Nonnull String source) {
 		this.table = table;
 		this.source = source;
@@ -24,30 +34,58 @@ public class MappingContext {
 		initializeDefaultMappers();
 	}
 
+	/**
+	 * @return Original source code being parsed.
+	 */
 	@Nonnull
 	public String getSource() {
 		return source;
 	}
 
+	/**
+	 * @return Table to lookup tree positions within.
+	 */
 	@Nonnull
 	public EndPosTable getTable() {
 		return table;
 	}
 
-	@Nonnull
-	public Range range(@Nonnull Tree tree) {
-		return Range.extractRange(table, tree);
-	}
-
+	/**
+	 * @param mapperType
+	 * 		Mapper class.
+	 * @param mapperImplementation
+	 * 		Implementation of the class.
+	 * @param <T>
+	 * 		Mapper type.
+	 */
 	public <T extends Mapper<?, ?>> void setMapper(@Nonnull Class<T> mapperType, @Nonnull T mapperImplementation) {
 		setMapperSupplier(mapperType, () -> mapperImplementation);
 	}
 
+	/**
+	 * @param mapperType
+	 * 		Mapper class.
+	 * @param mapperSupplier
+	 * 		Supplier to provide an implementation of the class.
+	 * @param <T>
+	 * 		Mapper type.
+	 */
 	@SuppressWarnings("unchecked")
 	public <T extends Mapper<?, ?>> void setMapperSupplier(@Nonnull Class<T> mapperType, @Nonnull Supplier<T> mapperSupplier) {
 		mapperSuppliersByClass.put(mapperType, (Supplier<Mapper<?, ?>>) mapperSupplier);
 	}
 
+	/**
+	 * @param mapperType
+	 * 		Mapper class.
+	 * @param <T>
+	 * 		Mapper type.
+	 *
+	 * @return Implementation of the mapper class.
+	 *
+	 * @throws IllegalStateException
+	 * 		When no such implementation exists for the given mapper type.
+	 */
 	@Nonnull
 	@SuppressWarnings("unchecked")
 	public <T> T getMapper(Class<T> mapperType) {
@@ -60,6 +98,20 @@ public class MappingContext {
 		return (T) mapper;
 	}
 
+	/**
+	 * @param mapperType
+	 * 		Mapper class.
+	 * @param tree
+	 * 		Tree to map.
+	 * @param <M>
+	 * 		Model type to output.
+	 * @param <T>
+	 * 		Tree type to convert.
+	 * @param <X>
+	 * 		Mapper type to handle conversion.
+	 *
+	 * @return Model representation of the tree.
+	 */
 	@Nonnull
 	@SuppressWarnings("ConstantValue")
 	public <M extends Model, T extends Tree, X extends Mapper<M, T>> M map(@Nonnull Class<X> mapperType, @Nonnull T tree) {
@@ -68,6 +120,22 @@ public class MappingContext {
 		return getMapper(mapperType).map(this, table, tree);
 	}
 
+	/**
+	 * @param mapperType
+	 * 		Mapper class.
+	 * @param tree
+	 * 		Tree to map.
+	 * @param defaultValueSupplier
+	 * 		Supplier to provide a fallback model.
+	 * @param <M>
+	 * 		Model type to output.
+	 * @param <T>
+	 * 		Tree type to convert.
+	 * @param <X>
+	 * 		Mapper type to handle conversion.
+	 *
+	 * @return Model representation of the tree.
+	 */
 	@Nonnull
 	public <M extends Model, T extends Tree, X extends Mapper<M, T>> M mapOr(@Nonnull Class<X> mapperType, @Nullable T tree,
 	                                                                         @Nonnull Supplier<M> defaultValueSupplier) {
@@ -76,6 +144,9 @@ public class MappingContext {
 		return getMapper(mapperType).map(this, table, tree);
 	}
 
+	/**
+	 * Setup mappers.
+	 */
 	private void initializeDefaultMappers() {
 		setMapper(AnnotationUseMapper.class, new AnnotationUseMapper());
 		setMapper(ArrayDeclarationMapper.class, new ArrayDeclarationMapper());

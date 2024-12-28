@@ -4,6 +4,11 @@ import software.coley.sourcesolver.resolve.entry.NullEntry;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Resolution of a null constant.
+ *
+ * @author Matt Coley
+ */
 non-sealed public interface NullResolution extends DescribableResolution {
 	@Nonnull
 	@Override

@@ -2,6 +2,11 @@ package software.coley.sourcesolver.model;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Visitor for {@link Model} that walks down {@link Model#getChildren()}.
+ *
+ * @author Matt Coley
+ */
 public interface ModelVisitor {
 	/**
 	 * @param model

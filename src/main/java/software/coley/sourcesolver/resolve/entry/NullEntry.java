@@ -2,7 +2,12 @@ package software.coley.sourcesolver.resolve.entry;
 
 import javax.annotation.Nonnull;
 
-public non-sealed interface NullEntry extends DescribableEntry{
+/**
+ * Metadata model for a null constant.
+ *
+ * @author Matt Coley
+ */
+public non-sealed interface NullEntry extends DescribableEntry {
 	NullEntry INSTANCE = new BasicNullEntry();
 
 	@Nonnull

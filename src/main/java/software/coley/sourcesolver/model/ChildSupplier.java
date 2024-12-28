@@ -6,7 +6,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
+/**
+ * Utility to provide vararg children to {@link AbstractModel} constructors while also covering {@code null} cases.
+ *
+ * @author Matt Coley
+ */
 public interface ChildSupplier {
+	/**
+	 * @param model
+	 * 		Model to supply.
+	 *
+	 * @return Single item supplier.
+	 */
 	@Nonnull
 	static ChildSupplier of(@Nullable Model model) {
 		if (model == null) return new ChildSupplier() {
@@ -48,6 +59,12 @@ public interface ChildSupplier {
 		};
 	}
 
+	/**
+	 * @param models
+	 * 		Collection of models to supply.
+	 *
+	 * @return Multiple item supplier.
+	 */
 	@Nonnull
 	static ChildSupplier of(@Nonnull Collection<? extends Model> models) {
 		return new ChildSupplier() {
@@ -70,6 +87,12 @@ public interface ChildSupplier {
 		};
 	}
 
+	/**
+	 * @param models
+	 * 		Array of models to supply.
+	 *
+	 * @return Multiple item supplier.
+	 */
 	@Nonnull
 	static ChildSupplier of(Model... models) {
 		return new ChildSupplier() {

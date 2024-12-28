@@ -9,6 +9,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A class entry implementation that is populated via reflection.
+ *
+ * @author Matt Coley
+ */
 public class ReflectiveClassEntry extends BasicClassEntry {
 	private ReflectiveClassEntry(@Nonnull String className,
 	                             int access,
@@ -19,35 +24,41 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 		super(className, access, superEntry, interfaceEntries, fields, methods);
 	}
 
+	/**
+	 * @param cls
+	 * 		Class to create an entry for.
+	 *
+	 * @return Class entry modeling the class.
+	 */
 	@Nonnull
-	public static ClassEntry build(@Nonnull Class<?> ref) {
-		String className = ref.getName().replace('.', '/');
+	public static ClassEntry build(@Nonnull Class<?> cls) {
+		String className = cls.getName().replace('.', '/');
 		List<FieldEntry> fields = new ArrayList<>();
 		List<MethodEntry> methods = new ArrayList<>();
-		for (Field field : ref.getDeclaredFields()) {
+		for (Field field : cls.getDeclaredFields()) {
 			String fieldName = field.getName();
 			String fieldDescriptor = field.getType().descriptorString();
 			int modifiers = field.getModifiers();
 			fields.add(new BasicFieldEntry(fieldName, fieldDescriptor, modifiers));
 		}
-		for (Constructor<?> constructor : ref.getConstructors()) {
+		for (Constructor<?> constructor : cls.getConstructors()) {
 			String methodDescriptor = MethodType.methodType(void.class, constructor.getParameterTypes()).descriptorString();
 			int modifiers = constructor.getModifiers();
 			methods.add(new BasicMethodEntry("<init>", methodDescriptor, modifiers));
 		}
-		for (Method method : ref.getDeclaredMethods()) {
+		for (Method method : cls.getDeclaredMethods()) {
 			String methodName = method.getName();
 			String methodDescriptor = MethodType.methodType(method.getReturnType(), method.getParameterTypes()).descriptorString();
 			int modifiers = method.getModifiers();
 			methods.add(new BasicMethodEntry(methodName, methodDescriptor, modifiers));
 		}
-		Class<?> superClass = ref.getSuperclass();
-		Class<?>[] interfaces = ref.getInterfaces();
+		Class<?> superClass = cls.getSuperclass();
+		Class<?>[] interfaces = cls.getInterfaces();
 		ClassEntry superEntry = superClass == null ? null : build(superClass);
 		List<ClassEntry> interfaceEntries = new ArrayList<>(interfaces.length);
 		for (Class<?> implemented : interfaces)
 			interfaceEntries.add(build(implemented));
-		int modifiers = ref.getModifiers();
+		int modifiers = cls.getModifiers();
 		return new BasicClassEntry(className, modifiers, superEntry, interfaceEntries, fields, methods);
 	}
 }
