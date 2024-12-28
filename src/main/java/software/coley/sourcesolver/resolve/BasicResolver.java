@@ -134,13 +134,12 @@ public class BasicResolver implements Resolver {
 			return resolveNamed(named);
 		else if (parent instanceof InstanceofExpressionModel instanceOf
 				&& instanceOf.getType() == named)
-			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
+			// Only solve as a name if the name is the instanceof expression's targeted type.
 			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
 			return resolveNamed(named);
 		else if (parent instanceof MethodModel method
-				&& (named.equals(method.getReturnType())))
-			// Only solve as a dot-name if the name is the instanceof expression's targeted type.
-			// If it's the expression portion (the thing being checked) we don't want to handle that as a dot-name.
+				&& (named.equals(method.getReturnType()) || method.getThrownTypes().contains(named)))
+			// Only solve as a name if the name is used as a type name in the method model.
 			return resolveNamed(named);
 		else if (parent instanceof NewClassExpressionModel newExpr
 				&& newExpr.getIdentifier() == named)
