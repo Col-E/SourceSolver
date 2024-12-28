@@ -2,12 +2,14 @@ package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A class entry implementation that is populated via reflection.
@@ -19,9 +21,10 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 	                             int access,
 	                             @Nullable ClassEntry superEntry,
 	                             @Nonnull List<ClassEntry> interfaceEntries,
+	                             @Nonnull List<ClassEntry> innerClassEntries,
 	                             @Nonnull List<FieldEntry> fields,
 	                             @Nonnull List<MethodEntry> methods) {
-		super(className, access, superEntry, interfaceEntries, fields, methods);
+		super(className, access, superEntry, interfaceEntries, innerClassEntries, fields, methods);
 	}
 
 	/**
@@ -31,8 +34,12 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 	 * @return Class entry modeling the class.
 	 */
 	@Nonnull
-	public static ClassEntry build(@Nonnull Class<?> cls) {
+	public static ClassEntry build(@Nonnull Map<String, ClassEntry> cache, @Nonnull Class<?> cls) {
 		String className = cls.getName().replace('.', '/');
+		ClassEntry cached = cache.get(className);
+		if (cached != null)
+			return cached;
+
 		List<FieldEntry> fields = new ArrayList<>();
 		List<MethodEntry> methods = new ArrayList<>();
 		for (Field field : cls.getDeclaredFields()) {
@@ -54,11 +61,22 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 		}
 		Class<?> superClass = cls.getSuperclass();
 		Class<?>[] interfaces = cls.getInterfaces();
-		ClassEntry superEntry = superClass == null ? null : build(superClass);
+		ClassEntry superEntry = superClass == null ? null : build(cache, superClass);
 		List<ClassEntry> interfaceEntries = new ArrayList<>(interfaces.length);
 		for (Class<?> implemented : interfaces)
-			interfaceEntries.add(build(implemented));
+			interfaceEntries.add(build(cache, implemented));
+		Class<?>[] innerClasses = cls.getDeclaredClasses();
+		List<ClassEntry> innerClassEntries = new ArrayList<>();
 		int modifiers = cls.getModifiers();
-		return new BasicClassEntry(className, modifiers, superEntry, interfaceEntries, fields, methods);
+		ClassEntry entry = new BasicClassEntry(className, modifiers, superEntry, interfaceEntries, innerClassEntries, fields, methods);
+		cache.put(className, entry);
+
+		// I know this is REALLY cringe putting the inner class population AFTER the building of the model,
+		// but if we don't do this we run the risk of running into a cycle.
+		for (Class<?> innerClass : innerClasses)
+			if (innerClass.getName().startsWith(cls.getName() + "$") && !innerClass.getName().equals(cls.getName()))
+				innerClassEntries.add(build(cache, innerClass));
+
+		return entry;
 	}
 }

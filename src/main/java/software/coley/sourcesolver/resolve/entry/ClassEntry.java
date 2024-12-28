@@ -27,6 +27,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	List<ClassEntry> getImplementedEntries();
 
 	/**
+	 * @return Metadata models of all inner class declarations.
+	 */
+	@Nonnull
+	List<ClassEntry> getInnerClassEntries();
+
+	/**
 	 * @return Name of class in internal format.
 	 */
 	@Nonnull

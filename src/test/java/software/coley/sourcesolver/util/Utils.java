@@ -4,7 +4,6 @@ import software.coley.collections.Unchecked;
 import software.coley.sourcesolver.resolve.entry.BasicEntryPool;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
-import software.coley.sourcesolver.resolve.entry.ReflectiveClassEntry;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +14,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static software.coley.sourcesolver.resolve.entry.ReflectiveClassEntry.build;
 
 public class Utils {
 	private static final EntryPool pool = new BasicEntryPool();
@@ -40,10 +41,8 @@ public class Utils {
 			if (cls.indexOf('$') >= 0)
 				continue;
 			try {
-				entryMap.computeIfAbsent(cls, c -> {
-					Class<?> ref = Unchecked.supply(() -> Class.forName(cls.replace('/', '.'), false, ClassLoader.getSystemClassLoader())).get();
-					return buildEntry(entryMap, ref);
-				});
+				Class<?> ref = Unchecked.supply(() -> Class.forName(cls.replace('/', '.'), false, ClassLoader.getSystemClassLoader())).get();
+				build(entryMap, ref);
 			} catch (Throwable ignored) {}
 		}
 
@@ -55,7 +54,7 @@ public class Utils {
 					try {
 						String className = pathName.replace(File.separator, ".").replace(".java", "");
 						Class<?> cls = Class.forName(className, false, Utils.class.getClassLoader());
-						buildEntry(entryMap, cls);
+						build(entryMap, cls);
 					} catch (ReflectiveOperationException ex) {
 						throw new IllegalStateException("Failed reflecting test-fixtures, pool not finished populating", ex);
 					}
@@ -64,27 +63,7 @@ public class Utils {
 		} catch (IOException ex) {
 			throw new IllegalStateException("Failed walking test-fixtures, pool not finished populating", ex);
 		}
-	}
-
-	private static ClassEntry buildEntry(Map<String, ClassEntry> entryMap, Class<?> ref) {
-		String className = ref.getName().replace('.', '/');
-		ClassEntry existing = entryMap.get(className);
-		if (existing != null)
-			return existing;
-
-		// Build the model for the class
-		ClassEntry entry = ReflectiveClassEntry.build(ref);
-
-		// Record hierarchy
-		entry.visitHierarchy(cls -> {
-			entryMap.put(cls.getName(), cls);
-			pool.register(cls);
-		});
-
-		// Visit inner classes
-		for (Class<?> declaredClass : ref.getDeclaredClasses())
-			buildEntry(entryMap, declaredClass);
-
-		return entry;
+		for (ClassEntry entry : entryMap.values())
+			pool.register(entry);
 	}
 }

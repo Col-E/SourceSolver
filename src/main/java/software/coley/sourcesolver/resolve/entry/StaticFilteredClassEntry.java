@@ -38,6 +38,14 @@ public class StaticFilteredClassEntry implements ClassEntry {
 
 	@Nonnull
 	@Override
+	public List<ClassEntry> getInnerClassEntries() {
+		// We don't record the inner-class attribute details which indicates if the entries are actually static or not.
+		// The class model itself won't have the static modifier.
+		return delegate.getInnerClassEntries();
+	}
+
+	@Nonnull
+	@Override
 	public String getName() {
 		return delegate.getName();
 	}

@@ -10,18 +10,21 @@ public class BasicClassEntry implements ClassEntry {
 	private final int access;
 	private final ClassEntry superEntry;
 	private final List<ClassEntry> interfaceEntries;
+	private final List<ClassEntry> innerClassEntries;
 	private final List<FieldEntry> fields;
 	private final List<MethodEntry> methods;
 
 	public BasicClassEntry(@Nonnull String className, int access,
 	                       @Nullable ClassEntry superEntry,
 	                       @Nonnull List<ClassEntry> interfaceEntries,
+						   @Nonnull List<ClassEntry> innerClassEntries,
 	                       @Nonnull List<FieldEntry> fields,
 	                       @Nonnull List<MethodEntry> methods) {
 		this.className = className;
 		this.access = access;
 		this.superEntry = superEntry;
 		this.interfaceEntries = interfaceEntries;
+		this.innerClassEntries = innerClassEntries;
 		this.fields = fields;
 		this.methods = methods;
 	}
@@ -51,6 +54,12 @@ public class BasicClassEntry implements ClassEntry {
 
 	@Nonnull
 	@Override
+	public List<ClassEntry> getInnerClassEntries() {
+		return innerClassEntries;
+	}
+
+	@Nonnull
+	@Override
 	public List<FieldEntry> getFields() {
 		return fields;
 	}
@@ -72,6 +81,7 @@ public class BasicClassEntry implements ClassEntry {
 		if (!className.equals(that.className)) return false;
 		if (!Objects.equals(superEntry, that.superEntry)) return false;
 		if (!interfaceEntries.equals(that.interfaceEntries)) return false;
+		if (!innerClassEntries.equals(that.innerClassEntries)) return false;
 		if (!fields.equals(that.fields)) return false;
 		return methods.equals(that.methods);
 	}
@@ -82,6 +92,7 @@ public class BasicClassEntry implements ClassEntry {
 		result = 31 * result + access;
 		result = 31 * result + (superEntry != null ? superEntry.hashCode() : 0);
 		result = 31 * result + interfaceEntries.hashCode();
+		result = 31 * result + innerClassEntries.hashCode();
 		result = 31 * result + fields.hashCode();
 		result = 31 * result + methods.hashCode();
 		return result;

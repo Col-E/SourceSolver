@@ -31,7 +31,7 @@ public class BasicResolver implements Resolver {
 
 	/**
 	 * @param unit
-	 * 		Root element model.
+	 * 		Root element model to resolve contents of.
 	 * @param pool
 	 * 		Pool to access class metadata.
 	 */
@@ -40,6 +40,14 @@ public class BasicResolver implements Resolver {
 		this.pool = pool;
 
 		importedTypes = Collections.unmodifiableMap(populateImports());
+	}
+
+	/**
+	 * @return Backing compilation unit to resolve contents of.
+	 */
+	@Nonnull
+	protected CompilationUnitModel getUnit() {
+		return unit;
 	}
 
 	/**
