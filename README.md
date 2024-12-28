@@ -15,6 +15,7 @@ CompilationUnitModel model = parser.parse(sourceCode);
 
 // Create an entry-pool which provides information about class structures to Source-Solver.
 // You are expected to provide your own ClassEntry instances into the pool.
+// You can find an example of how to do this in the test classes of this repository.
 EntryPool pool = new BasicEntryPool();
 loadClassesIntoPool(pool);
 
