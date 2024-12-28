@@ -206,6 +206,20 @@ public class ResolveTests {
 		 */
 	}
 
+	@Test
+	void testOuterClass() {
+		String sourceCode = readSrc("sample/OuterClass");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "s InnerClass {"),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass()"),
+				"sample/OuterClass$InnerClass");
+		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, "().example);"),
+				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
+	}
+
 	private static void assertPackageResolution(Resolution resolution, String name) {
 		if (resolution instanceof PackageResolution packageResolution) {
 			if (name != null) assertEquals(name, packageResolution.getPackageName());
