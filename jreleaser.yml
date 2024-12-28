@@ -1,0 +1,52 @@
+project:
+  name: source-solver
+  description: A javac wrapper to support resolving class/member references.
+  longDescription: A lightweight wrapper on the javac API to support resolving class and member references in a String of Java source code.
+  links:
+    homepage: https://github.com/Col-E/SourceSolver
+  authors:
+    - Matt Coley
+  license: MIT
+  inceptionYear: 2024
+  stereotype: none
+  java:
+    version: 21
+    groupId: software.coley
+    artifactId: source-solver
+
+release:
+  github:
+    overwrite: true
+    tagName: '{{projectVersion}}'
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        format: '- {{contributorName}}{{#contributorUsernameAsLink}} ({{.}}){{/contributorUsernameAsLink}}'
+
+distributions:
+  dist:
+    type: SINGLE_JAR
+    artifacts:
+      - path: target/{{projectName}}-{{projectVersion}}.jar
+
+signing:
+  active: RELEASE
+  mode: MEMORY
+  armored: true
+  verify: true
+  artifacts: true
+  checksums: true
+  files: false
+
+deploy:
+  maven:
+    nexus2:
+      maven-central:
+        active: RELEASE
+        url: https://s01.oss.sonatype.org/service/local
+        applyMavenCentralRules: true
+        stagingRepositories:
+          - target/staging-deploy
+        closeRepository: true
+        releaseRepository: true
