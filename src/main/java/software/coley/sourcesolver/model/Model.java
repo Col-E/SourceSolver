@@ -1,11 +1,11 @@
 package software.coley.sourcesolver.model;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.resolve.Resolver;
 import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -111,6 +111,32 @@ public interface Model {
 			parent = parent.getParent();
 		}
 		return null;
+	}
+
+	/**
+	 * @param model
+	 * 		Model to check for as a child of this model.
+	 *
+	 * @return {@code true} when the given model is a child of this model.
+	 */
+	default boolean isParentOf(@Nonnull Model model) {
+		return model.isChildOf(this);
+	}
+
+	/**
+	 * @param model
+	 * 		Model to check for as a parent of this model.
+	 *
+	 * @return {@code true} when the given model is a parent of this model.
+	 */
+	default boolean isChildOf(@Nonnull Model model) {
+		Model parent = getParent();
+		while (parent != null) {
+			if (parent == model)
+				return true;
+			parent = parent.getParent();
+		}
+		return false;
 	}
 
 	/**
