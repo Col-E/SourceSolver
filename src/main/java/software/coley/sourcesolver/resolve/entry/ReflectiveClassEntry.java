@@ -48,7 +48,7 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 			int modifiers = field.getModifiers();
 			fields.add(new BasicFieldEntry(fieldName, fieldDescriptor, modifiers));
 		}
-		for (Constructor<?> constructor : cls.getConstructors()) {
+		for (Constructor<?> constructor : cls.getDeclaredConstructors()) {
 			String methodDescriptor = MethodType.methodType(void.class, constructor.getParameterTypes()).descriptorString();
 			int modifiers = constructor.getModifiers();
 			methods.add(new BasicMethodEntry("<init>", methodDescriptor, modifiers));
