@@ -148,8 +148,13 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveNameUsage(@Nonnull NamedModel named) {
-		Model parent = named.getParent();
+		// First check if the named model itself is a type.
+		if (named instanceof TypeModel namedType)
+			return resolveType(namedType);
 
+		// Next check if we can ascertain what kind of content the named model is based
+		// on the surrounding context.
+		Model parent = named.getParent();
 		if (parent instanceof ClassModel
 				|| parent instanceof ImplementsModel
 				|| parent instanceof CastExpressionModel
