@@ -1,6 +1,9 @@
 package software.coley.sourcesolver.resolve.result;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
+import java.util.Objects;
 
 /**
  * Resolution of a package.
@@ -17,5 +20,11 @@ non-sealed public interface PackageResolution extends Resolution {
 	 */
 	default boolean isDefaultPackage() {
 		return getPackageName() == null;
+	}
+
+	@Override
+	default boolean matches(@Nonnull Resolution other) {
+		return other instanceof PackageResolution otherPackage
+				&& Objects.equals(getPackageName(), otherPackage.getPackageName());
 	}
 }
