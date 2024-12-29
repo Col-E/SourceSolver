@@ -461,7 +461,12 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String methodName = method.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
-		if (resolveMethodByNameInClass(definingClassEntry, methodName) instanceof MethodResolution resolution)
+		if (methodName.charAt(0) == '<'){
+			// For constructors and the static initializer we do not want to check in parent classes
+			// for the method declaration.
+			if (resolveMethodByNameInClass(definingClassEntry, methodName, getPrimitive("V"), null, false) instanceof MethodResolution resolution)
+				return resolution;
+		} else if (resolveMethodByNameInClass(definingClassEntry, methodName) instanceof MethodResolution resolution)
 			return resolution;
 
 		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
@@ -514,13 +519,14 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
-		return resolveMethodByNameInClass(classEntry, methodName, null, null);
+		return resolveMethodByNameInClass(classEntry, methodName, null, null, true);
 	}
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
 	                                              @Nullable DescribableEntry returnTypeEntry,
-	                                              @Nullable List<DescribableEntry> argumentTypeEntries) {
+	                                              @Nullable List<DescribableEntry> argumentTypeEntries,
+	                                              boolean checkParents) {
 		// Check if the method is declared in this class.
 		//  - Only one match by name   --> match
 		//  - Multiple matches by name --> filter by matching signature --> match
@@ -614,15 +620,18 @@ public class BasicResolver implements Resolver {
 			}
 		}
 
-		// Check in super-type.
-		if (classEntry.getSuperEntry() != null
-				&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
-			return resolution;
 
-		// Check in interfaces.
-		for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-			if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
+		// In some cases we want to check for the method in parent classes:
+		//  - Super-class
+		//  - Interfaces
+		if (checkParents) {
+			if (classEntry.getSuperEntry() != null
+					&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries, true) instanceof MethodResolution resolution)
 				return resolution;
+			for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
+				if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries, true) instanceof MethodResolution resolution)
+					return resolution;
+		}
 
 		return unknown();
 	}
@@ -648,7 +657,9 @@ public class BasicResolver implements Resolver {
 				Resolution resolution = isFieldsTarget ?
 						resolveFieldByNameInClass(classEntry, name, null) :
 						resolveMethodByNameInClass(classEntry, name, null,
-								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */);
+								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */,
+								true
+						);
 				if (!resolution.isUnknown())
 					return resolution;
 				wasLastClassContextStatic = classEntry.isStatic();
@@ -856,13 +867,13 @@ public class BasicResolver implements Resolver {
 		// Member selection is the method identifier
 		if (contextResolution instanceof ClassResolution classResolution) {
 			ClassEntry declaringClass = classResolution.getClassEntry();
-			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
 		} else if (contextResolution instanceof FieldResolution fieldResolution) {
 			if (pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
 		}
 
 		return unknown();

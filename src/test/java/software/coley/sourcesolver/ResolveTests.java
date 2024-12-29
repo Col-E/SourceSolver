@@ -220,6 +220,22 @@ public class ResolveTests {
 				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
 	}
 
+	@Test
+	void testMultiCtor() {
+		String sourceCode = readSrc("sample/MultiCtor");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "MultiCtor()"),
+				"sample/MultiCtor", "<init>", "()V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "MultiCtor(int i)"),
+				"sample/MultiCtor", "<init>", "(I)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "MultiCtor(long j)"),
+				"sample/MultiCtor", "<init>", "(J)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "MultiCtor(int i, long j)"),
+				"sample/MultiCtor", "<init>", "(IJ)V");
+	}
+
 	private static void assertPackageResolution(Resolution resolution, String name) {
 		if (resolution instanceof PackageResolution packageResolution) {
 			if (name != null) assertEquals(name, packageResolution.getPackageName());
