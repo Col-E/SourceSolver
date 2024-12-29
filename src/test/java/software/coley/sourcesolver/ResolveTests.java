@@ -1,5 +1,6 @@
 package software.coley.sourcesolver;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
@@ -234,6 +235,22 @@ public class ResolveTests {
 				"sample/MultiCtor", "<init>", "(J)V");
 		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "MultiCtor(int i, long j)"),
 				"sample/MultiCtor", "<init>", "(IJ)V");
+	}
+
+	@Test
+	@Disabled("Generic resolution required")
+	void testBoxUseCases() {
+		// TODO: Need to create a system to resolve things with generics
+		//  IE if a field is a "T" signature, then I should adapt the field-resolution to be of bound "T" instead of "Object"
+		//  And if I have List<T> then "get(int)" which yields T should also be adapted to the bound.
+		String sourceCode = readSrc("sample/BoxUseCases");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toUpperCase"),
+				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "intValue"),
+				"java/lang/Integer", "intValue", "()I");
 	}
 
 	private static void assertPackageResolution(Resolution resolution, String name) {
