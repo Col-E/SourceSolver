@@ -84,7 +84,7 @@ public class Resolutions {
 
 	@Nonnull
 	public static Resolution ofField(@Nonnull ClassEntry classEntry, @Nonnull String fieldName, @Nonnull String fieldDescriptor) {
-		FieldEntry methodEntry = classEntry.getField(fieldName, fieldDescriptor);
+		FieldEntry methodEntry = classEntry.getDeclaredField(fieldName, fieldDescriptor);
 		if (methodEntry != null)
 			return new FieldResolutionImpl(classEntry, methodEntry);
 
@@ -113,7 +113,7 @@ public class Resolutions {
 
 	@Nonnull
 	public static Resolution ofMethod(@Nonnull ClassEntry classEntry, @Nonnull String methodName, @Nonnull String methodDescriptor) {
-		MethodEntry methodEntry = classEntry.getMethod(methodName, methodDescriptor);
+		MethodEntry methodEntry = classEntry.getDeclaredMethod(methodName, methodDescriptor);
 		if (methodEntry != null)
 			return new MethodResolutionImpl(classEntry, methodEntry);
 

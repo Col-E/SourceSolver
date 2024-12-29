@@ -374,14 +374,14 @@ public class BasicResolver implements Resolver {
 				List<ClassMemberPair> memberEntries = new ArrayList<>();
 				if (memberName.lastIndexOf('*') >= 0) {
 					// Star import, so all members of the class should be returned.
-					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.memberStream()
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.declaredMemberStream()
 							.filter(e -> !e.isPrivate() && e.isStatic())
 							.map(e -> new ClassMemberPair(owner, e))
 							.toList()));
 
 				} else {
 					// Specific name import, so only members with the same name should be returned.
-					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.memberStream()
+					declaringClassResolution.getClassEntry().visitHierarchy(owner -> memberEntries.addAll(owner.declaredMemberStream()
 							.filter(e -> !e.isPrivate() && e.isStatic() && e.getName().equals(memberName))
 							.map(e -> new ClassMemberPair(owner, e))
 							.toList()));
@@ -490,7 +490,7 @@ public class BasicResolver implements Resolver {
 			return ofClass(Objects.requireNonNull(pool.getClass("java/lang/Class")));
 
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
-		List<FieldEntry> fieldsByName = declaringClass.getFieldsByName(fieldName);
+		List<FieldEntry> fieldsByName = declaringClass.getDeclaredFieldsByName(fieldName);
 		if (fieldsByName.size() == 1)
 			return ofField(declaringClass, fieldsByName.getFirst());
 
@@ -519,7 +519,7 @@ public class BasicResolver implements Resolver {
 		// Check if the method is declared in this class.
 		//  - Only one match by name   --> match
 		//  - Multiple matches by name --> filter by matching signature --> match
-		List<MethodEntry> methodsByName = classEntry.getMethodsByName(methodName);
+		List<MethodEntry> methodsByName = classEntry.getDeclaredMethodsByName(methodName);
 		if (methodsByName.size() == 1)
 			return ofMethod(classEntry, methodsByName.getFirst());
 		if (methodsByName.size() > 1 && (returnTypeEntry != null || argumentTypeEntries != null)) {
@@ -707,7 +707,7 @@ public class BasicResolver implements Resolver {
 			return unknown();
 
 		// Static initializers will only be resolved in the target class.
-		List<MethodEntry> initializers = resolvedDefiningClass.getClassEntry().getMethodsByName("<clinit>");
+		List<MethodEntry> initializers = resolvedDefiningClass.getClassEntry().getDeclaredMethodsByName("<clinit>");
 		if (initializers.isEmpty())
 			return unknown();
 		return ofMethod(resolvedDefiningClass.getClassEntry(), initializers.getFirst());

@@ -60,13 +60,13 @@ public class BasicClassEntry implements ClassEntry {
 
 	@Nonnull
 	@Override
-	public List<FieldEntry> getFields() {
+	public List<FieldEntry> getDeclaredFields() {
 		return fields;
 	}
 
 	@Nonnull
 	@Override
-	public List<MethodEntry> getMethods() {
+	public List<MethodEntry> getDeclaredMethods() {
 		return methods;
 	}
 

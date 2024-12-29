@@ -52,16 +52,16 @@ public class StaticFilteredClassEntry implements ClassEntry {
 
 	@Nonnull
 	@Override
-	public List<FieldEntry> getFields() {
-		return delegate.getFields().stream()
+	public List<FieldEntry> getDeclaredFields() {
+		return delegate.getDeclaredFields().stream()
 				.filter(AccessedEntry::isStatic)
 				.collect(Collectors.toList());
 	}
 
 	@Nonnull
 	@Override
-	public List<MethodEntry> getMethods() {
-		return delegate.getMethods().stream()
+	public List<MethodEntry> getDeclaredMethods() {
+		return delegate.getDeclaredMethods().stream()
 				.filter(AccessedEntry::isStatic)
 				.collect(Collectors.toList());
 	}

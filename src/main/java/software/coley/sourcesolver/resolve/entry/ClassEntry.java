@@ -2,6 +2,7 @@ package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,22 +53,22 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 * @return Metadata models of all declared fields.
 	 */
 	@Nonnull
-	List<FieldEntry> getFields();
+	List<FieldEntry> getDeclaredFields();
 
 
 	/**
 	 * @return Metadata models of all declared methods.
 	 */
 	@Nonnull
-	List<MethodEntry> getMethods();
+	List<MethodEntry> getDeclaredMethods();
 
 
 	/**
 	 * @return Stream of all metadata models for declared fields and methods.
 	 */
 	@Nonnull
-	default Stream<MemberEntry> memberStream() {
-		return Stream.concat(getFields().stream(), getMethods().stream());
+	default Stream<MemberEntry> declaredMemberStream() {
+		return Stream.concat(getDeclaredFields().stream(), getDeclaredMethods().stream());
 	}
 
 	/**
@@ -76,7 +77,7 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 * @param desc
 	 * 		Field descriptor.
 	 *
-	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 * @return Metadata model of the field, or {@code null} if no such field exists in this class or any parent class.
 	 */
 	@Nullable
 	default FieldEntry getField(@Nonnull String name, @Nonnull String desc) {
@@ -91,13 +92,13 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 * @param filter
 	 * 		Optional filter to limit matches.
 	 *
-	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 * @return Metadata model of the field, or {@code null} if no such field exists in this class or any parent class.
 	 */
 	@Nullable
 	default FieldEntry getField(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<FieldEntry> filter) {
-		for (FieldEntry field : getFields())
-			if (field.getName().equals(name) && field.getDescriptor().equals(desc) && (filter == null || filter.test(field)))
-				return field;
+		FieldEntry field = getDeclaredField(name, desc, filter);
+		if (field != null)
+			return field;
 		ClassEntry superEntry = getSuperEntry();
 		if (superEntry != null) {
 			FieldEntry superField = superEntry.getField(name, desc, m -> !m.isPrivate());
@@ -115,13 +116,44 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	/**
 	 * @param name
 	 * 		Field name.
+	 * @param desc
+	 * 		Field descriptor.
+	 *
+	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 */
+	@Nullable
+	default FieldEntry getDeclaredField(@Nonnull String name, @Nonnull String desc) {
+		return getDeclaredField(name, desc, null);
+	}
+
+	/**
+	 * @param name
+	 * 		Field name.
+	 * @param desc
+	 * 		Field descriptor.
+	 * @param filter
+	 * 		Optional filter to limit matches.
+	 *
+	 * @return Metadata model of the declared field, or {@code null} if no such field exists in this class.
+	 */
+	@Nullable
+	default FieldEntry getDeclaredField(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<FieldEntry> filter) {
+		for (FieldEntry field : getDeclaredFields())
+			if (field.getName().equals(name) && field.getDescriptor().equals(desc) && (filter == null || filter.test(field)))
+				return field;
+		return null;
+	}
+
+	/**
+	 * @param name
+	 * 		Field name.
 	 *
 	 * @return All declared fields with the given name.
 	 */
 	@Nonnull
-	default List<FieldEntry> getFieldsByName(@Nonnull String name) {
+	default List<FieldEntry> getDeclaredFieldsByName(@Nonnull String name) {
 		List<FieldEntry> matched = new ArrayList<>();
-		for (FieldEntry field : getFields())
+		for (FieldEntry field : getDeclaredFields())
 			if (field.getName().equals(name))
 				matched.add(field);
 		return matched;
@@ -133,7 +165,7 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 * @param desc
 	 * 		Method descriptor.
 	 *
-	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class or any parent class.
 	 */
 	@Nullable
 	default MethodEntry getMethod(@Nonnull String name, @Nonnull String desc) {
@@ -148,13 +180,13 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 * @param filter
 	 * 		Optional filter to limit matches.
 	 *
-	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 * @return Metadata model of the method, or {@code null} if no such method exists in this class or any parent class.
 	 */
 	@Nullable
 	default MethodEntry getMethod(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<MethodEntry> filter) {
-		for (MethodEntry method : getMethods())
-			if (method.getName().equals(name) && method.getDescriptor().equals(desc) && (filter == null || filter.test(method)))
-				return method;
+		MethodEntry method = getDeclaredMethod(name, desc, filter);
+		if (method != null)
+			return method;
 		ClassEntry superEntry = getSuperEntry();
 		if (superEntry != null) {
 			MethodEntry superMethod = superEntry.getMethod(name, desc, m -> !m.isPrivate());
@@ -172,13 +204,44 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	/**
 	 * @param name
 	 * 		Method name.
+	 * @param desc
+	 * 		Method descriptor.
+	 *
+	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 */
+	@Nullable
+	default MethodEntry getDeclaredMethod(@Nonnull String name, @Nonnull String desc) {
+		return getDeclaredMethod(name, desc, null);
+	}
+
+	/**
+	 * @param name
+	 * 		Method name.
+	 * @param desc
+	 * 		Method descriptor.
+	 * @param filter
+	 * 		Optional filter to limit matches.
+	 *
+	 * @return Metadata model of the declared method, or {@code null} if no such method exists in this class.
+	 */
+	@Nullable
+	default MethodEntry getDeclaredMethod(@Nonnull String name, @Nonnull String desc, @Nullable Predicate<MethodEntry> filter) {
+		for (MethodEntry method : getDeclaredMethods())
+			if (method.getName().equals(name) && method.getDescriptor().equals(desc) && (filter == null || filter.test(method)))
+				return method;
+		return null;
+	}
+
+	/**
+	 * @param name
+	 * 		Method name.
 	 *
 	 * @return All declared methods with the given name.
 	 */
 	@Nonnull
-	default List<MethodEntry> getMethodsByName(@Nonnull String name) {
+	default List<MethodEntry> getDeclaredMethodsByName(@Nonnull String name) {
 		List<MethodEntry> matched = new ArrayList<>();
-		for (MethodEntry method : getMethods())
+		for (MethodEntry method : getDeclaredMethods())
 			if (method.getName().equals(name))
 				matched.add(method);
 		return matched;
