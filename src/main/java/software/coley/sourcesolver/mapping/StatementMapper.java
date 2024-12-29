@@ -51,7 +51,9 @@ public class StatementMapper implements Mapper<AbstractStatementModel, Statement
 		}
 		if (tree instanceof ExpressionStatementTree expressionStatementTree) {
 			AbstractExpressionModel expression = context.map(ExpressionMapper.class, expressionStatementTree.getExpression());
-			return new ExpressionStatementModel(range, expression);
+			return (expression instanceof ErroneousModel) ?
+					new ErroneousExpressionStatementModel(range, expression) :
+					new ExpressionStatementModel(range, expression);
 		}
 		if (tree instanceof ForLoopTree forLoopTree) {
 			List<AbstractStatementModel> initializerStatements = forLoopTree.getInitializer().stream()

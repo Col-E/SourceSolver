@@ -7,6 +7,7 @@ import software.coley.sourcesolver.model.ArrayAccessExpressionModel;
 import software.coley.sourcesolver.model.AssignmentExpressionModel;
 import software.coley.sourcesolver.model.CaseModel;
 import software.coley.sourcesolver.model.ConditionalExpressionModel;
+import software.coley.sourcesolver.model.ErroneousExpressionModel;
 import software.coley.sourcesolver.model.ParenthesizedExpressionModel;
 import software.coley.sourcesolver.model.SwitchExpressionModel;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
@@ -136,6 +137,10 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 		// @Foo(fizz = "buzz")
 		if (tree instanceof AnnotationTree annotation)
 			return context.map(AnnotationUseMapper.class, annotation);
+
+		// Bogus garbage that isn't valid java
+		if (tree instanceof ErroneousTree)
+			return new ErroneousExpressionModel(range, tree.toString());
 
 		// Handle unknown cases or errors as unknowns which toString the content
 		return new UnknownExpressionModel(range, tree.toString());

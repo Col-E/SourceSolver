@@ -95,7 +95,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nonnull
-	private Resolution resolve(@Nonnull Model target) {
+	protected Resolution resolve(@Nonnull Model target) {
 		if (target instanceof ClassModel clazz)
 			return resolveClassModel(clazz);
 		else if (target instanceof MethodModel method)
