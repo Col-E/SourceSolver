@@ -39,6 +39,19 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	@Nonnull
 	String getName();
 
+	/**
+	 * @return Name of the package in internal format that this class resides in.
+	 * {@code null} for classes in the default package.
+	 */
+	@Nullable
+	default String getPackageName() {
+		String name = getName();
+		int i = name.lastIndexOf('/');
+		if (i < 0)
+			return null;
+		return name.substring(0, i);
+	}
+
 	@Nonnull
 	@Override
 	default String getDescriptor() {
