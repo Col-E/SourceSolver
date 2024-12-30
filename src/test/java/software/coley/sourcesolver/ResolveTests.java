@@ -238,6 +238,29 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testMethodRefs() {
+		String sourceCode = readSrc("sample/MethodRefs");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "::staticConsume"),
+				"sample/BoxUseCases", "staticConsume", "(Lsample/Box;)V");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "::virtualConsume"),
+				"sample/BoxUseCases", "virtualConsume", "(Lsample/Box;)V");
+		/* TODO: Need to pull surrounding context to differentiate ambiguous references
+		    - This may also be blocked by the generics system needing to be implemented
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "newBox = Box::new", 15),
+				"sample/Box", "<init>", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "newBoxWithArg = Box::new", 22),
+				"sample/Box", "<init>", "(Ljava/lang/Object;)V");
+		 */
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "::length"),
+				"java/lang/String", "length", "()I");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "::hashCode"),
+				"java/lang/String", "hashCode", "()I");
+	}
+
+	@Test
 	@Disabled("Generic resolution required")
 	void testBoxUseCases() {
 		// TODO: Need to create a system to resolve things with generics

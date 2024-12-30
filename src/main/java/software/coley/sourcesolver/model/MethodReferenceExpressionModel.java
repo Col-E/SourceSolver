@@ -78,7 +78,7 @@ public class MethodReferenceExpressionModel extends AbstractExpressionModel impl
 		StringBuilder sb = new StringBuilder();
 		if (typeArguments != null && !typeArguments.isEmpty())
 			sb.append('<').append(typeArguments.stream().map(Object::toString).collect(Collectors.joining(", "))).append('>');
-		sb.append(qualifier).append('.').append(name);
+		sb.append(qualifier).append("::").append(name);
 		return sb.toString();
 	}
 

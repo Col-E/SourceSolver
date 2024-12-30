@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.resolve.result;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.resolve.entry.*;
 
 import java.util.List;
@@ -62,6 +63,11 @@ public class Resolutions {
 	@Nonnull
 	public static ArrayResolution ofArray(@Nonnull ArrayEntry array) {
 		return new ArrayResolutionImpl(array);
+	}
+
+	@Nonnull
+	public static PackageResolution ofPackage(@Nullable String name) {
+		return new PackageResolutionImpl(name);
 	}
 
 	@Nonnull
@@ -309,4 +315,12 @@ public class Resolutions {
 	private record ThrowingResolutionImpl() implements ThrowingResolution {}
 
 	private record NullResolutionImpl() implements NullResolution {}
+
+	private record PackageResolutionImpl(@Nullable String name) implements PackageResolution {
+		@Nullable
+		@Override
+		public String getPackageName() {
+			return name;
+		}
+	}
 }

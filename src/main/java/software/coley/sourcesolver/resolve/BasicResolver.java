@@ -148,9 +148,12 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveNameUsage(@Nonnull NamedModel named) {
-		// First check if the named model itself is a type.
+		// First check if the named model itself is enough context to resolve.
 		if (named instanceof TypeModel namedType)
 			return resolveType(namedType);
+		else if (named instanceof MethodReferenceExpressionModel methodReference)
+			return resolveMethodInContext(methodReference.getQualifier().resolve(this),
+					methodReference, methodReference.getName());
 
 		// Next check if we can ascertain what kind of content the named model is based
 		// on the surrounding context.
@@ -197,6 +200,24 @@ public class BasicResolver implements Resolver {
 				&& named == methodInvocation.getMethodSelect())
 			// The named model is the method name.
 			return resolveMember(methodInvocation);
+		else if (parent instanceof MethodReferenceExpressionModel methodReference) {
+			if (named == methodReference.getNameModel())
+				return resolveNameUsage(methodReference);
+			else if (named == methodReference.getQualifier()) {
+				// The qualifier can be a type (as a name expression), a variable, or an expression.
+				//
+				// Both the type/variable cases are stored as name expression models, so we will check
+				// for it being a type name here, and as a variable in the fallthrough further below.
+				//
+				// If its some other kind of expression it shouldn't be a named model, and thus
+				// will be solved somewhere else.
+				if (named instanceof NameExpressionModel) {
+					Resolution resolution = resolveNamed(named);
+					if (!resolution.isUnknown())
+						return resolution;
+				}
+			}
+		}
 
 		String name = named.getName();
 
@@ -361,7 +382,7 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution resolvePackageModel(@Nonnull PackageModel pkg) {
 		String packageName = pkg.isDefaultPackage() ? null : pkg.getName().replace('.', '/');
-		return (PackageResolution) () -> packageName;
+		return ofPackage(packageName);
 	}
 
 	@Nonnull
@@ -461,10 +482,8 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String methodName = method.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
-		if (methodName.charAt(0) == '<'){
-			// For constructors and the static initializer we do not want to check in parent classes
-			// for the method declaration.
-			if (resolveMethodByNameInClass(definingClassEntry, methodName, getPrimitive("V"), null, false) instanceof MethodResolution resolution)
+		if (methodName.charAt(0) == '<') {
+			if (resolveMethodByNameInClass(definingClassEntry, methodName, getPrimitive("V"), null) instanceof MethodResolution resolution)
 				return resolution;
 		} else if (resolveMethodByNameInClass(definingClassEntry, methodName) instanceof MethodResolution resolution)
 			return resolution;
@@ -519,14 +538,13 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
-		return resolveMethodByNameInClass(classEntry, methodName, null, null, true);
+		return resolveMethodByNameInClass(classEntry, methodName, null, null);
 	}
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
 	                                              @Nullable DescribableEntry returnTypeEntry,
-	                                              @Nullable List<DescribableEntry> argumentTypeEntries,
-	                                              boolean checkParents) {
+	                                              @Nullable List<DescribableEntry> argumentTypeEntries) {
 		// Check if the method is declared in this class.
 		//  - Only one match by name   --> match
 		//  - Multiple matches by name --> filter by matching signature --> match
@@ -624,12 +642,13 @@ public class BasicResolver implements Resolver {
 		// In some cases we want to check for the method in parent classes:
 		//  - Super-class
 		//  - Interfaces
-		if (checkParents) {
+		// Just not when the method name is special, like a constructor or the static initializer.
+		if (methodName.charAt(0) != '<') {
 			if (classEntry.getSuperEntry() != null
-					&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries, true) instanceof MethodResolution resolution)
+					&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
 				return resolution;
 			for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-				if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries, true) instanceof MethodResolution resolution)
+				if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
 					return resolution;
 		}
 
@@ -657,9 +676,7 @@ public class BasicResolver implements Resolver {
 				Resolution resolution = isFieldsTarget ?
 						resolveFieldByNameInClass(classEntry, name, null) :
 						resolveMethodByNameInClass(classEntry, name, null,
-								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */,
-								true
-						);
+								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */);
 				if (!resolution.isUnknown())
 					return resolution;
 				wasLastClassContextStatic = classEntry.isStatic();
@@ -867,13 +884,13 @@ public class BasicResolver implements Resolver {
 		// Member selection is the method identifier
 		if (contextResolution instanceof ClassResolution classResolution) {
 			ClassEntry declaringClass = classResolution.getClassEntry();
-			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
+			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
 		} else if (contextResolution instanceof FieldResolution fieldResolution) {
 			if (pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments, true);
+				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
 		}
 
 		return unknown();
@@ -987,6 +1004,17 @@ public class BasicResolver implements Resolver {
 
 	@Nullable
 	private List<DescribableEntry> collectMethodArgumentsInParentContext(@Nonnull Model origin) {
+		if (origin instanceof MethodReferenceExpressionModel)
+			// TODO: Method references do not have arguments in the "parent" context but instead are implied
+			//  by the use case of the reference. For example "Box::new" can point to any constructor of the "Box"
+			//  type based on its context. A "Supplier<Box>" and a "Function<T, Box>" point to different constructors.
+			// Places to consider for argument inference:
+			//  - Variable type where the reference is stored
+			//     - Supplier<Box> supplier = Box::new
+			//  - Variable type where the reference is passed to
+			//     - called as a parameter to build(Supplier<Box>) or build(Function<T, Box>)
+			return null;
+
 		MethodInvocationExpressionModel methodInvocation = origin instanceof MethodInvocationExpressionModel invoke
 				? invoke : origin.getParentOfType(MethodInvocationExpressionModel.class);
 		if (methodInvocation == null)

@@ -8,4 +8,8 @@ public class BoxUseCases {
 		stringBox.value.toUpperCase();
 		intBox.value.intValue();
 	}
+
+	void virtualConsume(Box<?> box) {}
+
+	static void staticConsume(Box<?> box) {}
 }
