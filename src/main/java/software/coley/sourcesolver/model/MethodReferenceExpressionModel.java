@@ -1,14 +1,15 @@
 package software.coley.sourcesolver.model;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
-public class MethodReferenceExpressionModel extends AbstractExpressionModel {
+public class MethodReferenceExpressionModel extends AbstractExpressionModel implements NameHoldingModel {
 	private final AbstractExpressionModel qualifier;
 	private final NameExpressionModel name;
 	private final List<Model> typeArguments;
@@ -36,8 +37,9 @@ public class MethodReferenceExpressionModel extends AbstractExpressionModel {
 		return qualifier;
 	}
 
-	@Nonnull
-	public NameExpressionModel getName() {
+	@Nullable
+	@Override
+	public NameExpressionModel getNameModel() {
 		return name;
 	}
 
