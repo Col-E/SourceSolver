@@ -1,18 +1,20 @@
 package software.coley.sourcesolver.model;
 
+import jakarta.annotation.Nonnull;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static software.coley.sourcesolver.model.ChildSupplier.of;
 
 public class PermitsModel extends AbstractModel {
 	public static final PermitsModel EMPTY = new PermitsModel(Range.UNKNOWN, Collections.emptyList());
 	private final List<NamedModel> permittedClassNames;
 
 	public PermitsModel(@Nonnull Range range, @Nonnull List<NamedModel> permittedClassNames) {
-		super(range);
+		super(range, of(permittedClassNames));
 		this.permittedClassNames = Collections.unmodifiableList(permittedClassNames);
 	}
 

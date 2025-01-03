@@ -238,6 +238,18 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testShape() {
+		String sourceCode = readSrc("sample/Shape");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "Square"),
+				"sample/Square");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "Circle"),
+				"sample/Circle");
+	}
+
+	@Test
 	void testMethodRefs() {
 		String sourceCode = readSrc("sample/MethodRefs");
 		CompilationUnitModel model = parser.parse(sourceCode);

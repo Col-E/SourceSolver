@@ -160,6 +160,7 @@ public class BasicResolver implements Resolver {
 		Model parent = named.getParent();
 		if (parent instanceof ClassModel
 				|| parent instanceof ImplementsModel
+				|| parent instanceof PermitsModel
 				|| parent instanceof CastExpressionModel
 				|| parent instanceof ThrowStatementModel
 				|| parent instanceof TypeParameterModel)
