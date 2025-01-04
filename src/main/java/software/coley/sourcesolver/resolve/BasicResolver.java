@@ -116,9 +116,12 @@ public class BasicResolver implements Resolver {
 			return resolveAnnotationArgument(argument);
 		else if (target instanceof AnnotationExpressionModel annotation)
 			return annotation.getNameModel().resolve(this);
-		else if (target instanceof MemberSelectExpressionModel memberSelectExpression)
+		else if (target instanceof MemberSelectExpressionModel memberSelectExpression) {
+			Model parent = memberSelectExpression.getParent();
+			if (parent instanceof NewClassExpressionModel || parent instanceof TypeModel)
+				return resolveNamed(memberSelectExpression);
 			return resolveMemberSelection(memberSelectExpression);
-		else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
+		} else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
 			return resolveMethodReturnType(methodInvocationExpressionModel);
 		else if (target instanceof NewClassExpressionModel newClass)
 			return resolveNamed(newClass);

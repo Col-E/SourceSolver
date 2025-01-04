@@ -212,12 +212,22 @@ public class ResolveTests {
 		String sourceCode = readSrc("sample/OuterClass");
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
-
-		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "s InnerClass {"),
+		
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "class InnerClass {"),
 				"sample/OuterClass$InnerClass");
-		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass()"),
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass();"),
 				"sample/OuterClass$InnerClass");
-		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, "().example);"),
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final InnerClass", 10),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 10),
+				"sample/OuterClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 20),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 10),
+				"sample/OuterClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 20),
+				"sample/OuterClass$InnerClass");
+		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, ".example);"),
 				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
 	}
 
