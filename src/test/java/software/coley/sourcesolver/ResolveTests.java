@@ -212,7 +212,7 @@ public class ResolveTests {
 		String sourceCode = readSrc("sample/OuterClass");
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
-		
+
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "class InnerClass {"),
 				"sample/OuterClass$InnerClass");
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass();"),

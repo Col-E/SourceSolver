@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.ArrayTypeTree;
+import com.sun.source.tree.ErroneousTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.ParameterizedTypeTree;
@@ -26,6 +27,7 @@ public class TypeMapper implements Mapper<TypeModel, Tree> {
 		return switch (tree) {
 			case PrimitiveTypeTree primitive -> new TypeModel.Primitive(range, context.map(NameMapper.class, primitive));
 			case IdentifierTree identifier -> new TypeModel.NamedObject(range, context.map(NameMapper.class, identifier));
+			case ErroneousTree erroneous -> new TypeModel.NamedObject(range, context.map(NameMapper.class, erroneous));
 			case MemberSelectTree select -> new TypeModel.NamedObject(range, context.map(MemberSelectMapper.class, select));
 			case ArrayTypeTree arrayType -> {
 				TypeModel elementType = map(context, table, arrayType.getType());
@@ -46,7 +48,7 @@ public class TypeMapper implements Mapper<TypeModel, Tree> {
 				yield new TypeModel.Wildcard(range, identifier, boundModel);
 			}
 			default ->
-					throw new IllegalArgumentException("Unsupported variable type tree: " + tree.getClass().getSimpleName());
+					throw new IllegalArgumentException("Unsupported tree for TypeModel: " + tree.getClass().getSimpleName());
 		};
 	}
 }
