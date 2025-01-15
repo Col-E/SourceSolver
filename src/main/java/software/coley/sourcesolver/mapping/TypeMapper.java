@@ -7,6 +7,7 @@ import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.UnionTypeTree;
 import com.sun.source.tree.WildcardTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import jakarta.annotation.Nonnull;
@@ -47,8 +48,13 @@ public class TypeMapper implements Mapper<TypeModel, Tree> {
 				Model boundModel = wildcardTree.getBound() == null ? null : map(context, table, wildcardTree.getBound());
 				yield new TypeModel.Wildcard(range, identifier, boundModel);
 			}
-			default ->
-					throw new IllegalArgumentException("Unsupported tree for TypeModel: " + tree.getClass().getSimpleName());
+			case UnionTypeTree unionTypeTree -> {
+				List<TypeModel> alternatives = unionTypeTree.getTypeAlternatives().stream()
+						.map(t -> map(context, table, t))
+						.toList();
+				yield new TypeModel.Union(range, alternatives.getFirst(), alternatives.subList(1, alternatives.size()));
+			}
+			default -> throw new IllegalArgumentException("Unsupported tree for TypeModel: " + tree.getClass().getSimpleName());
 		};
 	}
 }

@@ -3,8 +3,28 @@ package software.coley.sourcesolver.resolve;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.model.*;
-import software.coley.sourcesolver.resolve.entry.*;
-import software.coley.sourcesolver.resolve.result.*;
+import software.coley.sourcesolver.resolve.entry.ArrayEntry;
+import software.coley.sourcesolver.resolve.entry.ClassEntry;
+import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
+import software.coley.sourcesolver.resolve.entry.EntryPool;
+import software.coley.sourcesolver.resolve.entry.FieldEntry;
+import software.coley.sourcesolver.resolve.entry.MemberEntry;
+import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
+import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
+import software.coley.sourcesolver.resolve.result.ArrayResolution;
+import software.coley.sourcesolver.resolve.result.ClassResolution;
+import software.coley.sourcesolver.resolve.result.DescribableResolution;
+import software.coley.sourcesolver.resolve.result.FieldResolution;
+import software.coley.sourcesolver.resolve.result.MethodResolution;
+import software.coley.sourcesolver.resolve.result.MultiClassResolution;
+import software.coley.sourcesolver.resolve.result.MultiMemberResolution;
+import software.coley.sourcesolver.resolve.result.NullResolution;
+import software.coley.sourcesolver.resolve.result.PackageResolution;
+import software.coley.sourcesolver.resolve.result.Resolution;
+import software.coley.sourcesolver.resolve.result.Resolutions;
+import software.coley.sourcesolver.resolve.result.ThrowingResolution;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -363,6 +383,17 @@ public class BasicResolver implements Resolver {
 			};
 		} else if (kind == TypeModel.Kind.OBJECT || kind == TypeModel.Kind.PARAMETERIZED) {
 			return resolveAsIdentifier(type.getIdentifier());
+		} else if (kind == TypeModel.Kind.UNION && type instanceof TypeModel.Union union) {
+			ClassEntry common = null;
+			for (TypeModel unionArgType : union.getAllTypes()) {
+				Resolution resolution = resolveType(unionArgType);
+				if (resolution instanceof ClassResolution classResolution) {
+					ClassEntry resolvedClass = classResolution.getClassEntry();
+					common = common == null ? resolvedClass : common.getCommonParent(resolvedClass);
+				}
+			}
+			if (common != null)
+				return ofClass(common);
 		} else if (kind == TypeModel.Kind.ARRAY
 				&& type instanceof TypeModel.Array arrayType) {
 			Model elementType = arrayType.getRootModel();

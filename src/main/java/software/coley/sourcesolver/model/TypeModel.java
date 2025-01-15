@@ -1,10 +1,11 @@
 package software.coley.sourcesolver.model;
 
-import software.coley.sourcesolver.util.Range;
-
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.util.Range;
+
 import javax.lang.model.type.TypeKind;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -66,6 +67,7 @@ public abstract class TypeModel extends AbstractModel {
 		PRIMITIVE,
 		OBJECT,
 		PARAMETERIZED,
+		UNION,
 		WILDCARD,
 		VAR,
 		ARRAY
@@ -222,6 +224,30 @@ public abstract class TypeModel extends AbstractModel {
 					.map(Object::toString)
 					.collect(Collectors.joining(", ")) +
 					">";
+		}
+	}
+
+	public static class Union extends TypeModel {
+		private final List<TypeModel> allTypes;
+
+		public Union(@Nonnull Range range, @Nonnull TypeModel identifier,
+		             @Nonnull Collection<? extends TypeModel> additionalChildren) {
+			super(range, identifier, additionalChildren);
+			List<TypeModel> all = new ArrayList<>(additionalChildren.size() + 1);
+			all.addAll(additionalChildren);
+			all.addFirst(identifier);
+			allTypes = Collections.unmodifiableList(all);
+		}
+
+		@Nonnull
+		public List<TypeModel> getAllTypes() {
+			return allTypes;
+		}
+
+		@Nonnull
+		@Override
+		public Kind getKind() {
+			return Kind.UNION;
 		}
 	}
 

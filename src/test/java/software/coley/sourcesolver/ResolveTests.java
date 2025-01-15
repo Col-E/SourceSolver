@@ -156,6 +156,22 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testUnionThrowing() {
+		String sourceCode = readSrc("sample/UnionThrowing");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "ClassNotFoundException"),
+				"java/lang/ClassNotFoundException");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "NoSuchFieldException"),
+				"java/lang/NoSuchFieldException");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "IllegalAccessException"),
+				"java/lang/IllegalAccessException");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "printStackTrace"),
+				"java/lang/Throwable", "printStackTrace", "()V");
+	}
+
+	@Test
 	void testComputers() {
 		String sourceCode = readSrc("sample/Computers");
 		CompilationUnitModel model = parser.parse(sourceCode);
