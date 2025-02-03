@@ -299,6 +299,22 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testBoolCallable() {
+		// The actual method code is in call()Boolean, but the class contract demands a call()Object
+		//  - The Object returning method just delegates to the Boolean one
+		//  - If we do a by-name lookup, we will get the call() from the Callable class and not the defining class BoolCallable
+		//    because there are two methods of the name "call", so a by-name lookup is not good enough.
+		//  - If we find that a descriptor backed lookup yields a "call()" in the defining class BoolCallable
+		//    then that is a better match, and we will want to return that resolution instead.
+		String sourceCode = readSrc("sample/BoolCallable");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "call("),
+				"sample/BoolCallable", "call", "()Ljava/lang/Boolean;");
+	}
+
+	@Test
 	@Disabled("Generic resolution required")
 	void testBoxUseCases() {
 		// TODO: Need to create a system to resolve things with generics

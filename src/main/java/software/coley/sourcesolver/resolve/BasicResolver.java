@@ -517,13 +517,23 @@ public class BasicResolver implements Resolver {
 		// Check and see if we can take a shortcut by just doing a name lookup.
 		String methodName = method.getName();
 		ClassEntry definingClassEntry = resolvedDefiningClass.getClassEntry();
+		MethodResolution byNameResolution = null;
 		if (methodName.charAt(0) == '<') {
 			if (resolveMethodByNameInClass(definingClassEntry, methodName, getPrimitive("V"), null) instanceof MethodResolution resolution)
-				return resolution;
+				byNameResolution = resolution;
 		} else if (resolveMethodByNameInClass(definingClassEntry, methodName) instanceof MethodResolution resolution)
-			return resolution;
+			byNameResolution = resolution;
 
-		// Can't take a shortcut, we need to resolve the descriptor then look up with that.
+		// If the resolution comes from this defining class, then the by-name lookup should be fine.
+		if (byNameResolution != null && byNameResolution.getOwnerEntry() == definingClassEntry)
+			return byNameResolution;
+
+		// It seems that either the by-name lookup did not narrow us down to a single resolution that we could use
+		// in the current defining class... We will need to resolve the descriptor then look up with that.
+		//
+		// We are not going to use the resolution as a fallback value beyond this point because then it would
+		// be a method defined in a parent class, which would be wrong since this AST model is a declaration
+		// in the current class.
 		if (!(method.getReturnType().resolve(this) instanceof DescribableResolution resolvedReturnType))
 			return unknown();
 		List<VariableModel> parameters = method.getParameters();
