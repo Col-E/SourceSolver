@@ -6,7 +6,7 @@
 
     <groupId>software.coley</groupId>
     <artifactId>source-solver</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
 
     <name>Source Solver</name>
     <description>A lightweight wrapper on the javac API to support resolving class and member references in a String of

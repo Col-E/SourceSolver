@@ -248,6 +248,45 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testInnerClassInIsolation_CFR() {
+		// Simulate scenario where the inner class is decompiled by CFR in isolation
+		String sourceCode = """
+				package sample;
+								
+				// Name of class is 'Outer.Inner' form, which javac does not like
+				public class OuterClass.InnerClass {
+					public String example = "Hello";
+					
+					public OuterClass.InnerClass() {
+				        this.example = "Hello";
+				    }
+					
+					String getExample() {
+						return example;
+					}
+					
+					@Override
+					public String toString() {
+						return example;
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "class OuterClass.InnerClass", 8),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "class OuterClass.InnerClass", 28),
+				"sample/OuterClass$InnerClass");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "OuterClass.InnerClass("),
+				"sample/OuterClass$InnerClass", "<init>", "(Lsample/OuterClass;)V");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "getExample()"),
+				"sample/OuterClass$InnerClass", "getExample", "()Ljava/lang/String;");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toString()"),
+				"sample/OuterClass$InnerClass", "toString", "()Ljava/lang/String;");
+	}
+
+	@Test
 	void testMultiCtor() {
 		String sourceCode = readSrc("sample/MultiCtor");
 		CompilationUnitModel model = parser.parse(sourceCode);

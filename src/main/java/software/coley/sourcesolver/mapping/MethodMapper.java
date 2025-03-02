@@ -7,12 +7,22 @@ import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.*;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.model.AbstractExpressionModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
+import software.coley.sourcesolver.model.LiteralExpressionModel;
+import software.coley.sourcesolver.model.MethodBodyModel;
+import software.coley.sourcesolver.model.MethodModel;
+import software.coley.sourcesolver.model.Model;
+import software.coley.sourcesolver.model.ModifiersModel;
+import software.coley.sourcesolver.model.TypeModel;
+import software.coley.sourcesolver.model.TypeParameterModel;
+import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static software.coley.sourcesolver.util.Range.extractRange;
 
@@ -54,7 +64,21 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		//       Not much we can really do tbh
 		//
 		// Note: No tree for the name, so just use a string
+		//
+		// Note: Just like the problem mentioned with names in 'ClassMapper'
+		//  isolated inner classes can be misinterpreted, and we need to fix those manually.
+		//  However, in this case the indicator for this happening is different.
 		String name = tree.getName().toString();
+		if ("<error>".equals(name)) {
+			// If we see that the return type is the "constructor name" in reality then we should reasonably
+			// assume this has been misinterpreted as a normal (but busted) method instead of as a constructor.
+			String returnTypeString = returnType.getIdentifier().toString().replace('.', '$');
+			if (Objects.equals(returnTypeString, context.getClassName())) {
+				name = "<init>";
+				returnType = new TypeModel.Primitive(Range.UNKNOWN,
+						new LiteralExpressionModel(Range.UNKNOWN, LiteralExpressionModel.Kind.VOID, "void"));
+			}
+		}
 
 		// Method body { ... }
 		BlockTree body = tree.getBody();

@@ -2,10 +2,10 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.Model;
-
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.model.Model;
+
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -15,11 +15,11 @@ import java.util.function.Supplier;
  *
  * @author Matt Coley
  */
-@SuppressWarnings("ClassCanBeRecord")
 public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
 	private final EndPosTable table;
 	private final String source;
+	private String className;
 
 	/**
 	 * @param table
@@ -48,6 +48,22 @@ public class MappingContext {
 	@Nonnull
 	public EndPosTable getTable() {
 		return table;
+	}
+
+	/**
+	 * @return Name of class being mapped.
+	 */
+	@Nullable
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * @param className
+	 * 		Name of class mapped.
+	 */
+	public void setClassName(@Nonnull String className) {
+		this.className = className;
 	}
 
 	/**

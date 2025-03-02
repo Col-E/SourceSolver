@@ -4,8 +4,25 @@ public class OuterClass {
 	private final OuterClass.InnerClass inner1 = new InnerClass();
 	private final InnerClass inner2 = new OuterClass.InnerClass();
 
-	public static class InnerClass {
+	public class InnerClass {
 		public String example = "Hello";
+
+		String getExample() {
+			return example;
+		}
+
+		void innerFoo() {
+			outerFoo();
+		}
+
+		@Override
+		public String toString() {
+			return example;
+		}
+	}
+
+	void outerFoo() {
+		// no-op
 	}
 
 	void main() {
