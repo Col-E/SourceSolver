@@ -287,6 +287,56 @@ public class ResolveTests {
 	}
 
 	@Test
+	@Disabled
+	void testInnerClassInIsolation_Procyon() {
+		// Simulate scenario where the inner class is decompiled by Procyon in isolation
+		String sourceCode = """
+				package sample;
+								
+				// Procyon doesn't include any hint that we're an inner class
+				public class InnerClass {
+					public String example = "Hello";
+					
+					// Isolated procyon decomp doesn't cleanup synthetic parameter
+					OuterClass(final OuterClass this$0) {
+						this.this$0 = this$0;
+					}
+					
+					String getExample() {
+						return example;
+					}
+					
+					@Override
+					public String toString() {
+						return example;
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// TODO: We don't have hints about the class actually being an inner.
+		//  I dont want to bruteforce check for all inner classes matching the current name and
+		//  doubling resolving attempts with those contexts...
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "class InnerClass {"),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass();"),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final InnerClass", 10),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 10),
+				"sample/OuterClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 20),
+				"sample/OuterClass$InnerClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 10),
+				"sample/OuterClass");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 20),
+				"sample/OuterClass$InnerClass");
+		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, ".example);"),
+				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
+	}
+
+	@Test
 	void testMultiCtor() {
 		String sourceCode = readSrc("sample/MultiCtor");
 		CompilationUnitModel model = parser.parse(sourceCode);
