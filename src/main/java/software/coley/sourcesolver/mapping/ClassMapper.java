@@ -69,7 +69,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 			// If so, append those patterns.
 			int nameStart = definitionLine.indexOf(className);
 			StringBuilder classNameBuilder = new StringBuilder(className);
-			for (int i = nameStart + classNameBuilder.length(); i < endIndex; i++) {
+			for (int i = nameStart + className.length(); i < definitionLine.length(); i++) {
 				char c = definitionLine.charAt(i);
 				if (c == '.' || c == '$') {
 					classNameBuilder.append('$');
