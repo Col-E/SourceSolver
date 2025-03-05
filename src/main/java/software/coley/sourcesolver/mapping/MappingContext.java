@@ -19,7 +19,7 @@ public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
 	private final EndPosTable table;
 	private final String source;
-	private String className;
+	private String className = ".";
 
 	/**
 	 * @param table
@@ -53,7 +53,7 @@ public class MappingContext {
 	/**
 	 * @return Name of class being mapped.
 	 */
-	@Nullable
+	@Nonnull
 	public String getClassName() {
 		return className;
 	}

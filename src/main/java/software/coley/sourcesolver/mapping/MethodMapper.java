@@ -73,7 +73,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 			// If we see that the return type is the "constructor name" in reality then we should reasonably
 			// assume this has been misinterpreted as a normal (but busted) method instead of as a constructor.
 			String returnTypeString = returnType.getIdentifier().toString().replace('.', '$');
-			if (Objects.equals(returnTypeString, context.getClassName())) {
+			if (returnTypeString.startsWith(context.getClassName())) {
 				name = "<init>";
 				returnType = new TypeModel.Primitive(Range.UNKNOWN,
 						new LiteralExpressionModel(Range.UNKNOWN, LiteralExpressionModel.Kind.VOID, "void"));

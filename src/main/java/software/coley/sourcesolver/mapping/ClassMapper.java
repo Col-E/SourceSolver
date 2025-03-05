@@ -35,52 +35,12 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
 
-		// Get the class name. In some edge cases (decompiled code) we may need to "correct" javac's interpretation.
-		// For instance, decompiling an inner class in isolation can yield 'Outer.Inner' and the simple name will
-		// only include "Outer". We need to catch those and fix the name here so resolving later on knows we're actually
-		// in an inner class.
+		// NOTE: In some decompilers, the way the name is formatted does not play nice with javac.
+		// This name may not exactly align with what is defined. For instance...
+		//     class Outer.Inner { ... } ---> Outer
+		// We can live with the name at this step not being entirely correct. So long as it's at least
+		// a partial match, we can give hints to the resolver to fill in any context gaps.
 		String className = tree.getSimpleName().toString();
-		nameFix:
-		{
-			// Get the rough range of where this class name is defined.
-			Range classRange = extractRange(table, tree);
-			int classStart = classRange.begin();
-			if (classStart < 0)
-				break nameFix;
-			String source = context.getSource();
-			int endIndex = source.indexOf('\n', classStart);
-			while (endIndex > 0 && !source.substring(classStart, endIndex).contains(className)) {
-				// Move forward line by line until the range has the name defined.
-				// We do this because the 'start' may otherwise be defined by annotations applied to the
-				// class, and not the part we want (the "class <name> {" section)
-				classStart = endIndex + 1;
-				endIndex = source.indexOf('\n', classStart);
-			}
-			if (endIndex < 0 || classStart < 0)
-				break nameFix; // Skip if range invalid.
-
-
-			// Skip if the definition based on the given range doesn't include the current assumed class name.
-			String definitionLine = source.substring(classStart, endIndex);
-			if (!definitionLine.contains(className))
-				break nameFix;
-
-			// See if there are any ".name" patterns after the current name.
-			// If so, append those patterns.
-			int nameStart = definitionLine.indexOf(className);
-			StringBuilder classNameBuilder = new StringBuilder(className);
-			for (int i = nameStart + className.length(); i < definitionLine.length(); i++) {
-				char c = definitionLine.charAt(i);
-				if (c == '.' || c == '$') {
-					classNameBuilder.append('$');
-				} else if (Character.isJavaIdentifierPart(c)) {
-					classNameBuilder.append(c);
-				} else {
-					break;
-				}
-			}
-			className = classNameBuilder.toString();
-		}
 		context.setClassName(className);
 
 		List<? extends TypeParameterTree> typeParameters = tree.getTypeParameters();

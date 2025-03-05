@@ -29,6 +29,7 @@ import software.coley.sourcesolver.resolve.result.ThrowingResolution;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,6 +49,7 @@ public class BasicResolver implements Resolver {
 	private final Map<String, ClassEntry> importedTypes;
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
+	private Map<ClassModel, ClassEntry> externallyResolvedClassEntries;
 
 	/**
 	 * @param unit
@@ -60,6 +62,14 @@ public class BasicResolver implements Resolver {
 		this.pool = pool;
 
 		importedTypes = Collections.unmodifiableMap(populateImports());
+	}
+
+	/**
+	 * @return Backing entry pool containing definitions of classes to resolve to.
+	 */
+	@Nonnull
+	protected EntryPool getPool() {
+		return pool;
 	}
 
 	/**
@@ -112,6 +122,14 @@ public class BasicResolver implements Resolver {
 
 		// Resolve off of the deepest model so that it is aware of the results and can cache them.
 		return model.resolve(this);
+	}
+
+	@Override
+	public void setDeclaredClass(@Nonnull ClassModel declaredClassModel,
+	                             @Nullable ClassEntry declaredClassEntry) {
+		if (externallyResolvedClassEntries == null)
+			externallyResolvedClassEntries = new IdentityHashMap<>();
+		externallyResolvedClassEntries.put(declaredClassModel, declaredClassEntry);
 	}
 
 	@Nonnull
@@ -327,6 +345,13 @@ public class BasicResolver implements Resolver {
 			ClassEntry entry = pool.getClass(nameBuilder.toString());
 			if (entry != null)
 				return ofClass(entry);
+
+			// If we haven't passed a basic name check via the builder we'll try resolving the class
+			// instead. This is mainly viable when the provided code is a decompilation of an inner class
+			// that is being informed via 'Resolver#setDeclaredClass'.
+			if (resolve(cls) instanceof ClassResolution resolvedClass &&
+					resolvedClass.getClassEntry().getName().endsWith("$" + localClassName))
+				return resolvedClass;
 		}
 
 		return unknown();
@@ -466,6 +491,15 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveClassModel(@Nonnull ClassModel clazz) {
+		// First check if there are any externally provided class entries for this class model.
+		if (externallyResolvedClassEntries != null) {
+			// If there is, we will trust the externally provided resolution.
+			ClassEntry declaredClassEntry = externallyResolvedClassEntries.get(clazz);
+			if (declaredClassEntry != null)
+				return ofClass(declaredClassEntry);
+		}
+
+		// Otherwise we'll try to do a name lookup and resolve locally against known classes in the pool.
 		String name = clazz.getName();
 		ClassModel outerClass = clazz.getParentOfType(ClassModel.class);
 		if (outerClass != null && resolveClassModel(outerClass) instanceof ClassResolution outerResolution)

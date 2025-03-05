@@ -2,6 +2,7 @@ package software.coley.sourcesolver;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import sample.OuterClass;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
 import software.coley.sourcesolver.resolve.Resolver;
@@ -274,6 +275,10 @@ public class ResolveTests {
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
 
+		// Inform the resolver that this is the declared class.
+		ClassEntry inner = pool.getClass("sample/OuterClass$InnerClass");
+		resolver.setDeclaredClass(model.getDeclaredClasses().getFirst(), inner);
+
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "class OuterClass.InnerClass", 8),
 				"sample/OuterClass$InnerClass");
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "class OuterClass.InnerClass", 28),
@@ -287,7 +292,6 @@ public class ResolveTests {
 	}
 
 	@Test
-	@Disabled
 	void testInnerClassInIsolation_Procyon() {
 		// Simulate scenario where the inner class is decompiled by Procyon in isolation
 		String sourceCode = """
@@ -298,8 +302,9 @@ public class ResolveTests {
 					public String example = "Hello";
 					
 					// Isolated procyon decomp doesn't cleanup synthetic parameter
-					OuterClass(final OuterClass this$0) {
+					InnerClass(final OuterClass this$0) {
 						this.this$0 = this$0;
+						final InnerClass = this;
 					}
 					
 					String getExample() {
@@ -308,32 +313,30 @@ public class ResolveTests {
 					
 					@Override
 					public String toString() {
-						return example;
+						return new InnerClass().example;
 					}
 				}
 				""";
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
 
-		// TODO: We don't have hints about the class actually being an inner.
-		//  I dont want to bruteforce check for all inner classes matching the current name and
-		//  doubling resolving attempts with those contexts...
+		// Inform the resolver that this is the declared class.
+		// The decompiled source implies this is a top-level class, but we know this to not be the case.
+		ClassEntry inner = pool.getClass("sample/OuterClass$InnerClass");
+		resolver.setDeclaredClass(model.getDeclaredClasses().getFirst(), inner);
+
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "class InnerClass {"),
 				"sample/OuterClass$InnerClass");
-		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass();"),
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new InnerClass()"),
 				"sample/OuterClass$InnerClass");
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final InnerClass", 10),
 				"sample/OuterClass$InnerClass");
-		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 10),
-				"sample/OuterClass");
-		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new OuterClass.InnerClass();", 20),
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "new InnerClass()", 10),
 				"sample/OuterClass$InnerClass");
-		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 10),
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "InnerClass("),
+				"sample/OuterClass$InnerClass", "<init>", "(Lsample/OuterClass;)V");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "final OuterClass this"),
 				"sample/OuterClass");
-		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "final OuterClass.InnerClass", 20),
-				"sample/OuterClass$InnerClass");
-		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, ".example);"),
-				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
 	}
 
 	@Test
