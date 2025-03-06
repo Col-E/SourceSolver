@@ -26,6 +26,9 @@ public class NewClassMapper implements Mapper<NewClassExpressionModel, NewClassT
 			// Used for generic allocations:
 			//  new ArrayList<>
 			identifier = context.map(NameMapper.class, parameterizedType.getType());
+
+			// The identifier's type-arguments take precedence. This is a weird design but whatever its seemingly correct.
+			typeArguments = context.map(TypeArgumentsMapper.class, parameterizedType::getTypeArguments).getArguments();
 		} else {
 			identifier = context.map(ExpressionMapper.class, tree.getIdentifier());
 		}

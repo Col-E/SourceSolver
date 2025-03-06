@@ -2,7 +2,6 @@ package software.coley.sourcesolver;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import sample.OuterClass;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
 import software.coley.sourcesolver.resolve.Resolver;
@@ -407,15 +406,27 @@ public class ResolveTests {
 	}
 
 	@Test
-	@Disabled("Generic resolution required")
 	void testBoxUseCases() {
-		// TODO: Need to create a system to resolve things with generics
-		//  IE if a field is a "T" signature, then I should adapt the field-resolution to be of bound "T" instead of "Object"
-		//  And if I have List<T> then "get(int)" which yields T should also be adapted to the bound.
 		String sourceCode = readSrc("sample/BoxUseCases");
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
 
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "Box<String> s"),
+				"java/lang/String");
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "Box<String>("),
+				"java/lang/String");
+	}
+
+	@Test
+	@Disabled("Generic resolution required")
+	void testBoxUseCasesGenerics() {
+		String sourceCode = readSrc("sample/BoxUseCases");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// TODO: Need to create a system to resolve things with generics
+		//  IE if a field is a "T" signature, then I should adapt the field-resolution to be of bound "T" instead of "Object"
+		//  And if I have List<T> then "get(int)" which yields T should also be adapted to the bound.
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toUpperCase"),
 				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
 		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "intValue"),

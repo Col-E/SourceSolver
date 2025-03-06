@@ -220,11 +220,15 @@ public class BasicResolver implements Resolver {
 				&& named.equals(anno.getNameModel()))
 			// Only solve as a name if the name is used as the annotation's type.
 			return resolveNamed(named);
-		else if (parent instanceof NewClassExpressionModel newExpr
-				&& newExpr.getIdentifier() == named)
+		else if (parent instanceof NewClassExpressionModel newExpr) {
 			// The named model is the identifier of a 'new T()' expression so resolve as T.
-			return resolveNamed(newExpr);
-		else if (parent instanceof TypeModel parentType)
+			if (newExpr.getIdentifier() == named)
+				return resolveNamed(newExpr);
+
+			// The named model is an argument, so for 'new Box<T>' we would be resolving T.
+			if (newExpr.getTypeArguments().contains(named))
+				return resolveNamed(named);
+		} else if (parent instanceof TypeModel parentType)
 			// The named model is part of a type, so resolve the type.
 			return resolveType(parentType);
 		else if (parent instanceof PackageModel parentPackage)

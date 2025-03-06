@@ -1,7 +1,7 @@
 package sample;
 
 public class BoxUseCases {
-	Box<String> stringBox = new Box<>("foo");
+	Box<String> stringBox = new Box<String>("foo");
 	Box<Integer> intBox = new Box<>(100);
 
 	void foo() {
