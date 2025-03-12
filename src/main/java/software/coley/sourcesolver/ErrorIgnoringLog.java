@@ -3,10 +3,13 @@ package software.coley.sourcesolver;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.JCDiagnostic;
 import com.sun.tools.javac.util.Log;
-
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.util.function.Consumer;
 
 /**
@@ -36,6 +39,15 @@ public class ErrorIgnoringLog extends Log {
 	 */
 	public void setErrorListener(@Nullable Consumer<Throwable> errorListener) {
 		this.errorListener = errorListener;
+	}
+
+	@Override
+	public JavaFileObject currentSourceFile() {
+		// JavacParser.constructImplicitClass assumes this object will have a non-null URI
+		// so in order to fail gracefully without NPE we offer this dummy class.
+		// This is only ever used if the code is broken beyond realistic parsing expectations,
+		// so this not being a perfect fit against the parsed source is fine.
+		return MockJavaFile.INSTANCE;
 	}
 
 	@Override
@@ -98,6 +110,14 @@ public class ErrorIgnoringLog extends Log {
 			super.error(flag, pos, errorKey);
 		} catch (Throwable t) {
 			if (errorListener != null) errorListener.accept(t);
+		}
+	}
+
+	private static class MockJavaFile extends SimpleJavaFileObject {
+		private static final MockJavaFile INSTANCE = new MockJavaFile();
+
+		private MockJavaFile() {
+			super(URI.create("file://ParseFailure.java"), Kind.CLASS);
 		}
 	}
 }
