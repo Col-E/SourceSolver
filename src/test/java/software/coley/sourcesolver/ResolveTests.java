@@ -367,6 +367,30 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testSuperFoo() {
+		String sourceCode = readSrc("sample/AFooServiceImplementation");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "extends AbstractFooService {"),
+				"sample/AbstractFooService");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "super.foo()", 1),
+				"sample/AbstractFooService");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "super.foo()", 8),
+				"sample/AbstractFooService", "foo", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "super.toString()", 8),
+				"java/lang/Object", "toString", "()Ljava/lang/String;");
+
+		// Trickier case with the "super" being of the outer class.
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "AFooServiceImplementation.super.finalFoo()", 1),
+				"sample/AFooServiceImplementation");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "AFooServiceImplementation.super.finalFoo()", 28),
+				"sample/AbstractFooService");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "AFooServiceImplementation.super.finalFoo()", 38),
+				"sample/AbstractFooService", "finalFoo", "()V");
+	}
+
+	@Test
 	void testMethodRefs() {
 		String sourceCode = readSrc("sample/MethodRefs");
 		CompilationUnitModel model = parser.parse(sourceCode);

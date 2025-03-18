@@ -313,15 +313,31 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveNamed(@Nonnull NamedModel named) {
+		// Try as an imported type
 		Resolution resolution = resolveNameAsQualifiedOrImported(named.getName());
 		if (!resolution.isUnknown())
 			return resolution;
+
+		// Try as a class
 		resolution = resolveAsInnerClass(named.getName());
 		if (!resolution.isUnknown())
 			return resolution;
+
+		// Try as a type arguument
 		resolution = resolveAsTypeArgument(named, named.getName());
 		if (!resolution.isUnknown())
 			return resolution;
+
+		// If the name is "super" treat it as a variable of the parent type.
+		if (named.getName().equals("super")) {
+			ClassModel declaringClass = named.getParentOfType(ClassModel.class);
+			if (declaringClass != null
+					&& resolveClassModel(declaringClass) instanceof ClassResolution declaringClassResolution
+					&& declaringClassResolution.getClassEntry().getSuperEntry() instanceof ClassEntry superEntry) {
+				return ofClass(superEntry);
+			}
+		}
+
 		return unknown();
 	}
 
@@ -857,6 +873,11 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveMemberSelection(@Nonnull MemberSelectExpressionModel memberSelect) {
 		String memberName = memberSelect.getName();
 		Resolution contextResolution = memberSelect.getContext().resolve(this);
+		if (memberName.equals("super") && contextResolution instanceof ClassResolution classContextResolution) {
+			ClassEntry superEntry = classContextResolution.getClassEntry().getSuperEntry();
+			if (superEntry != null)
+				return ofClass(superEntry);
+		}
 		return resolveMemberInContext(contextResolution, memberSelect, memberName);
 	}
 
