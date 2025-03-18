@@ -388,6 +388,13 @@ public class BasicResolver implements Resolver {
 			if (importEntry.getKey().endsWith('/' + name))
 				return ofClass(importEntry.getValue());
 
+		// If we're in the default package look for exact name matches since there is no package prefix.
+		if (unit.getPackage().isDefaultPackage()) {
+			ClassEntry entry = pool.getClass(name);
+			if (entry != null)
+				return ofClass(entry);
+		}
+
 		return unknown();
 	}
 

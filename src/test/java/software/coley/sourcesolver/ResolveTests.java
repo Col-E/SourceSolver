@@ -391,6 +391,36 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testDefaultPackageResolve() {
+		String sourceCode = readSrc("DefaultPackageClassTwo");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassOne one = new DefaultPackageClassOne()", 1),
+				"DefaultPackageClassOne");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassOne one = new DefaultPackageClassOne()", 35),
+				"DefaultPackageClassOne");
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassOne one = new DefaultPackageClassOne()", 24),
+				"DefaultPackageClassTwo", "one", "LDefaultPackageClassOne;");
+
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassTwo TWO = new DefaultPackageClassTwo()", 1),
+				"DefaultPackageClassTwo");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassTwo TWO = new DefaultPackageClassTwo()", 35),
+				"DefaultPackageClassTwo");
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "DefaultPackageClassTwo TWO = new DefaultPackageClassTwo()", 24),
+				"DefaultPackageClassTwo", "TWO", "LDefaultPackageClassTwo;");
+
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "TWO.stuff();", 1),
+				"DefaultPackageClassTwo", "TWO", "LDefaultPackageClassTwo;");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "TWO.stuff();", 7),
+				"DefaultPackageClassTwo", "stuff", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "stuff(one);", 1),
+				"DefaultPackageClassTwo", "stuff", "(LDefaultPackageClassOne;)V");
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "stuff(one);", 7),
+				"DefaultPackageClassTwo", "one", "LDefaultPackageClassOne;");
+	}
+
+	@Test
 	void testMethodRefs() {
 		String sourceCode = readSrc("sample/MethodRefs");
 		CompilationUnitModel model = parser.parse(sourceCode);
