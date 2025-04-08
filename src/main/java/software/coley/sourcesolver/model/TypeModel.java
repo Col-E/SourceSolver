@@ -70,7 +70,8 @@ public abstract class TypeModel extends AbstractModel {
 		UNION,
 		WILDCARD,
 		VAR,
-		ARRAY
+		ARRAY,
+		ANNOTATED
 	}
 
 	public static class Primitive extends TypeModel implements NamedModel {
@@ -132,9 +133,10 @@ public abstract class TypeModel extends AbstractModel {
 	}
 
 	public static class Array extends TypeModel {
+		private final TypeModel elementModel;
 		private int dimensions = -1;
 
-		public Array(@Nonnull Range range, @Nonnull Model elementModel) {
+		public Array(@Nonnull Range range, @Nonnull TypeModel elementModel) {
 			// Identifier holds element type of array
 			//
 			// int[]   --> int
@@ -142,6 +144,7 @@ public abstract class TypeModel extends AbstractModel {
 			//
 			// The 'element' type in this case is one less dimension, and not the 'root' type.
 			super(range, elementModel);
+			this.elementModel = elementModel;
 		}
 
 		public int getDimensions() {
@@ -155,8 +158,8 @@ public abstract class TypeModel extends AbstractModel {
 		}
 
 		@Nonnull
-		public Model getRootModel() {
-			Model root = getIdentifier();
+		public TypeModel getRootModel() {
+			TypeModel root = elementModel;
 			while (root instanceof Array array)
 				root = array.getRootModel();
 			return root;
@@ -171,6 +174,42 @@ public abstract class TypeModel extends AbstractModel {
 		@Override
 		public String toString() {
 			return getRootModel() + "[]".repeat(getDimensions());
+		}
+	}
+
+	public static class Annotated extends TypeModel {
+		private final TypeModel type;
+		private final List<AnnotationExpressionModel> annotations;
+
+		public Annotated(@Nonnull Range range, @Nonnull TypeModel type, @Nonnull List<AnnotationExpressionModel> annotations) {
+			super(range, type, annotations);
+			this.type = type;
+			this.annotations = annotations;
+		}
+
+		@Nonnull
+		public TypeModel getType() {
+			return type;
+		}
+
+		@Nonnull
+		public List<AnnotationExpressionModel> getAnnotations() {
+			return annotations;
+		}
+
+		@Nonnull
+		@Override
+		public Kind getKind() {
+			return Kind.ANNOTATED;
+		}
+
+		@Override
+		public String toString() {
+			return annotations.stream()
+					.map(AnnotationExpressionModel::toString)
+					.collect(Collectors.joining(" "))
+					+ " "
+					+ type.toString();
 		}
 	}
 

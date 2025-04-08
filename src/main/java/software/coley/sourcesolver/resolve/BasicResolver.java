@@ -448,10 +448,12 @@ public class BasicResolver implements Resolver {
 				return ofClass(common);
 		} else if (kind == TypeModel.Kind.ARRAY
 				&& type instanceof TypeModel.Array arrayType) {
-			Model elementType = arrayType.getRootModel();
-			Resolution elementResolution = resolveAsIdentifier(elementType);
+			TypeModel elementType = arrayType.getRootModel();
+			Resolution elementResolution = resolveType(elementType);
 			if (elementResolution instanceof DescribableResolution describableElementResolution)
 				return ofArray(describableElementResolution, arrayType.getDimensions());
+		} else if (kind == TypeModel.Kind.ANNOTATED && type instanceof TypeModel.Annotated annotated) {
+			return resolveType(annotated.getType());
 		}
 
 		return unknown();

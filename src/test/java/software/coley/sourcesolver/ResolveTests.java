@@ -224,6 +224,22 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testAnnoAnywhere() {
+		String sourceCode = readSrc("sample/AnnotationsEverywhere");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static @AnnoAnywhere String", 15),
+				"sample/AnnoAnywhere");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static @AnnoAnywhere String", 25),
+				"java/lang/String");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static String @AnnoAnywhere []", 10),
+				"[Ljava/lang/String;");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static String @AnnoAnywhere []", 20),
+				"sample/AnnoAnywhere");
+	}
+
+	@Test
 	void testOuterClass() {
 		String sourceCode = readSrc("sample/OuterClass");
 		CompilationUnitModel model = parser.parse(sourceCode);
@@ -508,6 +524,8 @@ public class ResolveTests {
 			if (name != null) assertEquals(name, classResolution.getClassEntry().getName());
 		} else if (resolution instanceof PrimitiveResolution primitiveResolution) {
 			if (name != null) assertEquals(name, primitiveResolution.getPrimitiveEntry().getDescriptor());
+		} else if (resolution instanceof ArrayResolution arrayResolution) {
+			if (name != null) assertEquals(name, arrayResolution.getArrayEntry().getDescriptor());
 		} else {
 			fail("Resolution was not of a class: " + resolution);
 		}

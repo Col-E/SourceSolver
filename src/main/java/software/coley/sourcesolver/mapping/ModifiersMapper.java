@@ -2,13 +2,13 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.ModifiersTree;
 import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ModifiersModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -29,7 +29,12 @@ public class ModifiersMapper implements Mapper<ModifiersMapper.ModifiersParsePai
 		Set<String> modifierNames = tree.getFlags().stream()
 				.map(m -> m.name().toLowerCase().replace('_', '-'))
 				.collect(Collectors.toUnmodifiableSet());
-		return new ModifiersParsePair(annotationModels, new ModifiersModel(extractRange(table, tree), modifierNames));
+
+		// Annotations being bundled with the modifiers means we cannot trust the existing range of this tree element.
+		// We need to manipulate it a bit if annotations are present.
+		Range range = extractRange(table, tree).shrink(annotationModels);
+
+		return new ModifiersParsePair(annotationModels, new ModifiersModel(range, modifierNames));
 	}
 
 	/**

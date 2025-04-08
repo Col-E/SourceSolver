@@ -4,9 +4,11 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.JCDiagnostic;
-
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.model.Model;
+
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Simple range model.
@@ -91,6 +93,30 @@ public record Range(int begin, int end) implements Comparable<Range> {
 			return false;
 		int end = end();
 		return endInclusive ? position <= end : position < end;
+	}
+
+	/**
+	 * @param models
+	 * 		Models that appear at the edges of the current range.
+	 * 		For instance, annotations which can appear at the beginning or end of some element.
+	 *
+	 * @return Modified range where the edges occupied by the given models are clipped off.
+	 */
+	@Nonnull
+	public Range shrink(@Nonnull List<? extends Model> models) {
+		Range temp = this;
+		for (Model annotation : models) {
+			Range modelRange = annotation.getRange();
+			if (modelRange.begin() <= begin()) {
+				// Models are at the start. We need to move the range forward.
+				temp = new Range(modelRange.end(), temp.end());
+			}
+			if (modelRange.begin() > temp.begin()) {
+				// Models are at the end. We need to cut the range down.
+				temp = new Range(temp.begin(), temp.begin());
+			}
+		}
+		return temp;
 	}
 
 	/**
