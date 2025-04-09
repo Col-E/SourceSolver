@@ -234,7 +234,7 @@ public class ResolveTests {
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static @AnnoAnywhere String", 25),
 				"java/lang/String");
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static String @AnnoAnywhere []", 10),
-				"[Ljava/lang/String;");
+				"java/lang/String");
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "static String @AnnoAnywhere []", 20),
 				"sample/AnnoAnywhere");
 	}

@@ -105,15 +105,15 @@ public record Range(int begin, int end) implements Comparable<Range> {
 	@Nonnull
 	public Range shrink(@Nonnull List<? extends Model> models) {
 		Range temp = this;
-		for (Model annotation : models) {
-			Range modelRange = annotation.getRange();
+		for (Model model : models) {
+			Range modelRange = model.getRange();
 			if (modelRange.begin() <= begin()) {
 				// Models are at the start. We need to move the range forward.
 				temp = new Range(modelRange.end(), temp.end());
 			}
 			if (modelRange.begin() > temp.begin()) {
 				// Models are at the end. We need to cut the range down.
-				temp = new Range(temp.begin(), temp.begin());
+				temp = new Range(temp.begin(), modelRange.begin());
 			}
 		}
 		return temp;
