@@ -1139,12 +1139,16 @@ public class BasicResolver implements Resolver {
 			Resolution resolution = argument.resolve(this);
 			if (resolution instanceof DescribableResolution describableResolution) {
 				DescribableEntry argumentDescribableEntry = describableResolution.getDescribableEntry();
-				if (argumentDescribableEntry instanceof FieldEntry)
-					// Because a field entry is describable, but does not support assignable checking we
+				if (argumentDescribableEntry instanceof FieldEntry) {
+					// Because a field entry is describable, but does not support "isAssignableFrom" checking we
 					// need to re-interpret the descriptor with contents from the entry-pool.
-					describableArguments.add(pool.getDescribable(argumentDescribableEntry.getDescriptor()));
-				else
+					DescribableEntry entry = pool.getDescribable(argumentDescribableEntry.getDescriptor());
+					if (entry == null)
+						return null; // Entry not in pool, cannot collect all arguments as describable entries.
+					describableArguments.add(entry);
+				} else {
 					describableArguments.add(argumentDescribableEntry);
+				}
 			} else {
 				// If any of the arguments cannot be described, then we will treat it as if
 				// we don't know anything about the arguments at all.
