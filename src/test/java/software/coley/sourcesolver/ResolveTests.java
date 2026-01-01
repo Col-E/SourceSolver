@@ -198,6 +198,17 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testNumbers() {
+		String sourceCode = readSrc("sample/Numbers");
+		CompilationUnitModel model = parser.parse(sourceCode);
+
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, "int[][] array2D = { "),
+				"sample/Numbers$IntArrays", "array2D", "[[I");
+	}
+
+	@Test
 	void testAnnoComputer() {
 		String sourceCode = readSrc("sample/AnnoComputer");
 		CompilationUnitModel model = parser.parse(sourceCode);

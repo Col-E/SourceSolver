@@ -1,9 +1,10 @@
 package software.coley.sourcesolver.model;
 
+import jakarta.annotation.Nonnull;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.model.ChildSupplier.of;
 
@@ -30,11 +31,27 @@ public class ArrayDeclarationExpressionModel extends AbstractExpressionModel imp
 		return type;
 	}
 
+	/**
+	 * Present when the array is declared with dimensions.
+	 * <pre>{@code int[] foo = new int[100]; // Single dimension 100}</pre>
+	 * <pre>{@code int[][] foo = new int[100][200]; // Two dimensions 100 and 200}</pre>
+	 * Not present if {@link #getInitializers() initializers} are specified.
+	 *
+	 * @return List of dimension expressions.
+	 */
 	@Nonnull
 	public List<AbstractExpressionModel> getDimensions() {
 		return dimensions;
 	}
 
+	/**
+	 * Present when the array is declared with an initializer.
+	 * <pre>{@code int[] foo = {1, 2, 3}; // Three initializer expressions}</pre>
+	 * <pre>{@code int[][] foo = {new int[1], new int[1], new int[1]}; // Still three initializer expressions}</pre>
+	 * Not present if {@link #getDimensions() dimensions} are specified.
+	 *
+	 * @return List of initializer expressions.
+	 */
 	@Nonnull
 	public List<AbstractExpressionModel> getInitializers() {
 		return initializers;
@@ -72,9 +89,8 @@ public class ArrayDeclarationExpressionModel extends AbstractExpressionModel imp
 
 	@Override
 	public String toString() {
-		// TODO: Flesh out properly
-		//     new type dimensions initializers
-		//     new type dimensions [ ] initializers
-		return "new " + type + "[]".repeat(dimensions.size());
+		if (!dimensions.isEmpty())
+			return "new " + type + "[" + dimensions.stream().map(Object::toString).collect(Collectors.joining("][")) + "]";
+		return "new " + type + "{ " + initializers.stream().map(Object::toString).collect(Collectors.joining(", ")) + " }";
 	}
 }

@@ -9,6 +9,7 @@ public class Numbers {
 
 	public static class IntArrays {
 		public final int[] array;
+		public final int[][] array2D = { new int[10], new int[10] };
 
 		public IntArrays() {
 			this.array = new int[10];
