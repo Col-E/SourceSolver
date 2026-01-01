@@ -279,19 +279,23 @@ public class ResolveTests {
 		// Simulate scenario where the inner class is decompiled by CFR in isolation
 		String sourceCode = """
 				package sample;
-								
+				
 				// Name of class is 'Outer.Inner' form, which javac does not like
 				public class OuterClass.InnerClass {
 					public String example = "Hello";
-					
-					public OuterClass.InnerClass() {
-				        this.example = "Hello";
-				    }
-					
+				
+					private OuterClass.InnerClass() {
+					    this("hello");
+					}
+				
+					private OuterClass.InnerClass(String message) {
+					    this.example = message;
+					}
+				
 					String getExample() {
 						return example;
 					}
-					
+				
 					@Override
 					public String toString() {
 						return example;
@@ -309,8 +313,10 @@ public class ResolveTests {
 				"sample/OuterClass$InnerClass");
 		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "class OuterClass.InnerClass", 28),
 				"sample/OuterClass$InnerClass");
-		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "OuterClass.InnerClass("),
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "private OuterClass.InnerClass()"),
 				"sample/OuterClass$InnerClass", "<init>", "(Lsample/OuterClass;)V");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "private OuterClass.InnerClass(String"),
+				"sample/OuterClass$InnerClass", "<init>", "(Lsample/OuterClass;Ljava/lang/String;)V");
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "getExample()"),
 				"sample/OuterClass$InnerClass", "getExample", "()Ljava/lang/String;");
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toString()"),
@@ -322,21 +328,21 @@ public class ResolveTests {
 		// Simulate scenario where the inner class is decompiled by Procyon in isolation
 		String sourceCode = """
 				package sample;
-								
+				
 				// Procyon doesn't include any hint that we're an inner class
 				public class InnerClass {
 					public String example = "Hello";
-					
+				
 					// Isolated procyon decomp doesn't cleanup synthetic parameter
 					InnerClass(final OuterClass this$0) {
 						this.this$0 = this$0;
 						final InnerClass = this;
 					}
-					
+				
 					String getExample() {
 						return example;
 					}
-					
+				
 					@Override
 					public String toString() {
 						return new InnerClass().example;

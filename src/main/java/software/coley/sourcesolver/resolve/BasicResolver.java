@@ -299,20 +299,19 @@ public class BasicResolver implements Resolver {
 		// Try looking for variables defined in the method.
 		Model containingMethod = named.getParentOfType(MethodModel.class);
 		if (containingMethod != null) {
-			// TODO: This isn't technically correct as multiple scopes in the method can define
-			//   variables of the same name, but with different types.
-			//  So we'll want a walk up one scope at a time instead of just jumping to the root method
-			//   and looking at all defined variables.
-			//  Each scope step up we take, we still want to ensure its variables flow into the scope where
-			//   our named model exists within. Consider "if (!(foo instanceof String bar)) { ... }" where the 'bar'
-			//   is actually only accessible in a "else { ... }" block or following the "if" block if the block returns.
-			List<VariableModel> variables = containingMethod.getRecursiveChildrenOfType(VariableModel.class);
-			for (VariableModel variable : variables) {
-				if (variable.getName().equals(name)) {
-					Resolution resolution = resolveType(variable.getType());
-					if (!resolution.isUnknown())
-						return resolution;
+			// Start from innermost scope and walk out until we go beyond the current method.
+			Model scope = named;
+			while (scope != null && scope != containingMethod.getParent()) {
+				List<VariableModel> scopedVariables = scope.getRecursiveChildrenOfType(VariableModel.class);
+				for (VariableModel variable : scopedVariables) {
+					// check for matching name, and if it is within scope (basic usage after definition check)
+					if (variable.getName().equals(name) && variable.getRange().end() <= named.getRange().begin()) {
+						Resolution resolution = resolveType(variable.getType());
+						if (!resolution.isUnknown())
+							return resolution;
+					}
 				}
+				scope = scope.getParent();
 			}
 		}
 
