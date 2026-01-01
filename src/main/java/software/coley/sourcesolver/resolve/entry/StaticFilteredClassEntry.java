@@ -44,6 +44,12 @@ public class StaticFilteredClassEntry implements ClassEntry {
 		return delegate.getInnerClassEntries();
 	}
 
+	@Nullable
+	@Override
+	public ClassEntry getOuterClass() {
+		return delegate.getOuterClass();
+	}
+
 	@Nonnull
 	@Override
 	public String getName() {

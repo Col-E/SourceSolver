@@ -11,6 +11,7 @@ public class BasicClassEntry implements ClassEntry {
 	private final ClassEntry superEntry;
 	private final List<ClassEntry> interfaceEntries;
 	private final List<ClassEntry> innerClassEntries;
+	private final ClassEntry outerClass;
 	private final List<FieldEntry> fields;
 	private final List<MethodEntry> methods;
 
@@ -18,6 +19,7 @@ public class BasicClassEntry implements ClassEntry {
 	                       @Nullable ClassEntry superEntry,
 	                       @Nonnull List<ClassEntry> interfaceEntries,
 						   @Nonnull List<ClassEntry> innerClassEntries,
+						   @Nullable ClassEntry outerClass,
 	                       @Nonnull List<FieldEntry> fields,
 	                       @Nonnull List<MethodEntry> methods) {
 		this.className = className;
@@ -25,6 +27,7 @@ public class BasicClassEntry implements ClassEntry {
 		this.superEntry = superEntry;
 		this.interfaceEntries = interfaceEntries;
 		this.innerClassEntries = innerClassEntries;
+		this.outerClass = outerClass;
 		this.fields = fields;
 		this.methods = methods;
 	}
@@ -56,6 +59,12 @@ public class BasicClassEntry implements ClassEntry {
 	@Override
 	public List<ClassEntry> getInnerClassEntries() {
 		return innerClassEntries;
+	}
+
+	@Nullable
+	@Override
+	public ClassEntry getOuterClass() {
+		return outerClass;
 	}
 
 	@Nonnull

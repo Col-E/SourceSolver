@@ -5,7 +5,15 @@ public class OuterClass {
 	private final InnerClass inner2 = new OuterClass.InnerClass();
 
 	public class InnerClass {
-		public String example = "Hello";
+		public final String example;
+
+		private InnerClass() {
+			this("hello");
+		}
+
+		private InnerClass(String message) {
+			this.example = message;
+		}
 
 		String getExample() {
 			return example;

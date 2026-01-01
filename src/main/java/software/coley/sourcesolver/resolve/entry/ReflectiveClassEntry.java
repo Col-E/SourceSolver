@@ -22,9 +22,10 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 	                             @Nullable ClassEntry superEntry,
 	                             @Nonnull List<ClassEntry> interfaceEntries,
 	                             @Nonnull List<ClassEntry> innerClassEntries,
+								 @Nullable ClassEntry outerClass,
 	                             @Nonnull List<FieldEntry> fields,
 	                             @Nonnull List<MethodEntry> methods) {
-		super(className, access, superEntry, interfaceEntries, innerClassEntries, fields, methods);
+		super(className, access, superEntry, interfaceEntries, innerClassEntries, outerClass, fields, methods);
 	}
 
 	/**
@@ -68,7 +69,10 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 		Class<?>[] innerClasses = cls.getDeclaredClasses();
 		List<ClassEntry> innerClassEntries = new ArrayList<>();
 		int modifiers = cls.getModifiers();
-		ClassEntry entry = new BasicClassEntry(className, modifiers, superEntry, interfaceEntries, innerClassEntries, fields, methods);
+		Class<?> outerClass = cls.getDeclaringClass();
+		ClassEntry outerClassEntry= outerClass == null ? null : build(cache, outerClass);
+		ClassEntry entry = new BasicClassEntry(className, modifiers, superEntry, interfaceEntries,
+				innerClassEntries, outerClassEntry, fields, methods);
 		cache.put(className, entry);
 
 		// I know this is REALLY cringe putting the inner class population AFTER the building of the model,

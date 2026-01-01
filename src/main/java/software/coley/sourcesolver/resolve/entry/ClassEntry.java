@@ -34,6 +34,12 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	List<ClassEntry> getInnerClassEntries();
 
 	/**
+	 * @return Metadata model of outer class, if this is an inner class.
+	 */
+	@Nullable
+	ClassEntry getOuterClass();
+
+	/**
 	 * @return Name of class in internal format.
 	 */
 	@Nonnull
@@ -74,7 +80,6 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 */
 	@Nonnull
 	List<MethodEntry> getDeclaredMethods();
-
 
 	/**
 	 * @return Stream of all metadata models for declared fields and methods.

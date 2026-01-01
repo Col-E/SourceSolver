@@ -2,7 +2,36 @@ package software.coley.sourcesolver.resolve;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import software.coley.sourcesolver.model.*;
+import software.coley.sourcesolver.model.AbstractExpressionModel;
+import software.coley.sourcesolver.model.AnnotationArgumentModel;
+import software.coley.sourcesolver.model.AnnotationExpressionModel;
+import software.coley.sourcesolver.model.ArrayDeclarationExpressionModel;
+import software.coley.sourcesolver.model.BinaryExpressionModel;
+import software.coley.sourcesolver.model.CastExpressionModel;
+import software.coley.sourcesolver.model.ClassModel;
+import software.coley.sourcesolver.model.CompilationUnitModel;
+import software.coley.sourcesolver.model.ImplementsModel;
+import software.coley.sourcesolver.model.ImportModel;
+import software.coley.sourcesolver.model.InstanceofExpressionModel;
+import software.coley.sourcesolver.model.LiteralExpressionModel;
+import software.coley.sourcesolver.model.MemberSelectExpressionModel;
+import software.coley.sourcesolver.model.MethodInvocationExpressionModel;
+import software.coley.sourcesolver.model.MethodModel;
+import software.coley.sourcesolver.model.MethodReferenceExpressionModel;
+import software.coley.sourcesolver.model.Model;
+import software.coley.sourcesolver.model.ModifiersModel;
+import software.coley.sourcesolver.model.NameExpressionModel;
+import software.coley.sourcesolver.model.NamedModel;
+import software.coley.sourcesolver.model.NewClassExpressionModel;
+import software.coley.sourcesolver.model.PackageModel;
+import software.coley.sourcesolver.model.ParenthesizedExpressionModel;
+import software.coley.sourcesolver.model.PermitsModel;
+import software.coley.sourcesolver.model.SwitchExpressionModel;
+import software.coley.sourcesolver.model.ThrowStatementModel;
+import software.coley.sourcesolver.model.TypeModel;
+import software.coley.sourcesolver.model.TypeParameterModel;
+import software.coley.sourcesolver.model.VariableModel;
+import software.coley.sourcesolver.model.YieldStatementModel;
 import software.coley.sourcesolver.resolve.entry.ArrayEntry;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
@@ -611,8 +640,30 @@ public class BasicResolver implements Resolver {
 		}
 
 		// Resolve by name/descriptor.
-		return ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(),
-				resolvedParameterTypes.stream().map(DescribableResolution::getDescribableEntry).toList());
+		List<DescribableEntry> describableParameters = resolvedParameterTypes.stream()
+				.map(DescribableResolution::getDescribableEntry)
+				.toList();
+		Resolution resolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+
+		// For constructors of inner classes, try again with the synthetic outer class parameter added.
+		if (methodName.charAt(0) == '<' && (resolution.isUnknown() || resolution instanceof MethodResolution mr && !mr.getOwnerEntry().getName().equals(definingClassEntry.getName()))) {
+			// Check if we have an outer class. If not, there is nothing more we can do.
+			ClassEntry outerClass = definingClassEntry.getOuterClass();
+			if (outerClass != null) {
+				// Same resolve by name/descriptor, but with the added synthetic parameter.
+				resolvedParameterTypes.addFirst(ofClass(outerClass));
+				describableParameters = resolvedParameterTypes.stream()
+						.map(DescribableResolution::getDescribableEntry)
+						.toList();
+
+				// If we do not find a result we want to retain our existing resolution.
+				Resolution synthCtorResolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+				if (!synthCtorResolution.isUnknown())
+					resolution = synthCtorResolution;
+			}
+		}
+
+		return resolution;
 	}
 
 	@Nonnull
