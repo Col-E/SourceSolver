@@ -272,6 +272,8 @@ public class ResolveTests {
 				"sample/OuterClass$InnerClass");
 		assertFieldResolution(resolutionAtMiddle(resolver, sourceCode, ".example);"),
 				"sample/OuterClass$InnerClass", "example", "Ljava/lang/String;");
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "return box.value;", 14),
+				"sample/Box", "value", "Ljava/lang/Object;");
 	}
 
 	@Test

@@ -37,4 +37,13 @@ public class OuterClass {
 		InnerClass inner = Math.random() > 0.5 ? inner1 : inner2;
 		System.out.println(inner.example);
 	}
+
+	String outerIntoInner(Box<String> box) {
+		return new InnerClass() {
+			@Override
+			String getExample() {
+				return box.value;
+			}
+		}.getExample();
+	}
 }

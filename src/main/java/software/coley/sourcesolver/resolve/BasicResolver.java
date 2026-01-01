@@ -62,6 +62,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -296,15 +297,29 @@ public class BasicResolver implements Resolver {
 
 		String name = named.getName();
 
-		// Try looking for variables defined in the method.
+		// Try looking for in-scope variables within the method.
 		Model containingMethod = named.getParentOfType(MethodModel.class);
 		if (containingMethod != null) {
+			// Outer method variables will also be in-scope.
+			MethodModel outerMethod = containingMethod.getParentOfType(MethodModel.class);
+			while (outerMethod != null) {
+				Optional<VariableModel> outerScopedVariable = outerMethod.getRecursiveChildrenOfType(VariableModel.class).stream()
+						.filter(v -> v.getRange().end() <= named.getRange().begin() && v.getName().equals(name))
+						.findFirst();
+				if (outerScopedVariable.isPresent()) {
+					Resolution resolution = resolveType(outerScopedVariable.get().getType());
+					if (!resolution.isUnknown())
+						return resolution;
+				}
+				outerMethod = outerMethod.getParentOfType(MethodModel.class);
+			}
+
 			// Start from innermost scope and walk out until we go beyond the current method.
 			Model scope = named;
 			while (scope != null && scope != containingMethod.getParent()) {
 				List<VariableModel> scopedVariables = scope.getRecursiveChildrenOfType(VariableModel.class);
 				for (VariableModel variable : scopedVariables) {
-					// check for matching name, and if it is within scope (basic usage after definition check)
+					// Check for matching name, and if it is within scope (basic usage after definition check)
 					if (variable.getName().equals(name) && variable.getRange().end() <= named.getRange().begin()) {
 						Resolution resolution = resolveType(variable.getType());
 						if (!resolution.isUnknown())
