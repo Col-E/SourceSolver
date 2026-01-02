@@ -31,13 +31,9 @@ distributions:
       - path: target/{{projectName}}-{{projectVersion}}.jar
 
 signing:
-  active: RELEASE
-  mode: MEMORY
-  armored: true
-  verify: true
-  artifacts: true
-  checksums: true
-  files: false
+  pgp:
+    active: RELEASE
+    verify: true
 
 deploy:
   maven:
