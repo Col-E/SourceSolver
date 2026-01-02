@@ -33,7 +33,7 @@ distributions:
 signing:
   pgp:
     active: RELEASE
-    verify: true
+    armored: true
 
 deploy:
   maven:
