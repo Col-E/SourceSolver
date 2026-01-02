@@ -326,6 +326,26 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testResolveMethodIfUnknownArgumentTypeCanBeInferred() {
+		// Simulate scenario where we call some method we know of, but the argument type is unknown.
+		// If we can infer the type we should be able to resolve the reference.
+		String sourceCode = """
+				package sample;
+				
+				public class OuterClass {
+					@Override
+					public String toString() {
+						return String.copyValueOf(Unknown.foo, 0, 0)";
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "copyValueOf"),
+				"java/lang/String", "copyValueOf", "([CII)Ljava/lang/String;");
+	}
+
+	@Test
 	void testInnerClassInIsolation_Procyon() {
 		// Simulate scenario where the inner class is decompiled by Procyon in isolation
 		String sourceCode = """

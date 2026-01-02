@@ -1,8 +1,9 @@
 package software.coley.sourcesolver.model;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,32 @@ public class MethodInvocationExpressionModel extends AbstractExpressionModel {
 	@Nonnull
 	public List<AbstractExpressionModel> getArguments() {
 		return arguments;
+	}
+
+	/**
+	 * Extracted name from {@link #getMethodSelect()}.
+	 *
+	 * @return Method name.
+	 */
+	@Nonnull
+	public String getMethodName() {
+		if (methodSelect instanceof NameExpressionModel nameExpr)
+			return nameExpr.getName();
+		else if (methodSelect instanceof MemberSelectExpressionModel selectExpr)
+			return selectExpr.getName();
+		throw new IllegalStateException("Unsupported method-select element: " + methodSelect.getClass().getSimpleName());
+	}
+
+	/**
+	 * Method invocation receiver, IE the {@code context} in {@code context.method()}.
+	 *
+	 * @return Method receiver.
+	 */
+	@Nullable
+	public Model getReceiver() {
+		if (methodSelect instanceof MemberSelectExpressionModel selectExpr)
+			return selectExpr.getContext();
+		return null;
 	}
 
 	@Override

@@ -6,6 +6,7 @@ import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AnnotationArgumentModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ArrayDeclarationExpressionModel;
+import software.coley.sourcesolver.model.AssignmentExpressionModel;
 import software.coley.sourcesolver.model.BinaryExpressionModel;
 import software.coley.sourcesolver.model.CastExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
@@ -40,6 +41,7 @@ import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
 import software.coley.sourcesolver.resolve.entry.MemberEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.NullEntry;
 import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
 import software.coley.sourcesolver.resolve.result.ArrayResolution;
@@ -79,6 +81,7 @@ public class BasicResolver implements Resolver {
 	private final Map<String, ClassEntry> importedTypes;
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
+	private final ClassEntry jlObjectEntry, jlClassEntry;
 	private Map<ClassModel, ClassEntry> externallyResolvedClassEntries;
 
 	/**
@@ -90,6 +93,9 @@ public class BasicResolver implements Resolver {
 	public BasicResolver(@Nonnull CompilationUnitModel unit, @Nonnull EntryPool pool) {
 		this.unit = unit;
 		this.pool = pool;
+
+		jlObjectEntry = Objects.requireNonNull(pool.getClass("java/lang/Object"), "EntryPool does not contain 'java/lang/Object'");
+		jlClassEntry = Objects.requireNonNull(pool.getClass("java/lang/Class"), "EntryPool does not contain 'java/lang/Class'");
 
 		importedTypes = Collections.unmodifiableMap(populateImports());
 	}
@@ -366,7 +372,7 @@ public class BasicResolver implements Resolver {
 		if (!resolution.isUnknown())
 			return resolution;
 
-		// Try as a type arguument
+		// Try as a type argument
 		resolution = resolveAsTypeArgument(named, named.getName());
 		if (!resolution.isUnknown())
 			return resolution;
@@ -452,7 +458,7 @@ public class BasicResolver implements Resolver {
 					return typeParameter.getBounds().stream()
 							.map(b -> b.resolve(this))
 							.reduce(Resolutions::mergeWith)
-							.orElse(ofClass(Objects.requireNonNull(pool.getClass("java/lang/Object"))));
+							.orElse(ofClass(jlObjectEntry));
 			}
 			cls = cls.getParentOfType(ClassModel.class);
 		}
@@ -689,12 +695,18 @@ public class BasicResolver implements Resolver {
 
 		// Edge case for cases like "String.class"
 		if (fieldName.equals("class"))
-			return ofClass(Objects.requireNonNull(pool.getClass("java/lang/Class")));
+			return ofClass(jlClassEntry);
 
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = declaringClass.getDeclaredFieldsByName(fieldName);
 		if (fieldsByName.size() == 1)
 			return ofField(declaringClass, fieldsByName.getFirst());
+
+		// Check if the fields can be differentiated by the given type hint.
+		if (typeEntryHint != null)
+			for (FieldEntry fieldEntry : fieldsByName)
+				if (fieldEntry.isAssignableFrom(fieldEntry))
+					return ofField(declaringClass, fieldEntry);
 
 		// Check in super-type.
 		if (declaringClass.getSuperEntry() != null
@@ -1002,18 +1014,108 @@ public class BasicResolver implements Resolver {
 			Resolution resolution = resolveFieldInContext(contextResolution, origin, memberName);
 			if (!resolution.isUnknown())
 				return resolution;
-			return resolveMemberInContext(ofClass(Objects.requireNonNull(pool.getClass("java/lang/Object"))), origin, memberName);
+			return resolveMemberInContext(ofClass(jlObjectEntry), origin, memberName);
 		}
 
 		return unknown();
 	}
 
+	@Nullable
+	private DescribableEntry inferExpectedTypeForArgument(@Nonnull MethodInvocationExpressionModel invoke, int argumentIndex) {
+		// Extract the method invocation receiver + name.
+		String methodName = invoke.getMethodName();
+		Model methodReceiver = Objects.requireNonNullElse(invoke.getReceiver(), invoke.getParentOfType(ClassModel.class));
+		Resolution receiverResolution = methodReceiver.resolve(this);
+		if (!(receiverResolution instanceof DescribableResolution describableReceiver))
+			return null;
+
+		// Extract receiver type.
+		ClassEntry receiverClass = switch (describableReceiver.getDescribableEntry()) {
+			case ClassEntry classEntry -> classEntry;
+			case MemberEntry memberEntry -> {
+				DescribableEntry memberReceivedType = switch (memberEntry) {
+					case FieldEntry fieldEntry -> pool.getDescribable(fieldEntry.getDescriptor());
+					case MethodEntry methodEntry -> pool.getDescribable(methodEntry.getReturnDescriptor());
+				};
+
+				// If we received a class, yield as-is.
+				// If we received an array, yield Object.
+				// Otherwise, we do not support the receiver type.
+				yield memberReceivedType instanceof ClassEntry memberReceivedClass
+						? memberReceivedClass : memberReceivedType instanceof ArrayEntry
+						? jlObjectEntry : null;
+			}
+			case ArrayEntry ignored -> jlObjectEntry;
+			case NullEntry ignored -> null;
+			case PrimitiveEntry ignored -> null;
+		};
+		if (receiverClass == null)
+			return null;
+
+		// Collect all methods with the same name in the receiver type's hierarchy.
+		List<MethodEntry> candidates = new ArrayList<>();
+		receiverClass.visitHierarchy(owner -> candidates.addAll(owner.getDeclaredMethodsByName(methodName)));
+		if (candidates.isEmpty())
+			return null;
+
+		// Collect parameter types at the given index from all candidates.
+		List<DescribableEntry> expectedTypes = new ArrayList<>();
+		for (MethodEntry candidate : candidates) {
+			List<String> parameterDescriptors = candidate.getParameterDescriptors();
+			if (argumentIndex < parameterDescriptors.size()) {
+				DescribableEntry paramType = pool.getDescribable(parameterDescriptors.get(argumentIndex));
+				if (paramType != null)
+					expectedTypes.add(paramType);
+			} else if (candidate.isVarargs() && argumentIndex >= parameterDescriptors.size() - 1) {
+				// Varargs: last parameter applies to all remaining args
+				String varargDesc = parameterDescriptors.getLast();
+				if (varargDesc.startsWith("[")) {
+					DescribableEntry elementType = pool.getDescribable(varargDesc.substring(1));
+					if (elementType != null)
+						expectedTypes.add(elementType);
+				}
+			}
+		}
+		if (expectedTypes.isEmpty())
+			return null;
+
+		// Merge possible argument types to common parent.
+		return expectedTypes.stream()
+				.reduce(this::getCommonDescriptor)
+				.orElse(expectedTypes.getFirst());
+	}
+
+	@Nonnull
+	private DescribableEntry getCommonDescriptor(@Nonnull DescribableEntry a, @Nonnull DescribableEntry b) {
+		// Classes -> Common parent
+		// Primitive -> Widest type
+		// Arrays -> Common element type
+		// Anything else ------> Object
+		return switch (a) {
+			case ClassEntry ca when b instanceof ClassEntry cb -> ca.getCommonParent(cb);
+			case PrimitiveEntry pa when b instanceof PrimitiveEntry pb -> pa.isAssignableFrom(pb) ? pa : pb;
+			case ArrayEntry aa when b instanceof ArrayEntry ab && aa.getDimensions() == ab.getDimensions() ->
+					getCommonDescriptor(aa.getElementEntry(), ab.getElementEntry()).toArrayEntry(aa.getDimensions());
+			default -> jlObjectEntry;
+		};
+	}
+
 	@Nonnull
 	private Resolution resolveFieldInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
 	                                         @Nonnull String fieldName) {
-		// TODO: Resolve the implied field type based on the use case of the selection
-		//  and use that as an additional hint to 'resolveFieldByNameInClass'
+		// Try to resolve the implied field type based on the use case of the selection.
 		DescribableEntry usageType = null;
+		Model parent = origin.getParent();
+		if (parent instanceof AssignmentExpressionModel assign && assign.getVariable() == origin) {
+			// Unknown.foo = "string" --> We know 'foo' must be 'String'
+			Resolution targetRes = assign.getExpression().resolve(this);
+			if (targetRes instanceof DescribableResolution desc)
+				usageType = desc.getDescribableEntry();
+		} else if (parent instanceof MethodInvocationExpressionModel invoke) {
+			// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
+			int argIndex = invoke.getArguments().indexOf(origin);
+			usageType = inferExpectedTypeForArgument(invoke, argIndex);
+		}
 
 		// Member selection should be a field identifier in the context of a class identifier such as:
 		//  - StringConstants.TARGET_NAME
@@ -1031,7 +1133,7 @@ public class BasicResolver implements Resolver {
 				//  - args.length
 				if (fieldName.equals("length"))
 					return ofPrimitive(INT);
-				return resolveFieldByNameInClass(Objects.requireNonNull(pool.getClass("java/lang/Object")), fieldName, usageType);
+				return resolveFieldByNameInClass(jlObjectEntry, fieldName, usageType);
 			}
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
@@ -1041,7 +1143,7 @@ public class BasicResolver implements Resolver {
 			//  - args.length
 			if (fieldName.equals("length"))
 				return ofPrimitive(INT);
-			return resolveFieldByNameInClass(Objects.requireNonNull(pool.getClass("java/lang/Object")), fieldName, usageType);
+			return resolveFieldByNameInClass(jlObjectEntry, fieldName, usageType);
 		}
 
 		return unknown();
@@ -1153,14 +1255,14 @@ public class BasicResolver implements Resolver {
 		return switch (binary.getOperator()) {
 			case PLUS -> mergeWith(ADDITION_OR_CONCAT, binary.getLeft().resolve(this), binary.getRight().resolve(this));
 			case MINUS, MULTIPLY, DIVIDE, REMAINDER,
-					BIT_OR, BIT_AND, BIT_XOR,
-					SHIFT_LEFT, SHIFT_RIGHT, SHIFT_RIGHT_UNSIGNED ->
+			     BIT_OR, BIT_AND, BIT_XOR,
+			     SHIFT_LEFT, SHIFT_RIGHT, SHIFT_RIGHT_UNSIGNED ->
 					mergeWith(binary.getLeft().resolve(this), binary.getRight().resolve(this));
 			case EQUALS, NOT_EQUALS,
-					CONDITIONAL_OR, CONDITIONAL_AND,
-					RELATION_LESS, RELATION_GREATER,
-					RELATION_LESS_EQUAL, RELATION_GREATER_EQUAL,
-					RELATION_INSTANCEOF -> ofPrimitive(BOOLEAN);
+			     CONDITIONAL_OR, CONDITIONAL_AND,
+			     RELATION_LESS, RELATION_GREATER,
+			     RELATION_LESS_EQUAL, RELATION_GREATER_EQUAL,
+			     RELATION_INSTANCEOF -> ofPrimitive(BOOLEAN);
 			case UNKNOWN -> unknown();
 		};
 	}
@@ -1200,7 +1302,8 @@ public class BasicResolver implements Resolver {
 
 		List<AbstractExpressionModel> arguments = methodInvocation.getArguments();
 		List<DescribableEntry> describableArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
-		for (AbstractExpressionModel argument : arguments) {
+		for (int i = 0; i < arguments.size(); i++) {
+			AbstractExpressionModel argument = arguments.get(i);
 			Resolution resolution = argument.resolve(this);
 			if (resolution instanceof DescribableResolution describableResolution) {
 				DescribableEntry argumentDescribableEntry = describableResolution.getDescribableEntry();
@@ -1215,9 +1318,14 @@ public class BasicResolver implements Resolver {
 					describableArguments.add(argumentDescribableEntry);
 				}
 			} else {
-				// If any of the arguments cannot be described, then we will treat it as if
-				// we don't know anything about the arguments at all.
-				return null;
+				// See if we can infer the type based on matching possible argument types for methods of the same name.
+				DescribableEntry inferredEntry = inferExpectedTypeForArgument(methodInvocation, i);
+				if (inferredEntry == null) {
+					// If any of the arguments cannot be described, then we will treat it as if
+					// we don't know anything about the arguments at all.
+					return null;
+				}
+				describableArguments.add(inferredEntry);
 			}
 		}
 
