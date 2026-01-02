@@ -14,6 +14,7 @@ import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.model.ImplementsModel;
 import software.coley.sourcesolver.model.ImportModel;
 import software.coley.sourcesolver.model.InstanceofExpressionModel;
+import software.coley.sourcesolver.model.LambdaExpressionModel;
 import software.coley.sourcesolver.model.LiteralExpressionModel;
 import software.coley.sourcesolver.model.MemberSelectExpressionModel;
 import software.coley.sourcesolver.model.MethodInvocationExpressionModel;
@@ -41,6 +42,7 @@ import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
 import software.coley.sourcesolver.resolve.entry.MemberEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.MultiClassEntry;
 import software.coley.sourcesolver.resolve.entry.NullEntry;
 import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
@@ -330,6 +332,9 @@ public class BasicResolver implements Resolver {
 						Resolution resolution = resolveType(variable.getType());
 						if (!resolution.isUnknown())
 							return resolution;
+						DescribableEntry inferredDescription = inferFromUsage(variable, false);
+						if (inferredDescription != null)
+							return ofDescribable(inferredDescription);
 					}
 				}
 				scope = scope.getParent();
@@ -799,9 +804,29 @@ public class BasicResolver implements Resolver {
 					for (int j = 0; j < maxArgToCheck; j++) {
 						String parameterDescriptor = argumentDescriptors.get(j);
 						DescribableEntry describableParameter = pool.getDescribable(parameterDescriptor);
-						if (describableParameter != null && !describableParameter.isAssignableFrom(argumentTypeEntries.get(j))) {
-							methodsByName.remove(methodEntry);
-							break;
+						if (describableParameter != null) {
+							DescribableEntry argType = argumentTypeEntries.get(j);
+							// Multi-class entries are special and created from our inference logic.
+							// In essence, the arg can be "one of multiple" options.
+							// Example:
+							//   void consume(Supplier)
+							//   void consume(IntSupplier)
+							// Multiple types:
+							//   Supplier
+							//   IntSupplier
+							// The types do not have a common type other than 'Object' which isn't helpful.
+							// We will see our argument is ideally one of these options then prune the other.
+							if (argType instanceof MultiClassEntry multi) {
+								if (multi.getClassEntries().stream().noneMatch(describableParameter::isAssignableFrom)) {
+									methodsByName.remove(methodEntry);
+									break;
+								}
+							}
+							// Otherwise, prune if the parameter is not assignable from the argument type.
+							else if (!describableParameter.isAssignableFrom(argType)) {
+								methodsByName.remove(methodEntry);
+								break;
+							}
 						}
 					}
 				}
@@ -1038,6 +1063,36 @@ public class BasicResolver implements Resolver {
 			// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
 			int argIndex = invoke.getArguments().indexOf(origin);
 			usageType = inferExpectedTypeForArgument(invoke, argIndex);
+		} else if (parent instanceof LambdaExpressionModel lambda) {
+			Model lambdaParent = lambda.getParent();
+			// Example:
+			//   Usage: passValueToConsumer(t -> op(t), myTValue);
+			//   Defin: passValueToConsumer(Supplier, T)
+			// Then we know T maps to Object.
+			// If the parameter was IntSupplier, T would be int.
+			if (lambdaParent instanceof MethodInvocationExpressionModel parentInvoke && resolveMember(parentInvoke) instanceof MethodResolution lambdaReceiverResolution) {
+				int lambdaExprArgIndex = parentInvoke.getArguments().indexOf(lambda);
+				String argDesc = lambdaReceiverResolution.getMethodEntry().getParameterDescriptors().get(lambdaExprArgIndex);
+				if (pool.getDescribable(argDesc) instanceof ClassEntry lambdaType) {
+					int lambdaArgIndex = lambda.getParameters().indexOf(origin);
+					List<MethodEntry> abstractMethods = lambdaType.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
+					if (abstractMethods.size() == 1) {
+						usageType = pool.getDescribable(abstractMethods.getFirst().getParameterDescriptors().get(lambdaArgIndex));
+					}
+				}
+			}
+			// Example: Consumer c = t -> op(t);
+			// Then we know 't' maps to 'Object'
+			// Example: IntConsumer c = t -> op(t);
+			// But here we know 't' maps to 'int'
+			else if (lambdaParent instanceof VariableModel model && resolveType(model.getType()) instanceof ClassResolution lambdaTypeResolution) {
+				ClassEntry lambdaType = lambdaTypeResolution.getClassEntry();
+				int lambdaArgIndex = lambda.getParameters().indexOf(origin);
+				List<MethodEntry> abstractMethods = lambdaType.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
+				if (abstractMethods.size() == 1) {
+					usageType = pool.getDescribable(abstractMethods.getFirst().getParameterDescriptors().get(lambdaArgIndex));
+				}
+			}
 		}
 
 		// We may know the required type is a lambda, but then that means we may want to adapt the result
@@ -1070,8 +1125,13 @@ public class BasicResolver implements Resolver {
 		if (!(receiverResolution instanceof DescribableResolution describableReceiver))
 			return null;
 
+		return inferExpectedTypeForArgument(describableReceiver.getDescribableEntry(), methodName, argumentIndex);
+	}
+
+	@Nullable
+	private DescribableEntry inferExpectedTypeForArgument(@Nonnull DescribableEntry methodReceiver, @Nonnull String methodName, int argumentIndex) {
 		// Extract receiver type.
-		ClassEntry receiverClass = switch (describableReceiver.getDescribableEntry()) {
+		ClassEntry receiverClass = switch (methodReceiver) {
 			case ClassEntry classEntry -> classEntry;
 			case MemberEntry memberEntry -> {
 				DescribableEntry memberReceivedType = switch (memberEntry) {
@@ -1121,9 +1181,16 @@ public class BasicResolver implements Resolver {
 			return null;
 
 		// Merge possible argument types to common parent.
-		return expectedTypes.stream()
+		DescribableEntry common = expectedTypes.stream()
 				.reduce(this::getCommonDescriptor)
 				.orElse(expectedTypes.getFirst());
+		if (expectedTypes.size() > 1 && common instanceof ClassEntry commonClass) {
+			List<ClassEntry> expectedClasses = expectedTypes.stream()
+					.filter(t -> t instanceof ClassEntry)
+					.map(ClassEntry.class::cast).toList();
+			return new MultiClassEntry(expectedClasses, commonClass);
+		}
+		return common;
 	}
 
 	@Nonnull

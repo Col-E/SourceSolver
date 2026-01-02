@@ -539,6 +539,39 @@ public class ResolveTests {
 				"java/lang/Integer", "intValue", "()I");
 	}
 
+	@Test
+	void testLambdas() {
+		String sourceCode = readSrc("sample/Lambdas");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// Support raw type inference
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateRaw(Object::notify, new Object())", 23),
+				"java/lang/Object", "notify", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateRaw(raw -> raw.notify(), new Object())", 26),
+				"java/lang/Object", "notify", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "Consumer rawConsumer = raw -> raw.notify()", 36),
+				"java/lang/Object", "notify", "()V");
+
+		// Our own interface with no generics
+		String s1 = "return /* lambda */ root.length() + file.length() + flags";
+		String s2 = "return /* inner-class */ root.length() + fileInner.length() + flagsInner";
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, s1, 30),
+				"java/io/File", "length", "()J");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, s1, 45),
+				"java/io/File", "length", "()J");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, s2, 35),
+				"java/io/File", "length", "()J");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, s2, 55),
+				"java/io/File", "length", "()J");
+
+		// TODO: Support generic inference
+//		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(String::toLowerCase, \"string\")", 25),
+//				"java/lang/String", "toLowerCase", "()V");
+//		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(str -> str.toLowerCase(), \"string\")", 30),
+//				"java/lang/String", "toLowerCase", "()V");
+	}
+
 	private static void assertPackageResolution(Resolution resolution, String name) {
 		if (resolution instanceof PackageResolution packageResolution) {
 			if (name != null) assertEquals(name, packageResolution.getPackageName());
