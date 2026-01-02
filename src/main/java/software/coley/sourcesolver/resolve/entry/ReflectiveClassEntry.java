@@ -60,7 +60,7 @@ public class ReflectiveClassEntry extends BasicClassEntry {
 			int modifiers = method.getModifiers();
 			methods.add(new BasicMethodEntry(methodName, methodDescriptor, modifiers));
 		}
-		Class<?> superClass = cls.getSuperclass();
+		Class<?> superClass = cls.isInterface() ? Object.class : cls.getSuperclass();
 		Class<?>[] interfaces = cls.getInterfaces();
 		ClassEntry superEntry = superClass == null ? null : build(cache, superClass);
 		List<ClassEntry> interfaceEntries = new ArrayList<>(interfaces.length);
