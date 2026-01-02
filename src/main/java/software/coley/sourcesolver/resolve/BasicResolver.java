@@ -1021,7 +1021,48 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nullable
+	private DescribableEntry inferFromUsage(@Nonnull Model origin, boolean adaptLambdaUsage) {
+		DescribableEntry usageType = null;
+		Model parent = origin.getParent();
+		if (parent instanceof VariableModel variable && variable.getValue() == origin) {
+			// String known = foo --> We know 'foo' must be 'String'
+			Resolution targetRes = variable.getType().resolve(this);
+			if (targetRes instanceof DescribableResolution desc)
+				usageType = desc.getDescribableEntry();
+		} else if (parent instanceof AssignmentExpressionModel assign && assign.getVariable() == origin) {
+			// Unknown.foo = "string" --> We know 'foo' must be 'String'
+			Resolution targetRes = assign.getExpression().resolve(this);
+			if (targetRes instanceof DescribableResolution desc)
+				usageType = desc.getDescribableEntry();
+		} else if (parent instanceof MethodInvocationExpressionModel invoke) {
+			// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
+			int argIndex = invoke.getArguments().indexOf(origin);
+			usageType = inferExpectedTypeForArgument(invoke, argIndex);
+		}
+
+		// We may know the required type is a lambda, but then that means we may want to adapt the result
+		// to mirror the return type the lambda outlines, rather than the class itself.
+		//
+		// Consumer known = Unknown::foo --> We know 'foo' must be '()V'
+		if (adaptLambdaUsage && usageType instanceof ClassEntry classUsage && origin instanceof MethodReferenceExpressionModel) {
+			// The origin model being a reference implies the usage type can be a lambda.
+			// It should be an interface with a single abstract method.
+			List<MethodEntry> abstractMethods = classUsage.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
+			if (abstractMethods.size() == 1)
+				usageType = pool.getDescribable(abstractMethods.getFirst().getReturnDescriptor());
+			else
+				// Reset to null, we do not to incorrectly infer the wrong type for lambdas.
+				usageType = null;
+		}
+
+		return usageType;
+	}
+
+	@Nullable
 	private DescribableEntry inferExpectedTypeForArgument(@Nonnull MethodInvocationExpressionModel invoke, int argumentIndex) {
+		if (argumentIndex < 0)
+			return null;
+
 		// Extract the method invocation receiver + name.
 		String methodName = invoke.getMethodName();
 		Model methodReceiver = Objects.requireNonNullElse(invoke.getReceiver(), invoke.getParentOfType(ClassModel.class));
@@ -1104,18 +1145,7 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveFieldInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
 	                                         @Nonnull String fieldName) {
 		// Try to resolve the implied field type based on the use case of the selection.
-		DescribableEntry usageType = null;
-		Model parent = origin.getParent();
-		if (parent instanceof AssignmentExpressionModel assign && assign.getVariable() == origin) {
-			// Unknown.foo = "string" --> We know 'foo' must be 'String'
-			Resolution targetRes = assign.getExpression().resolve(this);
-			if (targetRes instanceof DescribableResolution desc)
-				usageType = desc.getDescribableEntry();
-		} else if (parent instanceof MethodInvocationExpressionModel invoke) {
-			// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
-			int argIndex = invoke.getArguments().indexOf(origin);
-			usageType = inferExpectedTypeForArgument(invoke, argIndex);
-		}
+		DescribableEntry usageType = inferFromUsage(origin, true);
 
 		// Member selection should be a field identifier in the context of a class identifier such as:
 		//  - StringConstants.TARGET_NAME
@@ -1152,13 +1182,10 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution resolveMethodInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
 	                                          @Nonnull String methodName) {
-		// TODO: Resolve the implied return type based on the methodInvocation's use case
-		//  and use that as an additional hint to 'resolveMethodByNameInClass'
-		//   - But only if necessary
-		DescribableEntry returnType = null;
+		// Try to resolve the implied method return type based on the use case of the selection.
+		DescribableEntry returnType = methodName.startsWith("<") ? VOID : inferFromUsage(origin, true);
 
 		// Resolve the method's arguments.
-		//  TODO: Only do this if necessary
 		List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(origin);
 
 		// Member selection is the method identifier
@@ -1284,16 +1311,26 @@ public class BasicResolver implements Resolver {
 
 	@Nullable
 	private List<DescribableEntry> collectMethodArgumentsInParentContext(@Nonnull Model origin) {
-		if (origin instanceof MethodReferenceExpressionModel)
-			// TODO: Method references do not have arguments in the "parent" context but instead are implied
-			//  by the use case of the reference. For example "Box::new" can point to any constructor of the "Box"
-			//  type based on its context. A "Supplier<Box>" and a "Function<T, Box>" point to different constructors.
+		// For method references, find the matching single-abstract-method interface method, then extract the parameters.
+		if (origin instanceof MethodReferenceExpressionModel) {
 			// Places to consider for argument inference:
 			//  - Variable type where the reference is stored
 			//     - Supplier<Box> supplier = Box::new
 			//  - Variable type where the reference is passed to
 			//     - called as a parameter to build(Supplier<Box>) or build(Function<T, Box>)
+			DescribableEntry usageType = inferFromUsage(origin, false);
+			if (usageType instanceof ClassEntry classUsage) {
+				// The origin model being a reference implies the usage type can be a lambda.
+				// It should be an interface with a single abstract method.
+				List<MethodEntry> abstractMethods = classUsage.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
+				if (abstractMethods.size() == 1)
+					return abstractMethods.getFirst().getParameterDescriptors().stream()
+							.map(pool::getDescribable)
+							.toList();
+			}
+
 			return null;
+		}
 
 		MethodInvocationExpressionModel methodInvocation = origin instanceof MethodInvocationExpressionModel invoke
 				? invoke : origin.getParentOfType(MethodInvocationExpressionModel.class);

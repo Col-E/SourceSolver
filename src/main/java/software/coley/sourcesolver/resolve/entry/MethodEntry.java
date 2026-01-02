@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +51,14 @@ public non-sealed interface MethodEntry extends MemberEntry {
 	@Override
 	default boolean isMethod() {
 		return true;
+	}
+
+	default boolean isAbstract() {
+		return (getAccess() & Modifier.ABSTRACT) != 0;
+	}
+
+	default boolean isNative() {
+		return (getAccess() & Modifier.NATIVE) != 0;
 	}
 
 	default boolean isVarargs() {

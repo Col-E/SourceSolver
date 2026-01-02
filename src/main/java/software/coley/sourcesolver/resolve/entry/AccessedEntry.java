@@ -32,4 +32,8 @@ public interface AccessedEntry {
 	default boolean isStatic() {
 		return (getAccess() & Modifier.STATIC) != 0;
 	}
+
+	default boolean isFinal() {
+		return (getAccess() & Modifier.FINAL) != 0;
+	}
 }
