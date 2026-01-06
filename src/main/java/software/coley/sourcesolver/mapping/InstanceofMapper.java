@@ -7,8 +7,10 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractPatternModel;
+import software.coley.sourcesolver.model.DeconstructionPatternModel;
 import software.coley.sourcesolver.model.InstanceofExpressionModel;
 import software.coley.sourcesolver.model.Model;
+import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
@@ -23,15 +25,17 @@ public class InstanceofMapper implements Mapper<InstanceofExpressionModel, Insta
 		Range range = extractRange(table, tree);
 		Model type;
 		Tree typeTree = tree.getType();
+		AbstractPatternModel pattern = tree.getPattern() == null ? null : context.map(PatternMapper.class, tree.getPattern());
 		if (typeTree instanceof IdentifierTree identifier) {
 			type = context.map(IdentifierMapper.class, identifier);
 		} else if (typeTree instanceof PrimitiveTypeTree primitive) {
 			type = context.map(TypeMapper.class, primitive);
+		} else if (pattern instanceof DeconstructionPatternModel deconstruction) {
+			type = deconstruction.getDeconstructor(); // Use the deconstructor identifier as the type
 		} else {
-			type = new UnknownExpressionModel(range, typeTree.toString());
+			type = new UnknownExpressionModel(range, typeTree == null ? "<error>" : typeTree.toString());
 		}
 		AbstractExpressionModel expression = context.map(ExpressionMapper.class, tree.getExpression());
-		AbstractPatternModel pattern = tree.getPattern() == null ? null : context.map(PatternMapper.class, tree.getPattern());
 		return new InstanceofExpressionModel(range, expression, type, pattern);
 	}
 }

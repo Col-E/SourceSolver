@@ -540,6 +540,18 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testInstanceOf() {
+		String sourceCode = readSrc("sample/InstanceOf");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "point instanceof Point2(int x, int y)", 20),
+				"sample/InstanceOf$Point2");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "point instanceof Point3(int x, int y, int z)", 20),
+				"sample/InstanceOf$Point3");
+	}
+
+	@Test
 	void testLambdas() {
 		String sourceCode = readSrc("sample/Lambdas");
 		CompilationUnitModel model = parser.parse(sourceCode);
