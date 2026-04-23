@@ -126,6 +126,13 @@ public record Range(int begin, int end) implements Comparable<Range> {
 		return begin < 0 || end < 0;
 	}
 
+	/**
+	 * @return {@code true} when the range has no length.
+	 */
+	public boolean isZeroLength() {
+		return begin == end;
+	}
+
 	@Override
 	public int compareTo(Range o) {
 		int cmp = Integer.compare(begin, o.begin);

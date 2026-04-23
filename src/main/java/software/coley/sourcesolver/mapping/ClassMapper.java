@@ -9,6 +9,7 @@ import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.EndPosTable;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
 import software.coley.sourcesolver.model.ImplementsModel;
@@ -34,6 +35,7 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
+		checkEnum(context, modifiersModel);
 
 		// NOTE: In some decompilers, the way the name is formatted does not play nice with javac.
 		// This name may not exactly align with what is defined. For instance...
@@ -96,5 +98,20 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 			// We cast to named because the type impls that can be extended/implemented are always named.
 			return (NamedModel) context.map(TypeMapper.class, parameterizedType);
 		return context.map(NameMapper.class, tree);
+	}
+
+	private static void checkEnum(@Nonnull MappingContext context, @Nullable ModifiersModel modifiersModel) {
+		// This is some bullshit needed to work around stupid behavior introduced in JDK 26.
+		// The range of enum field's types are now zero-length at the same position as the field name,
+		// which would cause problems for the resolver.
+		int modifierStart = modifiersModel == null ? 0 : Math.max(0, modifiersModel.getRange().begin());
+		String source = context.getSource();
+
+		// There is no 'hey, is this thing an enum?' in the AST.
+		// So we do this stupid string containment check instead.
+		int classBodyBegin = Math.max(source.indexOf('{', modifierStart), modifierStart);
+		String classDecSection = source.substring(modifierStart, classBodyBegin);
+		if (classDecSection.contains("enum "))
+			context.markEnum();
 	}
 }

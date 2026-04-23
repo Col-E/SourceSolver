@@ -6,10 +6,14 @@ import com.sun.tools.javac.tree.EndPosTable;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.ModifiersModel;
+import software.coley.sourcesolver.model.NameExpressionModel;
+import software.coley.sourcesolver.model.NewClassExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
 
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.Range;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -29,6 +33,13 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 
 		ExpressionTree initializer = tree.getInitializer();
 		Model valueModel = initializer == null ? null : context.map(ExpressionMapper.class, initializer);
+
+		// Workaround for JDK 26+ enum bullshit where the synthetic type tree range begins at the same position as the name
+		// which would otherwise break the resolver.
+		if (context.isEnum() && typeModel.getRange().isZeroLength() && typeModel instanceof TypeModel.NamedObject namedType) {
+			typeModel = new TypeModel.NamedObject(Range.UNKNOWN, new NameExpressionModel(Range.UNKNOWN, namedType.getName()));
+			valueModel = new NewClassExpressionModel(Range.UNKNOWN, null, Collections.emptyList(), new NameExpressionModel(Range.UNKNOWN, namedType.getName()), Collections.emptyList(), null);
+		}
 
 		return new VariableModel(extractRange(table, tree), annotationModels, modifiers, typeModel, name, valueModel);
 	}

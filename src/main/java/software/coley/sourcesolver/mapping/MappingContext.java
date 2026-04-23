@@ -20,6 +20,7 @@ public class MappingContext {
 	private final EndPosTable table;
 	private final String source;
 	private String className = ".";
+	private boolean isEnum;
 
 	/**
 	 * @param table
@@ -64,6 +65,20 @@ public class MappingContext {
 	 */
 	public void setClassName(@Nonnull String className) {
 		this.className = className;
+	}
+
+	/**
+	 * Mark the class being mapped as an enum.
+	 */
+	public void markEnum() {
+		isEnum = true;
+	}
+
+	/**
+	 * @return {@code true} when the class being mapped is an enum.
+	 */
+	public boolean isEnum() {
+		return isEnum;
 	}
 
 	/**

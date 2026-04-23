@@ -512,6 +512,24 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testJdk26EnumRegression() {
+		// For some stupid reason JDK 26's javac range for enum constant's type model is populated to overlap
+		// with the name of the enum constant's range. Brilliant. Anyways we have some stupid hacks in place to work around this.
+		String sourceCode = readSrc("sample/SomeEnumeration");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "ONE,"),
+				"sample/SomeEnumeration", "ONE", "Lsample/SomeEnumeration;");
+
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "TWO,"),
+				"sample/SomeEnumeration", "TWO", "Lsample/SomeEnumeration;");
+
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "THREE;"),
+				"sample/SomeEnumeration", "THREE", "Lsample/SomeEnumeration;");
+	}
+
+	@Test
 	void testBoxUseCases() {
 		String sourceCode = readSrc("sample/BoxUseCases");
 		CompilationUnitModel model = parser.parse(sourceCode);
