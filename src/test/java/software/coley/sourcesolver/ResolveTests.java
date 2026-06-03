@@ -586,10 +586,21 @@ public class ResolveTests {
 		assertResolvedMethodReturnType(resolutionAtOffset(resolver, sourceCode, "fixedList.get(0).toUpperCase", "fixedList.g".length()),
 				"java/lang/String");
 
-		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toUpperCase"),
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "stringBox.value.toUpperCase", "stringBox.value.toUpper".length()),
 				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
-		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "intValue"),
-				"java/lang/Integer", "intValue", "()I");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "stringList.get(0).toUpperCase()", "stringList.get(0).toUpper".length()),
+				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode,
+						"listOListsOStrings.getFirst().getLast().toUpperCase()",
+						"listOListsOStrings.getFirst().getLast().toUpper".length()),
+				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode,
+						"get(\"a\").get(\"b\").get(\"c\").get(\"d\").toUpperCase()",
+						"get(\"a\").get(\"b\").get(\"c\").get(\"d\").toUpper".length()),
+				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
+
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "get(0).get(0).toLowerCase()", "get(0).get(0).toLower".length()),
+				"java/lang/String", "toLowerCase", "()Ljava/lang/String;");
 	}
 
 	@Test

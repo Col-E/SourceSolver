@@ -618,6 +618,7 @@ public class BasicResolver implements Resolver {
 	private Resolution toGenericResolution(@Nullable GenericType genericType) {
 		// Collapse the internal generic model back into the public resolution types,
 		// preserving parameterized class info when the caller can still use it.
+		genericType = canonicalizeGenericType(genericType);
 		GenericType usableType = GenericTypes.toUsableType(genericType, jlObjectEntry);
 		if (usableType == null)
 			return unknown();
@@ -675,25 +676,69 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nullable
+	private GenericType canonicalizeGenericType(@Nullable GenericType genericType) {
+		if (genericType == null)
+			return null;
+		return switch (genericType) {
+			case GenericType.PrimitiveType primitiveType -> primitiveType;
+			case GenericType.TypeVariableType typeVariableType -> typeVariableType;
+			case GenericType.ArrayType arrayType -> {
+				GenericType elementType = canonicalizeGenericType(arrayType.elementType());
+				yield elementType == arrayType.elementType() ? arrayType : new GenericType.ArrayType(elementType, arrayType.dimensions());
+			}
+			case GenericType.WildcardType wildcardType -> {
+				GenericType upperBound = canonicalizeGenericType(wildcardType.upperBound());
+				GenericType lowerBound = canonicalizeGenericType(wildcardType.lowerBound());
+				yield upperBound == wildcardType.upperBound() && lowerBound == wildcardType.lowerBound() ? wildcardType :
+						new GenericType.WildcardType(upperBound, lowerBound, wildcardType.erasure());
+			}
+			case GenericType.ClassType classType -> canonicalizeClassType(classType);
+		};
+	}
+
+	@Nonnull
+	private GenericType.ClassType canonicalizeClassType(@Nonnull GenericType.ClassType classType) {
+		ClassEntry classEntry = classType.classEntry();
+		ClassEntry canonicalEntry = Objects.requireNonNullElse(pool.getClass(classEntry.getName()), classEntry);
+		List<GenericType> typeArguments = classType.typeArguments();
+		List<GenericType> canonicalTypeArguments = typeArguments;
+		for (int i = 0; i < typeArguments.size(); i++) {
+			GenericType originalArgument = typeArguments.get(i);
+			GenericType canonicalArgument = canonicalizeGenericType(originalArgument);
+			if (canonicalArgument != originalArgument) {
+				if (canonicalTypeArguments == typeArguments)
+					canonicalTypeArguments = new ArrayList<>(typeArguments);
+				canonicalTypeArguments.set(i, canonicalArgument);
+			}
+		}
+		if (canonicalEntry == classEntry && canonicalTypeArguments == typeArguments)
+			return classType;
+		return new GenericType.ClassType(canonicalEntry, canonicalTypeArguments);
+	}
+
+	@Nullable
 	private GenericType.ClassType getDirectSuperType(@Nonnull GenericType.ClassType ownerType) {
 		// Rebind the declared generic superclass through the current receiver so
 		// parent lookups see Example<String> -> Parent<String> instead of raw Parent.
+		ownerType = canonicalizeClassType(ownerType);
 		GenericType.ClassType genericSuperType = ownerType.classEntry().getGenericSuperType();
 		if (genericSuperType == null)
 			return null;
-		return GenericTypes.asClassType(GenericTypes.substitute(genericSuperType, GenericTypes.bind(ownerType)), jlObjectEntry);
+		return canonicalizeClassType(Objects.requireNonNull(GenericTypes.asClassType(
+				GenericTypes.substitute(genericSuperType, GenericTypes.bind(ownerType)), jlObjectEntry)));
 	}
 
 	@Nonnull
 	private List<GenericType.ClassType> getDirectInterfaceTypes(@Nonnull GenericType.ClassType ownerType) {
 		// Apply the receiver's bindings to each directly implemented interface so
 		// inherited members resolve against the concrete interface arguments.
+		ownerType = canonicalizeClassType(ownerType);
 		List<GenericType.ClassType> interfaceTypes = new ArrayList<>();
 		Map<GenericTypeParameter, GenericType> bindings = GenericTypes.bind(ownerType);
 		for (GenericType.ClassType interfaceType : ownerType.classEntry().getGenericInterfaceTypes()) {
 			GenericType.ClassType substitutedType = GenericTypes.asClassType(GenericTypes.substitute(interfaceType, bindings), jlObjectEntry);
 			if (substitutedType != null)
-				interfaceTypes.add(substitutedType);
+				interfaceTypes.add(canonicalizeClassType(substitutedType));
 		}
 		return interfaceTypes;
 	}
@@ -702,6 +747,7 @@ public class BasicResolver implements Resolver {
 	private FieldResolution adaptFieldResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull FieldEntry fieldEntry) {
 		// Rewrite the declared field type through the receiver bindings so T-backed
 		// fields like Box<T>.value surface as Box<String>.value -> String.
+		ownerType = canonicalizeClassType(ownerType);
 		GenericType resolvedFieldType = GenericTypes.substitute(fieldEntry.getGenericType(), GenericTypes.bind(ownerType));
 		return Resolutions.ofField(ownerType, fieldEntry, resolvedFieldType);
 	}
@@ -710,6 +756,7 @@ public class BasicResolver implements Resolver {
 	private MethodResolution adaptMethodResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull MethodEntry methodEntry) {
 		// Receiver-only adaptation is enough for non-generic methods declared on a
 		// parameterized owner such as List<String>.get(int) -> String.
+		ownerType = canonicalizeClassType(ownerType);
 		return adaptMethodResolution(ownerType, methodEntry, GenericTypes.bind(ownerType));
 	}
 
@@ -718,6 +765,7 @@ public class BasicResolver implements Resolver {
 	                                               @Nonnull Map<GenericTypeParameter, GenericType> bindings) {
 		// Apply the final binding map to both return and parameter types so downstream
 		// lookups can continue from the adapted signature instead of the erased one.
+		ownerType = canonicalizeClassType(ownerType);
 		GenericType resolvedReturnType = GenericTypes.substitute(methodEntry.getGenericReturnType(), bindings);
 		List<GenericType> resolvedParameterTypes = methodEntry.getGenericParameterTypes().stream()
 				.map(type -> GenericTypes.substitute(type, bindings))
