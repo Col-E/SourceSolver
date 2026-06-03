@@ -2,6 +2,9 @@ package software.coley.sourcesolver;
 
 import org.junit.jupiter.api.Test;
 import software.coley.sourcesolver.model.CompilationUnitModel;
+import software.coley.sourcesolver.model.Model;
+import software.coley.sourcesolver.model.ScopeLookup;
+import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
 import software.coley.sourcesolver.resolve.Resolver;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
@@ -19,14 +22,18 @@ import software.coley.sourcesolver.resolve.result.MultiMemberResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.PrimitiveResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
+import software.coley.sourcesolver.resolve.result.Resolutions;
 import software.coley.sourcesolver.util.Utils;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SuppressWarnings("SameParameterValue")
@@ -645,6 +652,101 @@ public class ResolveTests {
 				"java/lang/String", "toLowerCase", "()Ljava/lang/String;");
 		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(str -> str.toLowerCase(), \"string\")", 30),
 				"java/lang/String", "toLowerCase", "()Ljava/lang/String;");
+	}
+
+	@Test
+	void testScopeLookupAndDeepModelLookup() {
+		String sourceCode = """
+				class Example {
+				    void test(String param) {
+				        int outer = 1;
+				        {
+				            String inner = param;
+				            inner.toUpperCase();
+				        }
+				    }
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+		int position = sourceCode.indexOf("inner.toUpperCase");
+
+		Model leaf = model.getDeepestChildAtPosition(position);
+		assertEquals("inner", leaf.getSource(model).trim());
+
+		VariableModel inner = ScopeLookup.findVisibleVariable(model, position, "inner");
+		VariableModel outer = ScopeLookup.findVisibleVariable(model, position, "outer");
+		VariableModel param = ScopeLookup.findVisibleVariable(model, position, "param");
+		assertNotNull(inner);
+		assertNotNull(outer);
+		assertNotNull(param);
+
+		List<VariableModel> visible = ScopeLookup.collectVisibleVariables(model, position);
+		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("inner")));
+		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("outer")));
+		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("param")));
+	}
+
+	@Test
+	void testContextLookupHelpers() {
+		String sourceCode = readSrc("sample/BoxUseCases");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// When resolving the 'Box<String>' type we have to resolve the 'Box' part first, which is a raw type.
+		// Then we can resolve the type argument 'String' and apply that information back to the 'Box' resolution
+		// to get a parameterized type resolution.
+		Resolution boxResolution = resolutionAtOffset(resolver, sourceCode, "stringBox.value.toUpperCase();", 1);
+		Resolution fieldResolution = resolver.resolveFieldInContext(boxResolution, "value");
+		assertFieldResolution(fieldResolution, "sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(fieldResolution, CLASS_STRING);
+		assertClassResolution(Resolutions.toValueTypeResolution(fieldResolution), CLASS_STRING);
+
+		// The 'value' of the box is 'Object' as a field, but with generics we infer
+		// it is a 'String' so we should be able to resolve 'toUpperCase' on it.
+		Resolution methodResolution = resolver.resolveMethodInContext(fieldResolution, "toUpperCase", null, List.of());
+		assertMethodResolution(methodResolution, "java/lang/String", "toUpperCase", "()Ljava/lang/String;");
+		assertClassResolution(Resolutions.toValueTypeResolution(methodResolution), CLASS_STRING);
+
+		String arraySourceCode = readSrc(CLASS_FIXED_DATA_PROCESSOR);
+		CompilationUnitModel arrayModel = parser.parse(arraySourceCode);
+		Resolver arrayResolver = new BasicResolver(arrayModel, pool);
+		Resolution argsResolution = resolutionAtOffset(arrayResolver, arraySourceCode, "args[0]", 1);
+		assertMethodResolution(arrayResolver.resolveMethodInContext(argsResolution, "clone", null, List.of()),
+				"java/lang/Object", "clone", "()Ljava/lang/Object;");
+	}
+
+	@Test
+	void testReferenceAndFragmentHelpers() {
+		// Reuse the existing fixture so all referenced types are available in the shared test pool,
+		// then rewrite one call site to include extra whitespace. That lets us prove the fragment
+		// helpers are not coupled to exact formatting in the original fixture source.
+		String sourceCode = readSrc("sample/BoxUseCases")
+				.replace("stringBox.value.toUpperCase();", "stringBox . value . toUpperCase ( );");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+		int position = sourceCode.indexOf("toUpperCase");
+
+		// Reference resolution should preserve the kind of thing being referenced:
+		// fields stay field resolutions, while visible types and keywords like 'this'
+		// resolve to the containing class/type context.
+		Resolution stringBoxResolution = resolver.resolveReferenceAt("stringBox", position);
+		assertFieldResolution(stringBoxResolution, "sample/BoxUseCases", "stringBox", "Lsample/Box;");
+		assertEquals("Lsample/Box;", Resolutions.getResolvedType(stringBoxResolution).getDescriptor());
+		assertClassResolution(resolver.resolveReferenceAt("Box", position), "sample/Box");
+		assertClassResolution(resolver.resolveReferenceAt("this", position), "sample/BoxUseCases");
+
+		// Fragment resolution should keep member access as a field resolution so callers can still
+		// inspect the owner/member identity, while the normalized resolved type reflects generic substitution.
+		Resolution fieldResolution = resolver.resolveFragmentAt("stringBox.value", position);
+		assertFieldResolution(fieldResolution, "sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(fieldResolution, CLASS_STRING);
+		assertEquals("Ljava/lang/String;", Resolutions.getResolvedType(fieldResolution).getDescriptor());
+
+		// Zero-arg invocation fragments should resolve all the way to the produced value type, which is
+		// the main simplification Recaf can use instead of manually walking owners and generic return types.
+		Resolution invocationResolution = resolver.resolveFragmentAt("stringBox.value.toUpperCase()", position);
+		assertClassResolution(invocationResolution, CLASS_STRING);
+		assertEquals("Ljava/lang/String;", Resolutions.getResolvedType(invocationResolution).getDescriptor());
 	}
 
 	private static void assertPackageResolution(Resolution resolution, String name) {

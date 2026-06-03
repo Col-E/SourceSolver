@@ -220,6 +220,52 @@ public class Resolutions {
 		return resolution.getMethodEntry().getGenericParameterTypes();
 	}
 
+	/**
+	 * @param resolution
+	 * 		Some resolution.
+	 *
+	 * @return The resolved value type represented by the resolution, or {@code null} when it does not describe a value type.
+	 */
+	@Nullable
+	public static DescribableEntry getResolvedValueType(@Nonnull Resolution resolution) {
+		return switch (resolution) {
+			case FieldResolution fieldResolution -> fieldResolution.getResolvedFieldType();
+			case MethodResolution methodResolution -> methodResolution.getResolvedReturnType();
+			case DescribableResolution describableResolution -> describableResolution.getDescribableEntry();
+			default -> null;
+		};
+	}
+
+	/**
+	 * @param resolution
+	 * 		Some resolution.
+	 *
+	 * @return The resolved type represented by the resolution, or {@code null} when it does not describe a type.
+	 */
+	@Nullable
+	public static DescribableEntry getResolvedType(@Nonnull Resolution resolution) {
+		DescribableEntry valueType = getResolvedValueType(resolution);
+		if (valueType != null)
+			return valueType;
+		return switch (resolution) {
+			case ClassResolution classResolution -> classResolution.getClassEntry();
+			case DescribableResolution describableResolution -> describableResolution.getDescribableEntry();
+			default -> null;
+		};
+	}
+
+	/**
+	 * @param resolution
+	 * 		Some resolution.
+	 *
+	 * @return Resolution of the value type represented by the input resolution.
+	 */
+	@Nonnull
+	public static Resolution toValueTypeResolution(@Nonnull Resolution resolution) {
+		DescribableEntry type = getResolvedValueType(resolution);
+		return type == null ? unknown() : ofDescribable(type);
+	}
+
 	@Nonnull
 	public static Resolution mergeWith(@Nonnull Resolution left, @Nonnull Resolution right) {
 		return mergeWith(MergeOp.MERGE_TYPES, left, right);

@@ -28,6 +28,7 @@ import software.coley.sourcesolver.model.NewClassExpressionModel;
 import software.coley.sourcesolver.model.PackageModel;
 import software.coley.sourcesolver.model.ParenthesizedExpressionModel;
 import software.coley.sourcesolver.model.PermitsModel;
+import software.coley.sourcesolver.model.ScopeLookup;
 import software.coley.sourcesolver.model.SwitchExpressionModel;
 import software.coley.sourcesolver.model.ThrowStatementModel;
 import software.coley.sourcesolver.model.TypeModel;
@@ -155,17 +156,178 @@ public class BasicResolver implements Resolver {
 		if (target != null)
 			return resolve(target);
 
-		// Find the deepest model at position.
-		Model model = unit;
-		while (true) {
-			Model child = model.getChildAtPosition(position);
-			if (child == null)
-				break;
-			model = child;
+		// Resolve off of the deepest model so that it is aware of the results and can cache them.
+		return unit.getDeepestChildAtPosition(position).resolve(this);
+	}
+
+	@Nonnull
+	@Override
+	public Resolution resolveReferenceAt(@Nonnull String name, int position) {
+		String trimmedName = name.trim();
+		if (trimmedName.isEmpty())
+			return unknown();
+
+		// Prefer exact source-model matches first so callers get the same resolution they would
+		// have received from a normal AST lookup when the fragment already exists in the unit.
+		Resolution sourceResolution = resolveSourceFragment(trimmedName, position);
+		if (!sourceResolution.isUnknown())
+			return sourceResolution;
+
+		// Handle the implicit receiver keywords directly because they are contextual and do not
+		// correspond to normal imported or locally-declared names.
+		if ("this".equals(trimmedName))
+			return resolveEnclosingClass(position);
+		if ("super".equals(trimmedName)) {
+			Resolution enclosingClass = resolveEnclosingClass(position);
+			if (enclosingClass instanceof ClassResolution classResolution) {
+				ClassEntry superEntry = classResolution.getClassEntry().getSuperEntry();
+				if (superEntry != null)
+					return ofClass(superEntry);
+			}
+			return unknown();
 		}
 
-		// Resolve off of the deepest model so that it is aware of the results and can cache them.
-		return model.resolve(this);
+		if (trimmedName.indexOf('.') >= 0) {
+			Resolution typeResolution = resolveNameAsQualifiedOrImported(trimmedName);
+			if (!typeResolution.isUnknown())
+				return typeResolution;
+			return resolveAsInnerClass(trimmedName);
+		}
+
+		int resolvedPosition = clampPosition(position);
+
+		// Unqualified names are checked in roughly the same order a user would reason about them
+		// in source: local scope, enclosing class members, then type parameters and visible types.
+		VariableModel variable = ScopeLookup.findVisibleVariable(unit, resolvedPosition, trimmedName);
+		if (variable != null) {
+			Resolution variableResolution = variable.resolve(this);
+			if (!variableResolution.isUnknown())
+				return variableResolution;
+		}
+
+		Resolution fieldResolution = resolveFieldFromEnclosingClasses(trimmedName, resolvedPosition);
+		if (!fieldResolution.isUnknown())
+			return fieldResolution;
+
+		Resolution typeParameterResolution = resolveTypeParameterAt(trimmedName, resolvedPosition);
+		if (!typeParameterResolution.isUnknown())
+			return typeParameterResolution;
+
+		Resolution typeResolution = resolveNameAsQualifiedOrImported(trimmedName);
+		if (!typeResolution.isUnknown())
+			return typeResolution;
+		return resolveAsInnerClass(trimmedName);
+	}
+
+	@Nonnull
+	@Override
+	public Resolution resolveFragmentAt(@Nonnull String text, int position) {
+		String trimmedText = text.trim();
+		if (trimmedText.isEmpty())
+			return unknown();
+
+		// If the fragment exactly matches an AST-backed model, trust the normal resolver path first.
+		Resolution sourceResolution = resolveSourceFragment(trimmedText, position);
+		if (!sourceResolution.isUnknown())
+			return sourceResolution;
+
+		// Simple identifiers and qualified type names are handled by the reference resolver.
+		Resolution referenceResolution = resolveReferenceAt(trimmedText, position);
+		if (!referenceResolution.isUnknown())
+			return referenceResolution;
+
+		// Tooling often has only partial source text for a receiver chain, so fall back to parsing
+		// the trailing operation and resolving the base fragment recursively.
+		AccessFragment methodInvocation = parseTrailingZeroArgInvocation(trimmedText);
+		if (methodInvocation != null) {
+			Resolution baseResolution = resolveFragmentAt(methodInvocation.baseText(),
+					adjustPositionForBase(position, trimmedText, methodInvocation.baseText()));
+			if (!baseResolution.isUnknown()) {
+				Resolution methodResolution = resolveMethodInContext(baseResolution, methodInvocation.memberName(), null, List.of());
+				if (!methodResolution.isUnknown())
+					return Resolutions.toValueTypeResolution(methodResolution);
+			}
+		}
+
+		AccessFragment memberSelection = parseTrailingMemberSelection(trimmedText);
+		if (memberSelection != null) {
+			Resolution baseResolution = resolveFragmentAt(memberSelection.baseText(),
+					adjustPositionForBase(position, trimmedText, memberSelection.baseText()));
+			if (!baseResolution.isUnknown())
+				return resolveFieldInContext(baseResolution, memberSelection.memberName());
+		}
+
+		return unknown();
+	}
+
+	@Nonnull
+	@Override
+	public Resolution resolveFieldInContext(@Nonnull Resolution contextResolution,
+	                                        @Nonnull String fieldName,
+	                                        @Nullable DescribableEntry typeHint) {
+		// Member selection should be a field identifier in the context of a class identifier such as:
+		//  - StringConstants.TARGET_NAME
+		if (contextResolution instanceof ClassResolution classResolution) {
+			return resolveFieldByNameInClass(Resolutions.getResolvedClassType(classResolution), fieldName, typeHint);
+		} else if (contextResolution instanceof FieldResolution fieldResolution) {
+			// The identifier is in the context of another member identifier such as:
+			//  - someField.targetName
+			GenericType describableFieldType = Resolutions.getResolvedFieldGenericType(fieldResolution);
+			GenericType usableFieldType = GenericTypes.toUsableType(describableFieldType, jlObjectEntry);
+			if (usableFieldType instanceof GenericType.ClassType declaringClass)
+				return resolveFieldByNameInClass(declaringClass, fieldName, typeHint);
+			else if (usableFieldType != null && usableFieldType.asDescribable() instanceof ArrayEntry) {
+				// The identifier is in the context of another member identifier representing an array variable such as:
+				//  - args.length
+				if (fieldName.equals("length"))
+					return ofPrimitive(INT);
+				return resolveFieldByNameInClass(jlObjectEntry, fieldName, typeHint);
+			}
+		} else if (contextResolution instanceof MethodResolution methodResolution) {
+			GenericType returnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			GenericType usableReturnType = GenericTypes.toUsableType(returnType, jlObjectEntry);
+			if (usableReturnType instanceof GenericType.ClassType declaringClass)
+				return resolveFieldByNameInClass(declaringClass, fieldName, typeHint);
+		} else if (contextResolution instanceof ArrayResolution) {
+			// The identifier is in the context of another member identifier representing an array variable such as:
+			//  - args.length
+			if (fieldName.equals("length"))
+				return ofPrimitive(INT);
+			return resolveFieldByNameInClass(jlObjectEntry, fieldName, typeHint);
+		}
+
+		return unknown();
+	}
+
+	@Nonnull
+	@Override
+	public Resolution resolveMethodInContext(@Nonnull Resolution contextResolution,
+	                                         @Nonnull String methodName,
+	                                         @Nullable DescribableEntry returnTypeHint,
+	                                         @Nullable List<? extends DescribableEntry> argumentTypeHints) {
+		List<GenericType> genericArguments = toGenericTypeHints(argumentTypeHints);
+		List<DescribableEntry> describableArguments = argumentTypeHints == null ? null : List.copyOf(argumentTypeHints);
+		if (contextResolution instanceof ClassResolution classResolution) {
+			return resolveMethodByNameInClass(Resolutions.getResolvedClassType(classResolution), methodName,
+					rawGenericType(returnTypeHint), genericArguments, describableArguments);
+		} else if (contextResolution instanceof FieldResolution fieldResolution) {
+			GenericType fieldType = Resolutions.getResolvedFieldGenericType(fieldResolution);
+			GenericType usableFieldType = GenericTypes.toUsableType(fieldType, jlObjectEntry);
+			if (usableFieldType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnTypeHint), genericArguments, describableArguments);
+		} else if (contextResolution instanceof MethodResolution methodResolution) {
+			GenericType methodReturnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			GenericType usableReturnType = GenericTypes.toUsableType(methodReturnType, jlObjectEntry);
+			if (usableReturnType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnTypeHint), genericArguments, describableArguments);
+		} else if (contextResolution instanceof ArrayResolution) {
+			return resolveMethodByNameInClass(GenericTypes.ofClass(jlObjectEntry), methodName,
+					rawGenericType(returnTypeHint), genericArguments, describableArguments);
+		}
+
+		return unknown();
 	}
 
 	@Override
@@ -378,6 +540,200 @@ public class BasicResolver implements Resolver {
 		}
 
 		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveSourceFragment(@Nonnull String text, int position) {
+		if (text.isEmpty())
+			return unknown();
+
+		int resolvedPosition = clampPosition(position);
+
+		// Search backward from the provided position first so duplicate text elsewhere in the unit
+		// does not win over the fragment nearest to the caller's cursor/selection.
+		int start = Math.max(0, resolvedPosition - text.length() + 1);
+		for (int offset = resolvedPosition; offset >= start; offset--) {
+			Resolution resolution = resolveMatchingSourceFragment(text, start, offset);
+			if (!resolution.isUnknown())
+				return resolution;
+		}
+
+		// If the nearby search misses, fall back to a full textual scan so detached tooling can still
+		// resolve fragments when the supplied position is approximate.
+		String unitSource = unit.getInputSource();
+		int sourceIndex = unitSource.indexOf(text);
+		while (sourceIndex >= 0) {
+			Resolution resolution = resolveMatchingSourceFragment(text, sourceIndex, sourceIndex + text.length() - 1);
+			if (!resolution.isUnknown())
+				return resolution;
+			sourceIndex = unitSource.indexOf(text, sourceIndex + 1);
+		}
+
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveMatchingSourceFragment(@Nonnull String text, int start, int end) {
+		for (int astOffset = end; astOffset >= start; astOffset--) {
+			Model model = unit.getDeepestNonErroneousChildAtPosition(astOffset);
+			for (Model current = model; current != null; current = current.getParent()) {
+				// Compare trimmed model source so callers can pass editor fragments that omit
+				// surrounding formatting while still matching the underlying AST model.
+				if (!text.equals(current.getSource(unit).trim()))
+					continue;
+				Resolution resolution = current.resolve(this);
+				if (!resolution.isUnknown())
+					return resolution;
+			}
+		}
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveEnclosingClass(int position) {
+		Model leaf = getLeafAt(position);
+		ClassModel classModel = leaf instanceof ClassModel currentClass ? currentClass : leaf.getParentOfType(ClassModel.class);
+		if (classModel == null)
+			return unknown();
+		return resolveClassModel(classModel);
+	}
+
+	@Nonnull
+	private Resolution resolveFieldFromEnclosingClasses(@Nonnull String name, int position) {
+		Model leaf = getLeafAt(position);
+		ClassModel currentClass = leaf instanceof ClassModel classModel ? classModel : leaf.getParentOfType(ClassModel.class);
+		while (currentClass != null) {
+			// First ask the normal field-in-context resolver so inherited members and generic owner
+			// adaptation behave the same way they do for regular member selection.
+			Resolution classResolution = resolveClassModel(currentClass);
+			if (classResolution instanceof ClassResolution resolvedClass) {
+				Resolution fieldResolution = resolveFieldInContext(resolvedClass, name);
+				if (!fieldResolution.isUnknown())
+					return fieldResolution;
+			}
+
+			// Then fall back to the source model itself so partially-backed or remapped class contexts
+			// still expose declared fields even when class metadata is incomplete.
+			for (VariableModel field : currentClass.getFields()) {
+				if (!name.equals(field.getName()))
+					continue;
+				Resolution fieldResolution = field.resolve(this);
+				if (!fieldResolution.isUnknown())
+					return fieldResolution;
+			}
+
+			currentClass = currentClass.getParentOfType(ClassModel.class);
+		}
+		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveTypeParameterAt(@Nonnull String name, int position) {
+		Model leaf = getLeafAt(position);
+		return resolveAsTypeArgument(leaf, name);
+	}
+
+	@Nonnull
+	private Model getLeafAt(int position) {
+		return unit.getDeepestNonErroneousChildAtPosition(clampPosition(position));
+	}
+
+	private int clampPosition(int position) {
+		int sourceLength = unit.getInputSource().length();
+		if (sourceLength <= 0)
+			return 0;
+		return Math.max(0, Math.min(position, sourceLength - 1));
+	}
+
+	private static int adjustPositionForBase(int position, @Nonnull String fullText, @Nonnull String baseText) {
+		return Math.max(0, position - (fullText.length() - baseText.length()));
+	}
+
+	@Nullable
+	private static AccessFragment parseTrailingMemberSelection(@Nonnull String text) {
+		int memberEnd = skipWhitespaceBackward(text, text.length() - 1);
+		if (memberEnd < 0 || text.charAt(memberEnd) == ')')
+			return null;
+
+		// Only peel off the final ".member" portion. The base is resolved recursively so chains like
+		// "a.b.c" do not need a dedicated parser here.
+		int memberStart = scanIdentifierStart(text, memberEnd);
+		if (memberStart > memberEnd)
+			return null;
+
+		int separator = skipWhitespaceBackward(text, memberStart - 1);
+		if (separator < 0 || text.charAt(separator) != '.')
+			return null;
+
+		String baseText = text.substring(0, separator).trim();
+		if (baseText.isEmpty())
+			return null;
+		return new AccessFragment(baseText, text.substring(memberStart, memberEnd + 1));
+	}
+
+	@Nullable
+	private static AccessFragment parseTrailingZeroArgInvocation(@Nonnull String text) {
+		if (!text.endsWith(")"))
+			return null;
+
+		// This intentionally handles only the cheap/common "foo.bar()" shape. Argument-aware parsing
+		// would push too much editor-specific logic into the core resolver utility layer.
+		int openParen = findMatchingOpenParen(text);
+		if (openParen <= 0)
+			return null;
+		if (!text.substring(openParen + 1, text.length() - 1).trim().isEmpty())
+			return null;
+
+		int methodEnd = skipWhitespaceBackward(text, openParen - 1);
+		if (methodEnd < 0)
+			return null;
+
+		int methodStart = scanIdentifierStart(text, methodEnd);
+		if (methodStart > methodEnd)
+			return null;
+
+		int separator = skipWhitespaceBackward(text, methodStart - 1);
+		if (separator < 0 || text.charAt(separator) != '.')
+			return null;
+
+		String baseText = text.substring(0, separator).trim();
+		if (baseText.isEmpty())
+			return null;
+		return new AccessFragment(baseText, text.substring(methodStart, methodEnd + 1));
+	}
+
+	private static int scanIdentifierStart(@Nonnull String text, int end) {
+		int start = end;
+		while (start >= 0) {
+			char c = text.charAt(start);
+			if (Character.isJavaIdentifierPart(c) || c == '$') {
+				start--;
+				continue;
+			}
+			break;
+		}
+		return start + 1;
+	}
+
+	private static int skipWhitespaceBackward(@Nonnull String text, int index) {
+		while (index >= 0 && Character.isWhitespace(text.charAt(index)))
+			index--;
+		return index;
+	}
+
+	private static int findMatchingOpenParen(@Nonnull String text) {
+		int balance = 0;
+		for (int i = text.length() - 1; i >= 0; i--) {
+			char c = text.charAt(i);
+			if (c == ')') {
+				balance++;
+			} else if (c == '(') {
+				balance--;
+				if (balance == 0)
+					return i;
+			}
+		}
+		return -1;
 	}
 
 	@Nonnull
@@ -1302,7 +1658,9 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution toValueTypeResolution(@Nonnull Resolution resolution) {
 		GenericType genericType = getResolvedGenericType(resolution);
-		return genericType == null ? unknown() : toGenericResolution(genericType);
+		if (genericType != null)
+			return toGenericResolution(genericType);
+		return Resolutions.toValueTypeResolution(resolution);
 	}
 
 	@Nonnull
@@ -1630,41 +1988,7 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution resolveFieldInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
 	                                         @Nonnull String fieldName) {
-		// Try to resolve the implied field type based on the use case of the selection.
-		DescribableEntry usageType = inferFromUsage(origin, true);
-
-		// Member selection should be a field identifier in the context of a class identifier such as:
-		//  - StringConstants.TARGET_NAME
-		if (contextResolution instanceof ClassResolution classResolution) {
-			return resolveFieldByNameInClass(Resolutions.getResolvedClassType(classResolution), fieldName, usageType);
-		} else if (contextResolution instanceof FieldResolution fieldResolution) {
-			// The identifier is in the context of another member identifier such as:
-			//  - someField.targetName
-			GenericType describableFieldType = Resolutions.getResolvedFieldGenericType(fieldResolution);
-			GenericType usableFieldType = GenericTypes.toUsableType(describableFieldType, jlObjectEntry);
-			if (usableFieldType instanceof GenericType.ClassType declaringClass)
-				return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
-			else if (usableFieldType != null && usableFieldType.asDescribable() instanceof ArrayEntry) {
-				// The identifier is in the context of another member identifier representing an array variable such as:
-				//  - args.length
-				if (fieldName.equals("length"))
-					return ofPrimitive(INT);
-				return resolveFieldByNameInClass(jlObjectEntry, fieldName, usageType);
-			}
-		} else if (contextResolution instanceof MethodResolution methodResolution) {
-			GenericType returnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
-			GenericType usableReturnType = GenericTypes.toUsableType(returnType, jlObjectEntry);
-			if (usableReturnType instanceof GenericType.ClassType declaringClass)
-				return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
-		} else if (contextResolution instanceof ArrayResolution) {
-			// The identifier is in the context of another member identifier representing an array variable such as:
-			//  - args.length
-			if (fieldName.equals("length"))
-				return ofPrimitive(INT);
-			return resolveFieldByNameInClass(jlObjectEntry, fieldName, usageType);
-		}
-
-		return unknown();
+		return resolveFieldInContext(contextResolution, fieldName, inferFromUsage(origin, true));
 	}
 
 	@Nonnull
@@ -1701,6 +2025,9 @@ public class BasicResolver implements Resolver {
 			if (usableReturnType instanceof GenericType.ClassType declaringClass)
 				return resolveMethodByNameInClass(declaringClass, methodName,
 						rawGenericType(returnType), genericArguments, describableArguments);
+		} else if (contextResolution instanceof ArrayResolution) {
+			return resolveMethodByNameInClass(GenericTypes.ofClass(jlObjectEntry), methodName,
+					rawGenericType(returnType), genericArguments, describableArguments);
 		}
 
 		return unknown();
@@ -1852,7 +2179,7 @@ public class BasicResolver implements Resolver {
 	}
 
 	@Nullable
-	private List<GenericType> toGenericTypeHints(@Nullable List<DescribableEntry> argumentTypeEntries) {
+	private List<GenericType> toGenericTypeHints(@Nullable List<? extends DescribableEntry> argumentTypeEntries) {
 		if (argumentTypeEntries == null)
 			return null;
 		List<GenericType> genericTypes = new ArrayList<>(argumentTypeEntries.size());
@@ -1869,6 +2196,20 @@ public class BasicResolver implements Resolver {
 		return resolveNamed(namedQualifier) instanceof ClassResolution;
 	}
 
+	/**
+	 * Partial member selection that can be used to resolve either a field or method depending on the context.
+	 *
+	 * @param baseText
+	 * 		The base text of the selection, such as {@code Constants.MY_CONST} or {@code Constants.getMyConst()}.
+	 * 		This is used for error reporting and should include any qualifiers but not method arguments.
+	 * @param memberName
+	 * 		The member name being selected, such as {@code MY_CONST} or {@code getMyConst}.
+	 */
+	private record AccessFragment(@Nonnull String baseText, @Nonnull String memberName) {}
+
+	/**
+	 * Type of member to resolve in a selection context.
+	 */
 	private enum MemberTarget {
 		FIELDS, METHODS
 	}

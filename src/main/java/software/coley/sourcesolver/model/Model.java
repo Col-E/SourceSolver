@@ -73,6 +73,42 @@ public interface Model {
 	}
 
 	/**
+	 * @param position
+	 * 		Absolute position in the source code.
+	 *
+	 * @return Deepest child model contained by this model that contains the given position.
+	 * If the position is not contained in any child models, the current model is returned.
+	 */
+	@Nonnull
+	default Model getDeepestChildAtPosition(int position) {
+		Model current = this;
+		while (true) {
+			Model child = current.getChildAtPosition(position);
+			if (child == null)
+				return current;
+			current = child;
+		}
+	}
+
+	/**
+	 * @param position
+	 * 		Absolute position in the source code.
+	 *
+	 * @return Deepest non-erroneous child model contained by this model that contains the given position.
+	 * If the deepest child is erroneous, the closest non-erroneous parent is returned instead.
+	 */
+	@Nonnull
+	default Model getDeepestNonErroneousChildAtPosition(int position) {
+		Model current = this;
+		while (true) {
+			Model child = current.getChildAtPosition(position);
+			if (child == null || child instanceof ErroneousModel)
+				return current;
+			current = child;
+		}
+	}
+
+	/**
 	 * @param type
 	 * 		Model type to get.
 	 * @param <M>
