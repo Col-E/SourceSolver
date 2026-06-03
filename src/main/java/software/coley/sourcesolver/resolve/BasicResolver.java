@@ -315,7 +315,7 @@ public class BasicResolver implements Resolver {
 						.filter(v -> v.getRange().end() <= named.getRange().begin() && v.getName().equals(name))
 						.findFirst();
 				if (outerScopedVariable.isPresent()) {
-					Resolution resolution = resolveType(outerScopedVariable.get().getType());
+					Resolution resolution = resolveVariableType(outerScopedVariable.get());
 					if (!resolution.isUnknown())
 						return resolution;
 				}
@@ -329,12 +329,9 @@ public class BasicResolver implements Resolver {
 				for (VariableModel variable : scopedVariables) {
 					// Check for matching name, and if it is within scope (basic usage after definition check)
 					if (variable.getName().equals(name) && variable.getRange().end() <= named.getRange().begin()) {
-						Resolution resolution = resolveType(variable.getType());
+						Resolution resolution = resolveVariableType(variable);
 						if (!resolution.isUnknown())
 							return resolution;
-						DescribableEntry inferredDescription = inferFromUsage(variable, false);
-						if (inferredDescription != null)
-							return ofDescribable(inferredDescription);
 					}
 				}
 				scope = scope.getParent();
@@ -848,7 +845,6 @@ public class BasicResolver implements Resolver {
 			}
 		}
 
-
 		// In some cases we want to check for the method in parent classes:
 		//  - Super-class
 		//  - Interfaces
@@ -960,12 +956,51 @@ public class BasicResolver implements Resolver {
 	private Resolution resolveVariableType(@Nonnull VariableModel variable) {
 		TypeModel type = variable.getType();
 
-		// If the type is 'var' then we will solve based on the assigned value expression
-		if (type.getKind() == TypeModel.Kind.VAR)
-			return unknown(); // TODO: Solve for variable.getValue()
+		// If the type is 'var' then solve based on the initializer or usage.
+		if (type.getKind() == TypeModel.Kind.VAR) {
+			Model value = variable.getValue();
+
+			// First try to resolve based on the initializer if it is present
+			// since that is more likely to be correct than usage-based inference.
+			if (value != null) {
+				Resolution valueResolution = toValueTypeResolution(value.resolve(this));
+				if (!valueResolution.isUnknown())
+					return valueResolution;
+			}
+
+			// No initializer so we have to try inferring from usage.
+			DescribableEntry inferredType = inferFromUsage(variable, false);
+			if (inferredType != null)
+				return ofDescribable(inferredType);
+
+			return unknown();
+		}
 
 		// Otherwise resolve declared type
 		return resolveType(type);
+	}
+
+	@Nonnull
+	private Resolution toValueTypeResolution(@Nonnull Resolution resolution) {
+		return switch (resolution) {
+			case FieldResolution fieldResolution -> {
+				// The value of a field is the type of the field.
+				DescribableEntry fieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
+				if (fieldType != null)
+					yield ofDescribable(fieldType);
+				yield unknown();
+			}
+			case MethodResolution methodResolution -> {
+				// The value of a method is the return type of the method.
+				DescribableEntry returnType = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
+				if (returnType != null)
+					yield ofDescribable(returnType);
+				yield unknown();
+			}
+			case DescribableResolution describableResolution ->
+					ofDescribable(describableResolution.getDescribableEntry());
+			default -> unknown();
+		};
 	}
 
 	@Nonnull
@@ -994,55 +1029,54 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMemberInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin, @Nonnull String memberName) {
-		if (contextResolution instanceof ClassResolution classResolution) {
-			// Member name can be a field or method identifier in the context of the resolved class.
-			//  - static imports
-			//      - MY_CONST
-			//      - parseInt(...)
-			//  - class context
-			//      - Constants.MY_CONST
-			//      - Constants.getMyConst()
-			if (origin instanceof MethodInvocationExpressionModel) {
-				// We're looking for a method then.
-				return resolveMethodInContext(contextResolution, origin, memberName);
-			} else if (origin instanceof MemberSelectExpressionModel) {
-				// Member selections can be a field or method.
-				// Check what the parent is to determine if we're looking for a field or method.
-				if (origin.getParent() instanceof MethodInvocationExpressionModel invoke && invoke.getMethodSelect() == origin)
-					return resolveMethodInContext(contextResolution, origin, memberName);
-				return resolveFieldInContext(contextResolution, origin, memberName);
-			} else {
-				// We're not sure what we're looking for, so try both.
-				Resolution resolution = resolveFieldInContext(contextResolution, origin, memberName);
-				if (resolution.isUnknown())
-					resolution = resolveMethodInContext(contextResolution, origin, memberName);
-				return resolution;
+		return switch (contextResolution) {
+			case ClassResolution classResolution -> {
+				// Member name can be a field or method identifier in the context of the resolved class.
+				//  - static imports
+				//      - MY_CONST
+				//      - parseInt(...)
+				//  - class context
+				//      - Constants.MY_CONST
+				//      - Constants.getMyConst()
+				if (origin instanceof MethodInvocationExpressionModel) {
+					// We're looking for a method then.
+					yield resolveMethodInContext(contextResolution, origin, memberName);
+				} else if (origin instanceof MemberSelectExpressionModel) {
+					// Member selections can be a field or method.
+					// Check what the parent is to determine if we're looking for a field or method.
+					if (origin.getParent() instanceof MethodInvocationExpressionModel invoke && invoke.getMethodSelect() == origin)
+						yield resolveMethodInContext(contextResolution, origin, memberName);
+					yield resolveFieldInContext(contextResolution, origin, memberName);
+				} else {
+					// We're not sure what we're looking for, so try both.
+					Resolution resolution = resolveFieldInContext(contextResolution, origin, memberName);
+					yield resolution.isUnknown() ?
+							resolveMethodInContext(contextResolution, origin, memberName) : resolution;
+				}
 			}
-		} else if (contextResolution instanceof FieldResolution fieldResolution) {
-			// The identifier is in the context of another member identifier such as:
-			//  - someField.targetName
-			//  - someField.targetName()
-			DescribableEntry describableFieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
-			if (describableFieldType != null)
-				return resolveMemberInContext(ofDescribable(describableFieldType), origin, memberName);
-		} else if (contextResolution instanceof MethodResolution methodResolution) {
-			// The identifier is in the context of another member identifier such as:
-			//  - someMethod().targetName
-			//  - someMethod().targetName()
-			DescribableEntry describableReturnType = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
-			if (describableReturnType != null)
-				return resolveMemberInContext(ofDescribable(describableReturnType), origin, memberName);
-		} else if (contextResolution instanceof ArrayResolution arrayResolution) {
-			// The identifier is in the context of another member identifier representing an array variable such as:
-			//  - args.length
-			//  - args.clone()
-			Resolution resolution = resolveFieldInContext(contextResolution, origin, memberName);
-			if (!resolution.isUnknown())
-				return resolution;
-			return resolveMemberInContext(ofClass(jlObjectEntry), origin, memberName);
-		}
-
-		return unknown();
+			case FieldResolution fieldResolution -> {
+				// The identifier is in the context of another member identifier such as:
+				//  - someField.targetName
+				//  - someField.targetName()
+				DescribableEntry describableFieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
+				yield describableFieldType != null ? resolveMemberInContext(ofDescribable(describableFieldType), origin, memberName) : unknown();
+			}
+			case MethodResolution methodResolution -> {
+				// The identifier is in the context of another member identifier such as:
+				//  - someMethod().targetName
+				//  - someMethod().targetName()
+				DescribableEntry describableReturnType = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
+				yield describableReturnType != null ? resolveMemberInContext(ofDescribable(describableReturnType), origin, memberName) : unknown();
+			}
+			case ArrayResolution arrayResolution -> {
+				// The identifier is in the context of another member identifier representing an array variable such as:
+				//  - args.length
+				//  - args.clone()
+				Resolution resolution = resolveFieldInContext(contextResolution, origin, memberName);
+				yield !resolution.isUnknown() ? resolution : resolveMemberInContext(ofClass(jlObjectEntry), origin, memberName);
+			}
+			default -> unknown();
+		};
 	}
 
 	@Nullable
@@ -1318,20 +1352,7 @@ public class BasicResolver implements Resolver {
 					return unknown();
 				})
 				.filter(r -> !(r instanceof ThrowingResolution || r instanceof NullResolution))
-				.map(r -> {
-					// Need to map any member resolution to its usage type.
-					if (r instanceof FieldResolution fieldResolution) {
-						DescribableEntry fieldDescription = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
-						if (fieldDescription != null)
-							return ofDescribable(fieldDescription);
-						return unknown();
-					} else if (r instanceof MethodResolution methodResolution) {
-						DescribableEntry methodReturnDescription = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
-						if (methodReturnDescription != null)
-							return ofDescribable(methodReturnDescription);
-						return unknown();
-					} else {return r;}
-				})
+				.map(this::toValueTypeResolution)
 				.toList();
 
 		// If we have no cases or any case is strictly an unknown resolution then we cannot resolve the yielded type.

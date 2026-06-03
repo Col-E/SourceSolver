@@ -542,6 +542,21 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testVarLocals() {
+		String sourceCode = readSrc("sample/VarLocals");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "getProperty("),
+				"java/util/Properties", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "foo.split("),
+				"java/lang/String", "split", "(Ljava/lang/String;)[Ljava/lang/String;");
+		assertArrayResolution(resolutionAtMiddle(resolver, sourceCode, "fooList.length"),
+				1, "java/lang/String");
+
+	}
+
+	@Test
 	@Disabled("Generic resolution required")
 	void testBoxUseCasesGenerics() {
 		String sourceCode = readSrc("sample/BoxUseCases");
