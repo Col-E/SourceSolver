@@ -2,6 +2,9 @@ package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.resolve.generic.GenericType;
+import software.coley.sourcesolver.resolve.generic.GenericTypeParameter;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,6 +51,24 @@ public class StaticFilteredClassEntry implements ClassEntry {
 	@Override
 	public ClassEntry getOuterClass() {
 		return delegate.getOuterClass();
+	}
+
+	@Nonnull
+	@Override
+	public List<GenericTypeParameter> getTypeParameters() {
+		return delegate.getTypeParameters();
+	}
+
+	@Nullable
+	@Override
+	public GenericType.ClassType getGenericSuperType() {
+		return delegate.getGenericSuperType();
+	}
+
+	@Nonnull
+	@Override
+	public List<GenericType.ClassType> getGenericInterfaceTypes() {
+		return delegate.getGenericInterfaceTypes();
 	}
 
 	@Nonnull

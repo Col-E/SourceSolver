@@ -1,8 +1,8 @@
 package software.coley.sourcesolver.resolve.result;
 
-import software.coley.sourcesolver.resolve.entry.FieldEntry;
-
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.resolve.entry.FieldEntry;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 
 /**
  * Resolution of a field.
@@ -15,6 +15,12 @@ non-sealed public interface FieldResolution extends MemberResolution {
 	 */
 	@Nonnull
 	FieldEntry getFieldEntry();
+
+	/**
+	 * @return Resolved value type of the field after applying receiver generic arguments.
+	 */
+	@Nonnull
+	DescribableEntry getResolvedFieldType();
 
 	@Nonnull
 	@Override

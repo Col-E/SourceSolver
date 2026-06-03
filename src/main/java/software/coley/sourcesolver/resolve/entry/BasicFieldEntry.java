@@ -1,17 +1,21 @@
 package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.resolve.generic.GenericType;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class BasicFieldEntry implements FieldEntry {
 	private final String name;
 	private final String descriptor;
 	private final int access;
+	private final GenericType genericType;
 
-	public BasicFieldEntry(@Nonnull String name, @Nonnull String descriptor, int access) {
+	public BasicFieldEntry(@Nonnull String name, @Nonnull String descriptor, int access,
+	                       @Nonnull GenericType genericType) {
 		this.name = name;
 		this.descriptor = descriptor;
 		this.access = access;
+		this.genericType = genericType;
 	}
 
 	@Nonnull
@@ -29,6 +33,12 @@ public class BasicFieldEntry implements FieldEntry {
 	@Override
 	public int getAccess() {
 		return access;
+	}
+
+	@Nonnull
+	@Override
+	public GenericType getGenericType() {
+		return genericType;
 	}
 
 	@Override

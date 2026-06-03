@@ -2,7 +2,18 @@ package software.coley.sourcesolver.resolve.result;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import software.coley.sourcesolver.resolve.entry.*;
+import software.coley.sourcesolver.resolve.entry.ArrayEntry;
+import software.coley.sourcesolver.resolve.entry.ClassEntry;
+import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
+import software.coley.sourcesolver.resolve.entry.EntryPool;
+import software.coley.sourcesolver.resolve.entry.FieldEntry;
+import software.coley.sourcesolver.resolve.entry.MemberEntry;
+import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.NullEntry;
+import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
+import software.coley.sourcesolver.resolve.generic.GenericType;
+import software.coley.sourcesolver.resolve.generic.GenericTypes;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -80,19 +91,30 @@ public class Resolutions {
 
 	@Nonnull
 	public static ClassResolution ofClass(@Nonnull ClassEntry entry) {
-		return new ClassResolutionImpl(entry);
+		return ofClass(GenericTypes.ofClass(entry));
+	}
+
+	@Nonnull
+	public static ClassResolution ofClass(@Nonnull GenericType.ClassType classType) {
+		return new ClassResolutionImpl(classType);
 	}
 
 	@Nonnull
 	public static FieldResolution ofField(@Nonnull ClassEntry classEntry, @Nonnull FieldEntry fieldEntry) {
-		return new FieldResolutionImpl(classEntry, fieldEntry);
+		return ofField(GenericTypes.ofClass(classEntry), fieldEntry, fieldEntry.getGenericType());
+	}
+
+	@Nonnull
+	public static FieldResolution ofField(@Nonnull GenericType.ClassType ownerType, @Nonnull FieldEntry fieldEntry,
+	                                      @Nonnull GenericType resolvedFieldType) {
+		return new FieldResolutionImpl(ownerType, fieldEntry, resolvedFieldType);
 	}
 
 	@Nonnull
 	public static Resolution ofField(@Nonnull ClassEntry classEntry, @Nonnull String fieldName, @Nonnull String fieldDescriptor) {
 		FieldEntry methodEntry = classEntry.getDeclaredField(fieldName, fieldDescriptor);
 		if (methodEntry != null)
-			return new FieldResolutionImpl(classEntry, methodEntry);
+			return ofField(classEntry, methodEntry);
 
 		ClassEntry superEntry = classEntry.getSuperEntry();
 		if (superEntry != null && ofField(superEntry, fieldName, fieldDescriptor) instanceof FieldResolution resolution)
@@ -107,7 +129,15 @@ public class Resolutions {
 
 	@Nonnull
 	public static MethodResolution ofMethod(@Nonnull ClassEntry classEntry, @Nonnull MethodEntry methodEntry) {
-		return new MethodResolutionImpl(classEntry, methodEntry);
+		return ofMethod(GenericTypes.ofClass(classEntry), methodEntry,
+				methodEntry.getGenericReturnType(), methodEntry.getGenericParameterTypes());
+	}
+
+	@Nonnull
+	public static MethodResolution ofMethod(@Nonnull GenericType.ClassType ownerType, @Nonnull MethodEntry methodEntry,
+	                                        @Nonnull GenericType resolvedReturnType,
+	                                        @Nonnull List<GenericType> resolvedParameterTypes) {
+		return new MethodResolutionImpl(ownerType, methodEntry, resolvedReturnType, resolvedParameterTypes);
 	}
 
 	@Nonnull
@@ -121,7 +151,7 @@ public class Resolutions {
 	public static Resolution ofMethod(@Nonnull ClassEntry classEntry, @Nonnull String methodName, @Nonnull String methodDescriptor) {
 		MethodEntry methodEntry = classEntry.getDeclaredMethod(methodName, methodDescriptor);
 		if (methodEntry != null)
-			return new MethodResolutionImpl(classEntry, methodEntry);
+			return ofMethod(classEntry, methodEntry);
 
 		ClassEntry superEntry = classEntry.getSuperEntry();
 		if (superEntry != null && ofMethod(superEntry, methodName, methodDescriptor) instanceof MethodResolution resolution)
@@ -160,6 +190,34 @@ public class Resolutions {
 		else if (memberEntry instanceof MethodEntry methodEntry)
 			return ofMethod(ownerEntry, methodEntry);
 		return unknown();
+	}
+
+	@Nonnull
+	public static GenericType.ClassType getResolvedClassType(@Nonnull ClassResolution resolution) {
+		if (resolution instanceof ClassResolutionImpl classResolution)
+			return classResolution.classType();
+		return GenericTypes.ofClass(resolution.getClassEntry());
+	}
+
+	@Nonnull
+	public static GenericType getResolvedFieldGenericType(@Nonnull FieldResolution resolution) {
+		if (resolution instanceof FieldResolutionImpl fieldResolution)
+			return fieldResolution.resolvedFieldType();
+		return resolution.getFieldEntry().getGenericType();
+	}
+
+	@Nonnull
+	public static GenericType getResolvedMethodReturnGenericType(@Nonnull MethodResolution resolution) {
+		if (resolution instanceof MethodResolutionImpl methodResolution)
+			return methodResolution.resolvedReturnType();
+		return resolution.getMethodEntry().getGenericReturnType();
+	}
+
+	@Nonnull
+	public static List<GenericType> getResolvedMethodParameterGenericTypes(@Nonnull MethodResolution resolution) {
+		if (resolution instanceof MethodResolutionImpl methodResolution)
+			return methodResolution.resolvedParameterTypes();
+		return resolution.getMethodEntry().getGenericParameterTypes();
 	}
 
 	@Nonnull
@@ -251,8 +309,7 @@ public class Resolutions {
 		}
 	}
 
-	private record MultiMemberResolutionImpl(
-			@Nonnull List<ClassMemberPair> memberEntries) implements MultiMemberResolution {
+	private record MultiMemberResolutionImpl(@Nonnull List<ClassMemberPair> memberEntries) implements MultiMemberResolution {
 		@Nonnull
 		@Override
 		public List<ClassMemberPair> getMemberEntries() {
@@ -260,20 +317,21 @@ public class Resolutions {
 		}
 	}
 
-	private record ClassResolutionImpl(@Nonnull ClassEntry entry) implements ClassResolution {
+	private record ClassResolutionImpl(@Nonnull GenericType.ClassType classType) implements ClassResolution {
 		@Nonnull
 		@Override
 		public ClassEntry getClassEntry() {
-			return entry;
+			return classType.classEntry();
 		}
 	}
 
-	private record FieldResolutionImpl(@Nonnull ClassEntry ownerEntry,
-	                                   @Nonnull FieldEntry fieldEntry) implements FieldResolution {
+	private record FieldResolutionImpl(@Nonnull GenericType.ClassType ownerType,
+	                                   @Nonnull FieldEntry fieldEntry,
+	                                   @Nonnull GenericType resolvedFieldType) implements FieldResolution {
 		@Nonnull
 		@Override
 		public ClassEntry getOwnerEntry() {
-			return ownerEntry;
+			return ownerType.classEntry();
 		}
 
 		@Nonnull
@@ -284,17 +342,29 @@ public class Resolutions {
 
 		@Nonnull
 		@Override
+		public DescribableEntry getResolvedFieldType() {
+			return GenericTypes.toUsableType(resolvedFieldType, ownerType.classEntry()).asDescribable();
+		}
+
+		@Nonnull
+		@Override
 		public ClassResolution getOwnerResolution() {
-			return ofClass(ownerEntry);
+			return ofClass(ownerType);
 		}
 	}
 
-	private record MethodResolutionImpl(@Nonnull ClassEntry ownerEntry,
-	                                    @Nonnull MethodEntry methodEntry) implements MethodResolution {
+	private record MethodResolutionImpl(@Nonnull GenericType.ClassType ownerType,
+	                                    @Nonnull MethodEntry methodEntry,
+	                                    @Nonnull GenericType resolvedReturnType,
+	                                    @Nonnull List<GenericType> resolvedParameterTypes) implements MethodResolution {
+		private MethodResolutionImpl {
+			resolvedParameterTypes = List.copyOf(resolvedParameterTypes);
+		}
+
 		@Nonnull
 		@Override
 		public ClassEntry getOwnerEntry() {
-			return ownerEntry;
+			return ownerType.classEntry();
 		}
 
 		@Nonnull
@@ -305,8 +375,14 @@ public class Resolutions {
 
 		@Nonnull
 		@Override
+		public DescribableEntry getResolvedReturnType() {
+			return GenericTypes.toUsableType(resolvedReturnType, ownerType.classEntry()).asDescribable();
+		}
+
+		@Nonnull
+		@Override
 		public ClassResolution getOwnerResolution() {
-			return ofClass(ownerEntry);
+			return ofClass(ownerType);
 		}
 	}
 

@@ -1,6 +1,7 @@
 package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.resolve.generic.GenericType;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -42,6 +43,18 @@ public non-sealed interface MethodEntry extends MemberEntry {
 		}
 		return parameterDescriptors;
 	}
+
+	/**
+	 * @return Declared generic return type of the method.
+	 */
+	@Nonnull
+	GenericType getGenericReturnType();
+
+	/**
+	 * @return Declared generic parameter types of the method.
+	 */
+	@Nonnull
+	List<GenericType> getGenericParameterTypes();
 
 	@Override
 	default boolean isField() {

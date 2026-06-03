@@ -46,6 +46,9 @@ import software.coley.sourcesolver.resolve.entry.MultiClassEntry;
 import software.coley.sourcesolver.resolve.entry.NullEntry;
 import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 import software.coley.sourcesolver.resolve.entry.StaticFilteredClassEntry;
+import software.coley.sourcesolver.resolve.generic.GenericType;
+import software.coley.sourcesolver.resolve.generic.GenericTypeParameter;
+import software.coley.sourcesolver.resolve.generic.GenericTypes;
 import software.coley.sourcesolver.resolve.result.ArrayResolution;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
@@ -55,6 +58,7 @@ import software.coley.sourcesolver.resolve.result.MultiClassResolution;
 import software.coley.sourcesolver.resolve.result.MultiMemberResolution;
 import software.coley.sourcesolver.resolve.result.NullResolution;
 import software.coley.sourcesolver.resolve.result.PackageResolution;
+import software.coley.sourcesolver.resolve.result.PrimitiveResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.resolve.result.Resolutions;
 import software.coley.sourcesolver.resolve.result.ThrowingResolution;
@@ -63,11 +67,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static software.coley.sourcesolver.resolve.entry.PrimitiveEntry.*;
@@ -172,57 +178,39 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	protected Resolution resolve(@Nonnull Model target) {
-		if (target instanceof ClassModel clazz)
-			return resolveClassModel(clazz);
-		else if (target instanceof MethodModel method)
-			return resolveMethodModel(method);
-		else if (target instanceof VariableModel variable) {
-			if (target.getParent() instanceof ClassModel declaringClass)
-				return resolveFieldModel(declaringClass, variable);
-			return resolveVariableType(variable);
-		} else if (target instanceof PackageModel pkg)
-			return resolvePackageModel(pkg);
-		else if (target instanceof ImportModel imp)
-			return resolveImportModel(imp);
-		else if (target instanceof ModifiersModel modifiers
-				&& modifiers.getParent() instanceof MethodModel method
-				&& method.getName().equals("<clinit>"))
-			return resolveStaticInitializer(method);
-		else if (target instanceof AnnotationArgumentModel argument)
-			return resolveAnnotationArgument(argument);
-		else if (target instanceof AnnotationExpressionModel annotation)
-			return annotation.getNameModel().resolve(this);
-		else if (target instanceof MemberSelectExpressionModel memberSelectExpression) {
-			Model parent = memberSelectExpression.getParent();
-			if (parent instanceof NewClassExpressionModel || parent instanceof TypeModel)
-				return resolveNamed(memberSelectExpression);
-			return resolveMemberSelection(memberSelectExpression);
-		} else if (target instanceof MethodInvocationExpressionModel methodInvocationExpressionModel)
-			return resolveMethodReturnType(methodInvocationExpressionModel);
-		else if (target instanceof NewClassExpressionModel newClass)
-			return resolveNamed(newClass);
-		else if (target instanceof NamedModel named)
-			return resolveNameUsage(named);
-		else if (target instanceof TypeModel type)
-			return resolveType(type);
-		else if (target instanceof CastExpressionModel cast)
-			return cast.getType().resolve(this);
-		else if (target instanceof ModifiersModel)
-			return target.getParent().resolve(this);
-		else if (target instanceof LiteralExpressionModel literal)
-			return resolveLiteral(literal);
-		else if (target instanceof ArrayDeclarationExpressionModel array)
-			return array.getType().resolve(this);
-		else if (target instanceof ParenthesizedExpressionModel parenthesizedExpression)
-			return parenthesizedExpression.getExpression().resolve(this);
-		else if (target instanceof BinaryExpressionModel binaryExpression)
-			return resolveBinaryExpression(binaryExpression);
-		else if (target instanceof SwitchExpressionModel switchExpression)
-			return resolveSwitchExpression(switchExpression);
-		else if (target instanceof YieldStatementModel yieldStatementModel)
-			return yieldStatementModel.getExpression().resolve(this);
-
-		return unknown();
+		return switch (target) {
+			case ClassModel clazz -> resolveClassModel(clazz);
+			case MethodModel method -> resolveMethodModel(method);
+			case VariableModel variable ->
+					target.getParent() instanceof ClassModel declaringClass ? resolveFieldModel(declaringClass, variable) : resolveVariableType(variable);
+			case PackageModel pkg -> resolvePackageModel(pkg);
+			case ImportModel imp -> resolveImportModel(imp);
+			case ModifiersModel modifiers when modifiers.getParent() instanceof MethodModel method && method.getName().equals("<clinit>") ->
+					resolveStaticInitializer(method);
+			case AnnotationArgumentModel argument -> resolveAnnotationArgument(argument);
+			case AnnotationExpressionModel annotation -> annotation.getNameModel().resolve(this);
+			case MemberSelectExpressionModel memberSelectExpression -> {
+				Model parent = memberSelectExpression.getParent();
+				if (parent instanceof NewClassExpressionModel || parent instanceof TypeModel)
+					yield resolveNamed(memberSelectExpression);
+				yield resolveMemberSelection(memberSelectExpression);
+			}
+			case MethodInvocationExpressionModel methodInvocationExpressionModel ->
+					resolveMethodReturnType(methodInvocationExpressionModel);
+			case NewClassExpressionModel newClass -> resolveNamed(newClass);
+			case NamedModel named -> resolveNameUsage(named);
+			case TypeModel type -> resolveType(type);
+			case CastExpressionModel cast -> cast.getType().resolve(this);
+			case ModifiersModel modifiersModel -> target.getParent().resolve(this);
+			case LiteralExpressionModel literal -> resolveLiteral(literal);
+			case ArrayDeclarationExpressionModel array -> array.getType().resolve(this);
+			case ParenthesizedExpressionModel parenthesizedExpression ->
+					parenthesizedExpression.getExpression().resolve(this);
+			case BinaryExpressionModel binaryExpression -> resolveBinaryExpression(binaryExpression);
+			case SwitchExpressionModel switchExpression -> resolveSwitchExpression(switchExpression);
+			case YieldStatementModel yieldStatementModel -> yieldStatementModel.getExpression().resolve(this);
+			default -> unknown();
+		};
 	}
 
 	@Nonnull
@@ -467,51 +455,310 @@ public class BasicResolver implements Resolver {
 		return unknown();
 	}
 
+	@Nullable
+	private GenericType resolveGenericModel(@Nonnull Model model) {
+		// Base case, types are closer to primitives in a sense (not int/long primitives,
+		// but in the sense that they are more fundamental than named models).
+		if (model instanceof TypeModel typeModel)
+			return resolveGenericType(typeModel);
+
+		// If it is not a type, it may be a named model (class, field, method, etc) that we can resolve to a type.
+		if (model instanceof NamedModel namedModel)
+			return resolveGenericNamedType(model, namedModel.getName());
+		return null;
+	}
+
+	@Nullable
+	private GenericType resolveGenericType(@Nonnull TypeModel type) {
+		return switch (type.getKind()) {
+			case PRIMITIVE -> resolvePrimitiveGenericType(type);
+			case OBJECT -> resolveGenericNamedType(type, type.getIdentifier().toString());
+			case PARAMETERIZED -> resolveParameterizedGenericType(type);
+			case UNION -> type instanceof TypeModel.Union union ? resolveUnionGenericType(union) : null;
+			case ARRAY -> type instanceof TypeModel.Array arrayType ? resolveArrayGenericType(arrayType) : null;
+			case ANNOTATED -> type instanceof TypeModel.Annotated annotated ? resolveGenericType(annotated.getType()) : null;
+			case WILDCARD -> type instanceof TypeModel.Wildcard wildcard ? resolveWildcardGenericType(wildcard) : null;
+			case VAR -> null;
+		};
+	}
+
+	@Nullable
+	private GenericType resolveGenericNamedType(@Nonnull Model origin, @Nonnull String name) {
+		GenericType sourceTypeVariable = resolveSourceTypeVariable(origin, name);
+		if (sourceTypeVariable != null)
+			return sourceTypeVariable;
+
+		Resolution resolution = resolveNameAsQualifiedOrImported(name);
+		if (resolution.isUnknown())
+			resolution = resolveAsInnerClass(name);
+		if (resolution instanceof ClassResolution classResolution)
+			return Resolutions.getResolvedClassType(classResolution);
+		return null;
+	}
+
+	@Nullable
+	private GenericType resolveSourceTypeVariable(@Nonnull Model origin, @Nonnull String name) {
+		ClassModel cls = origin.getParentOfType(ClassModel.class);
+		while (cls != null) {
+			for (TypeParameterModel typeParameter : cls.getTypeParameters())
+				if (typeParameter.getName().equals(name))
+					return new GenericType.TypeVariableType(new GenericTypeParameter(
+							getSourceTypeOwnerId(cls), name, resolveTypeParameterUpperBound(typeParameter)));
+			cls = cls.getParentOfType(ClassModel.class);
+		}
+		return null;
+	}
+
+	@Nonnull
+	private String getSourceTypeOwnerId(@Nonnull ClassModel cls) {
+		if (resolveClassModel(cls) instanceof ClassResolution classResolution)
+			return classResolution.getClassEntry().getName();
+
+		StringBuilder builder = new StringBuilder(cls.getName());
+		ClassModel outerClass = cls.getParentOfType(ClassModel.class);
+		while (outerClass != null) {
+			builder.insert(0, outerClass.getName() + '$');
+			outerClass = outerClass.getParentOfType(ClassModel.class);
+		}
+		if (!unit.getPackage().isDefaultPackage())
+			builder.insert(0, unit.getPackage().getName().replace('.', '/') + '/');
+		return builder.toString();
+	}
+
+	@Nonnull
+	private DescribableEntry resolveTypeParameterUpperBound(@Nonnull TypeParameterModel typeParameter) {
+		return typeParameter.getBounds().stream()
+				.map(bound -> bound.resolve(this))
+				.filter(DescribableResolution.class::isInstance)
+				.map(DescribableResolution.class::cast)
+				.map(DescribableResolution::getDescribableEntry)
+				.reduce(this::getCommonDescriptor)
+				.orElse(jlObjectEntry);
+	}
+
+
+
+	@Nullable
+	private GenericType resolvePrimitiveGenericType(@Nonnull TypeModel type) {
+		if (!(type instanceof TypeModel.Primitive primitiveType))
+			return null;
+		return switch (primitiveType.getPrimitiveKind()) {
+			case BOOLEAN -> GenericTypes.ofPrimitive(getPrimitive("Z"));
+			case BYTE -> GenericTypes.ofPrimitive(getPrimitive("B"));
+			case SHORT -> GenericTypes.ofPrimitive(getPrimitive("S"));
+			case INT -> GenericTypes.ofPrimitive(getPrimitive("I"));
+			case LONG -> GenericTypes.ofPrimitive(getPrimitive("J"));
+			case CHAR -> GenericTypes.ofPrimitive(getPrimitive("C"));
+			case FLOAT -> GenericTypes.ofPrimitive(getPrimitive("F"));
+			case DOUBLE -> GenericTypes.ofPrimitive(getPrimitive("D"));
+			case VOID -> GenericTypes.ofPrimitive(getPrimitive("V"));
+			default -> null;
+		};
+	}
+
+	@Nullable
+	private GenericType resolveParameterizedGenericType(@Nonnull TypeModel type) {
+		if (!(type instanceof TypeModel.Parameterized parameterizedType))
+			return null;
+		GenericType identifierType = resolveGenericModel(parameterizedType.getIdentifier());
+		if (!(GenericTypes.toUsableType(identifierType, jlObjectEntry) instanceof GenericType.ClassType classType))
+			return null;
+
+		List<GenericType> typeArguments = new ArrayList<>(parameterizedType.getTypeArguments().size());
+		for (Model typeArgument : parameterizedType.getTypeArguments()) {
+			GenericType resolvedArgument = resolveGenericModel(typeArgument);
+			if (resolvedArgument == null)
+				return null;
+			typeArguments.add(resolvedArgument);
+		}
+		return new GenericType.ClassType(classType.classEntry(), typeArguments);
+	}
+
+	@Nullable
+	private GenericType resolveUnionGenericType(@Nonnull TypeModel.Union union) {
+		ClassEntry common = null;
+		for (TypeModel unionArgType : union.getAllTypes()) {
+			GenericType resolvedArg = resolveGenericType(unionArgType);
+			GenericType usableArg = GenericTypes.toUsableType(resolvedArg, jlObjectEntry);
+			if (usableArg instanceof GenericType.ClassType classType) {
+				ClassEntry resolvedClass = classType.classEntry();
+				common = common == null ? resolvedClass : common.getCommonParent(resolvedClass);
+			}
+		}
+		return common == null ? null : GenericTypes.ofClass(common);
+	}
+
+	@Nullable
+	private GenericType resolveArrayGenericType(@Nonnull TypeModel.Array arrayType) {
+		GenericType elementType = resolveGenericType(arrayType.getRootModel());
+		if (elementType == null)
+			return null;
+		return new GenericType.ArrayType(elementType, arrayType.getDimensions());
+	}
+
+	@Nonnull
+	private GenericType resolveWildcardGenericType(@Nonnull TypeModel.Wildcard wildcard) {
+		Model boundModel = wildcard.getBound();
+		if (boundModel == null)
+			return new GenericType.WildcardType(null, null, jlObjectEntry);
+
+		GenericType boundType = resolveGenericModel(boundModel);
+		if (boundType == null)
+			return new GenericType.WildcardType(null, null, jlObjectEntry);
+
+		boolean isLowerBound = wildcard.getIdentifier().toString().contains(" super ");
+		if (isLowerBound)
+			return new GenericType.WildcardType(null, boundType, jlObjectEntry);
+
+		GenericType usableBound = GenericTypes.toUsableType(boundType, jlObjectEntry);
+		return new GenericType.WildcardType(usableBound, null, usableBound.asDescribable());
+	}
+
+	@Nonnull
+	private Resolution toGenericResolution(@Nullable GenericType genericType) {
+		// Collapse the internal generic model back into the public resolution types,
+		// preserving parameterized class info when the caller can still use it.
+		GenericType usableType = GenericTypes.toUsableType(genericType, jlObjectEntry);
+		if (usableType == null)
+			return unknown();
+
+		DescribableEntry describableEntry = usableType.asDescribable();
+		if (usableType instanceof GenericType.ClassType classType)
+			return ofClass(classType);
+		return switch (describableEntry) {
+			case ArrayEntry arrayEntry -> ofArray(arrayEntry);
+			case PrimitiveEntry primitiveEntry -> ofPrimitive(primitiveEntry);
+			case NullEntry nullEntry -> nul();
+			case ClassEntry classEntry -> ofClass(classEntry);
+			default -> unknown();
+		};
+	}
+
+	@Nullable
+	private GenericType getResolvedGenericType(@Nonnull Resolution resolution) {
+		// Lift a resolution back into the richer generic model so chained lookups
+		// can preserve concrete type arguments instead of falling back to erasure.
+		return switch (resolution) {
+			case FieldResolution fieldResolution -> Resolutions.getResolvedFieldGenericType(fieldResolution);
+			case MethodResolution methodResolution -> Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			case ClassResolution classResolution -> Resolutions.getResolvedClassType(classResolution);
+			case ArrayResolution arrayResolution -> {
+				GenericType elementType = getResolvedGenericType(arrayResolution.getElementTypeResolution());
+				yield elementType == null ? null : new GenericType.ArrayType(elementType, arrayResolution.getDimensions());
+			}
+			case PrimitiveResolution primitiveResolution ->
+					new GenericType.PrimitiveType(primitiveResolution.getPrimitiveEntry());
+			case NullResolution nullResolution -> null;
+			case DescribableResolution describableResolution ->
+					rawGenericType(describableResolution.getDescribableEntry());
+			default -> null;
+		};
+	}
+
+	@Nullable
+	private GenericType rawGenericType(@Nullable DescribableEntry entry) {
+		if (entry == null)
+			return null;
+
+		// Rebuild a generic type shell from erased entries when no better generic
+		// information exists, so later code can still use one common type pipeline.
+		return switch (entry) {
+			case ClassEntry classEntry -> GenericTypes.ofClass(classEntry);
+			case PrimitiveEntry primitiveEntry -> GenericTypes.ofPrimitive(primitiveEntry);
+			case ArrayEntry arrayEntry -> {
+				GenericType elementType = rawGenericType(arrayEntry.getElementEntry());
+				yield elementType == null ? null : new GenericType.ArrayType(elementType, arrayEntry.getDimensions());
+			}
+			case NullEntry ignored -> null;
+			case MemberEntry ignored -> null;
+		};
+	}
+
+	@Nullable
+	private GenericType.ClassType getDirectSuperType(@Nonnull GenericType.ClassType ownerType) {
+		// Rebind the declared generic superclass through the current receiver so
+		// parent lookups see Example<String> -> Parent<String> instead of raw Parent.
+		GenericType.ClassType genericSuperType = ownerType.classEntry().getGenericSuperType();
+		if (genericSuperType == null)
+			return null;
+		return GenericTypes.asClassType(GenericTypes.substitute(genericSuperType, GenericTypes.bind(ownerType)), jlObjectEntry);
+	}
+
+	@Nonnull
+	private List<GenericType.ClassType> getDirectInterfaceTypes(@Nonnull GenericType.ClassType ownerType) {
+		// Apply the receiver's bindings to each directly implemented interface so
+		// inherited members resolve against the concrete interface arguments.
+		List<GenericType.ClassType> interfaceTypes = new ArrayList<>();
+		Map<GenericTypeParameter, GenericType> bindings = GenericTypes.bind(ownerType);
+		for (GenericType.ClassType interfaceType : ownerType.classEntry().getGenericInterfaceTypes()) {
+			GenericType.ClassType substitutedType = GenericTypes.asClassType(GenericTypes.substitute(interfaceType, bindings), jlObjectEntry);
+			if (substitutedType != null)
+				interfaceTypes.add(substitutedType);
+		}
+		return interfaceTypes;
+	}
+
+	@Nonnull
+	private FieldResolution adaptFieldResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull FieldEntry fieldEntry) {
+		// Rewrite the declared field type through the receiver bindings so T-backed
+		// fields like Box<T>.value surface as Box<String>.value -> String.
+		GenericType resolvedFieldType = GenericTypes.substitute(fieldEntry.getGenericType(), GenericTypes.bind(ownerType));
+		return Resolutions.ofField(ownerType, fieldEntry, resolvedFieldType);
+	}
+
+	@Nonnull
+	private MethodResolution adaptMethodResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull MethodEntry methodEntry) {
+		// Receiver-only adaptation is enough for non-generic methods declared on a
+		// parameterized owner such as List<String>.get(int) -> String.
+		return adaptMethodResolution(ownerType, methodEntry, GenericTypes.bind(ownerType));
+	}
+
+	@Nonnull
+	private MethodResolution adaptMethodResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull MethodEntry methodEntry,
+	                                               @Nonnull Map<GenericTypeParameter, GenericType> bindings) {
+		// Apply the final binding map to both return and parameter types so downstream
+		// lookups can continue from the adapted signature instead of the erased one.
+		GenericType resolvedReturnType = GenericTypes.substitute(methodEntry.getGenericReturnType(), bindings);
+		List<GenericType> resolvedParameterTypes = methodEntry.getGenericParameterTypes().stream()
+				.map(type -> GenericTypes.substitute(type, bindings))
+				.toList();
+		return Resolutions.ofMethod(ownerType, methodEntry, resolvedReturnType, resolvedParameterTypes);
+	}
+
+	@Nullable
+	private MethodResolution resolveFunctionalInterfaceMethod(@Nonnull GenericType.ClassType lambdaType) {
+		// Reduce a functional interface to its single abstract method, keeping any
+		// receiver-applied type arguments so lambda parameters/returns stay concrete.
+		List<MethodEntry> abstractMethods = lambdaType.classEntry().getDeclaredMethods().stream()
+				.filter(MethodEntry::isAbstract)
+				.toList();
+		if (abstractMethods.size() != 1)
+			return null;
+		return adaptMethodResolution(lambdaType, abstractMethods.getFirst());
+	}
+
+	private void visitBoundHierarchy(@Nonnull GenericType.ClassType ownerType, @Nonnull Consumer<GenericType.ClassType> consumer) {
+		// Walk the hierarchy using already-substituted parent/interface types so every
+		// visited owner preserves the same concrete generic view as the original receiver.
+		consumer.accept(ownerType);
+		GenericType.ClassType directSuperType = getDirectSuperType(ownerType);
+		if (directSuperType != null)
+			visitBoundHierarchy(directSuperType, consumer);
+		for (GenericType.ClassType interfaceType : getDirectInterfaceTypes(ownerType))
+			visitBoundHierarchy(interfaceType, consumer);
+	}
+
 	@Nonnull
 	private Resolution resolveType(@Nonnull TypeModel type) {
-		var kind = type.getKind();
-		if (kind == TypeModel.Kind.PRIMITIVE
-				&& type instanceof TypeModel.Primitive primitiveType) {
-			return switch (primitiveType.getPrimitiveKind()) {
-				case BOOLEAN -> ofPrimitive("Z");
-				case BYTE -> ofPrimitive("B");
-				case SHORT -> ofPrimitive("S");
-				case INT -> ofPrimitive("I");
-				case LONG -> ofPrimitive("J");
-				case CHAR -> ofPrimitive("C");
-				case FLOAT -> ofPrimitive("F");
-				case DOUBLE -> ofPrimitive("D");
-				case VOID -> ofPrimitive("V");
-				default -> unknown();
-			};
-		} else if (kind == TypeModel.Kind.OBJECT || kind == TypeModel.Kind.PARAMETERIZED) {
-			return resolveAsIdentifier(type.getIdentifier());
-		} else if (kind == TypeModel.Kind.UNION && type instanceof TypeModel.Union union) {
-			ClassEntry common = null;
-			for (TypeModel unionArgType : union.getAllTypes()) {
-				Resolution resolution = resolveType(unionArgType);
-				if (resolution instanceof ClassResolution classResolution) {
-					ClassEntry resolvedClass = classResolution.getClassEntry();
-					common = common == null ? resolvedClass : common.getCommonParent(resolvedClass);
-				}
-			}
-			if (common != null)
-				return ofClass(common);
-		} else if (kind == TypeModel.Kind.ARRAY
-				&& type instanceof TypeModel.Array arrayType) {
-			TypeModel elementType = arrayType.getRootModel();
-			Resolution elementResolution = resolveType(elementType);
-			if (elementResolution instanceof DescribableResolution describableElementResolution)
-				return ofArray(describableElementResolution, arrayType.getDimensions());
-		} else if (kind == TypeModel.Kind.ANNOTATED && type instanceof TypeModel.Annotated annotated) {
-			return resolveType(annotated.getType());
-		}
-
-		return unknown();
+		// Type-model resolution now flows through the generic type model first so
+		// parameterized forms like List<String> survive initial resolution.
+		return toGenericResolution(resolveGenericType(type));
 	}
 
 	@Nonnull
 	private Resolution resolveAsIdentifier(@Nonnull Model identifier) {
+		// Identifiers in type positions should keep generic structure, while other
+		// named references still use the normal name-resolution path.
 		if (identifier instanceof TypeModel typeIdentifier)
 			return resolveType(typeIdentifier);
 		else if (identifier instanceof NamedModel named)
@@ -691,9 +938,17 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution resolveFieldByNameInClass(@Nonnull ClassEntry declaringClass, @Nonnull String fieldName,
 	                                             @Nullable DescribableEntry typeEntryHint) {
+		return resolveFieldByNameInClass(GenericTypes.ofClass(declaringClass), fieldName, typeEntryHint);
+	}
+
+	@Nonnull
+	private Resolution resolveFieldByNameInClass(@Nonnull GenericType.ClassType declaringType, @Nonnull String fieldName,
+	                                             @Nullable DescribableEntry typeEntryHint) {
+		ClassEntry declaringClass = declaringType.classEntry();
+
 		// Edge case for implicit "this" class variable.
 		if (fieldName.equals("this"))
-			return ofClass(declaringClass);
+			return ofClass(declaringType);
 
 		// Edge case for cases like "String.class"
 		if (fieldName.equals("class"))
@@ -702,22 +957,23 @@ public class BasicResolver implements Resolver {
 		// Check if the field is declared in this class, and is unique in the hierarchy in terms of signature.
 		List<FieldEntry> fieldsByName = declaringClass.getDeclaredFieldsByName(fieldName);
 		if (fieldsByName.size() == 1)
-			return ofField(declaringClass, fieldsByName.getFirst());
+			return adaptFieldResolution(declaringType, fieldsByName.getFirst());
 
 		// Check if the fields can be differentiated by the given type hint.
 		if (typeEntryHint != null)
 			for (FieldEntry fieldEntry : fieldsByName)
-				if (fieldEntry.isAssignableFrom(fieldEntry))
-					return ofField(declaringClass, fieldEntry);
+				if (adaptFieldResolution(declaringType, fieldEntry).getResolvedFieldType().isAssignableFrom(typeEntryHint))
+					return adaptFieldResolution(declaringType, fieldEntry);
 
 		// Check in super-type.
-		if (declaringClass.getSuperEntry() != null
-				&& resolveFieldByNameInClass(declaringClass.getSuperEntry(), fieldName, typeEntryHint) instanceof FieldResolution resolution)
+		GenericType.ClassType directSuperType = getDirectSuperType(declaringType);
+		if (directSuperType != null
+				&& resolveFieldByNameInClass(directSuperType, fieldName, typeEntryHint) instanceof FieldResolution resolution)
 			return resolution;
 
 		// Check in interfaces.
-		for (ClassEntry implementedEntry : declaringClass.getImplementedEntries())
-			if (resolveFieldByNameInClass(implementedEntry, fieldName, typeEntryHint) instanceof FieldResolution resolution)
+		for (GenericType.ClassType implementedType : getDirectInterfaceTypes(declaringType))
+			if (resolveFieldByNameInClass(implementedType, fieldName, typeEntryHint) instanceof FieldResolution resolution)
 				return resolution;
 
 		return unknown();
@@ -725,28 +981,46 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName) {
-		return resolveMethodByNameInClass(classEntry, methodName, null, null);
+		return resolveMethodByNameInClass(GenericTypes.ofClass(classEntry), methodName, null, null, null);
 	}
 
 	@Nonnull
 	private Resolution resolveMethodByNameInClass(@Nonnull ClassEntry classEntry, @Nonnull String methodName,
 	                                              @Nullable DescribableEntry returnTypeEntry,
 	                                              @Nullable List<DescribableEntry> argumentTypeEntries) {
+		return resolveMethodByNameInClass(GenericTypes.ofClass(classEntry), methodName,
+				rawGenericType(returnTypeEntry), toGenericTypeHints(argumentTypeEntries), argumentTypeEntries);
+	}
+
+	@Nonnull
+	private Resolution resolveMethodByNameInClass(@Nonnull GenericType.ClassType classType, @Nonnull String methodName,
+	                                              @Nullable GenericType returnTypeHint,
+	                                              @Nullable List<GenericType> argumentTypeHints,
+	                                              @Nullable List<DescribableEntry> argumentTypeEntries) {
+		ClassEntry classEntry = classType.classEntry();
+		DescribableEntry returnTypeEntry = null;
+		if (returnTypeHint != null) {
+			GenericType usableReturnType = GenericTypes.toUsableType(returnTypeHint, jlObjectEntry);
+			if (usableReturnType != null)
+				returnTypeEntry = usableReturnType.asDescribable();
+		}
+
 		// Check if the method is declared in this class.
 		//  - Only one match by name   --> match
 		//  - Multiple matches by name --> filter by matching signature --> match
 		List<MethodEntry> methodsByName = classEntry.getDeclaredMethodsByName(methodName);
 		if (methodsByName.size() == 1)
-			return ofMethod(classEntry, methodsByName.getFirst());
+			return adaptMethodResolution(classType, methodsByName.getFirst(), returnTypeHint, argumentTypeHints);
 		if (methodsByName.size() > 1 && (returnTypeEntry != null || argumentTypeEntries != null)) {
 			// Try and prune candidates by filtering against presumed return/argument types.
 			for (int i = methodsByName.size() - 1; i >= 0; i--) {
 				MethodEntry methodEntry = methodsByName.get(i);
+				MethodResolution adaptedMethod = adaptMethodResolution(classType, methodEntry, returnTypeHint, argumentTypeHints);
 
 				// Prune method candidates with mismatching return types.
 				if (returnTypeEntry != null) {
-					DescribableEntry describableReturn = pool.getDescribable(methodEntry.getReturnDescriptor());
-					if (describableReturn != null && !describableReturn.isAssignableFrom(returnTypeEntry)) {
+					DescribableEntry describableReturn = adaptedMethod.getResolvedReturnType();
+					if (!describableReturn.isAssignableFrom(returnTypeEntry)) {
 						methodsByName.remove(methodEntry);
 						continue;
 					}
@@ -754,9 +1028,9 @@ public class BasicResolver implements Resolver {
 
 				// Prune method candidates with mismatching argument types.
 				if (argumentTypeEntries != null) {
-					List<String> argumentDescriptors = methodEntry.getParameterDescriptors();
+					List<GenericType> parameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(adaptedMethod);
 					int hintedArgCount = argumentTypeEntries.size();
-					int actualArgCount = argumentDescriptors.size();
+					int actualArgCount = parameterTypes.size();
 					int maxArgToCheck;
 					if (methodEntry.isVarargs()) {
 						// For vararg methods we only want to check the args up to the varargs parameter
@@ -772,11 +1046,9 @@ public class BasicResolver implements Resolver {
 						}
 
 						// All hinted variable arguments must be assignable to the actual variable argument's element type.
-						String varargParameterDescriptor = argumentDescriptors.getLast();
-						if (varargParameterDescriptor.charAt(0) == '[')
-							varargParameterDescriptor = varargParameterDescriptor.substring(1);
-						DescribableEntry varargElementType = pool.getDescribable(varargParameterDescriptor);
-						if (varargElementType != null) {
+						GenericType usableVarargType = GenericTypes.toUsableType(parameterTypes.getLast(), jlObjectEntry);
+						if (usableVarargType instanceof GenericType.ArrayType arrayType) {
+							DescribableEntry varargElementType = arrayType.elementType().asDescribable();
 							boolean methodRemoved = false;
 							for (int j = maxArgToCheck; j < hintedArgCount; j++) {
 								if (!varargElementType.isAssignableFrom(argumentTypeEntries.get(j))) {
@@ -799,31 +1071,28 @@ public class BasicResolver implements Resolver {
 						}
 					}
 					for (int j = 0; j < maxArgToCheck; j++) {
-						String parameterDescriptor = argumentDescriptors.get(j);
-						DescribableEntry describableParameter = pool.getDescribable(parameterDescriptor);
-						if (describableParameter != null) {
-							DescribableEntry argType = argumentTypeEntries.get(j);
-							// Multi-class entries are special and created from our inference logic.
-							// In essence, the arg can be "one of multiple" options.
-							// Example:
-							//   void consume(Supplier)
-							//   void consume(IntSupplier)
-							// Multiple types:
-							//   Supplier
-							//   IntSupplier
-							// The types do not have a common type other than 'Object' which isn't helpful.
-							// We will see our argument is ideally one of these options then prune the other.
-							if (argType instanceof MultiClassEntry multi) {
-								if (multi.getClassEntries().stream().noneMatch(describableParameter::isAssignableFrom)) {
-									methodsByName.remove(methodEntry);
-									break;
-								}
-							}
-							// Otherwise, prune if the parameter is not assignable from the argument type.
-							else if (!describableParameter.isAssignableFrom(argType)) {
+						DescribableEntry describableParameter = parameterTypes.get(j).asDescribable();
+						DescribableEntry argType = argumentTypeEntries.get(j);
+						// Multi-class entries are special and created from our inference logic.
+						// In essence, the arg can be "one of multiple" options.
+						// Example:
+						//   void consume(Supplier)
+						//   void consume(IntSupplier)
+						// Multiple types:
+						//   Supplier
+						//   IntSupplier
+						// The types do not have a common type other than 'Object' which isn't helpful.
+						// We will see our argument is ideally one of these options then prune the other.
+						if (argType instanceof MultiClassEntry multi) {
+							if (multi.getClassEntries().stream().noneMatch(describableParameter::isAssignableFrom)) {
 								methodsByName.remove(methodEntry);
 								break;
 							}
+						}
+						// Otherwise, prune if the parameter is not assignable from the argument type.
+						else if (!describableParameter.isAssignableFrom(argType)) {
+							methodsByName.remove(methodEntry);
+							break;
 						}
 					}
 				}
@@ -831,7 +1100,7 @@ public class BasicResolver implements Resolver {
 
 			// Check again after pruning if there is only a single candidate.
 			if (methodsByName.size() == 1)
-				return ofMethod(classEntry, methodsByName.getFirst());
+				return adaptMethodResolution(classType, methodsByName.getFirst(), returnTypeHint, argumentTypeHints);
 
 			// Check and see if there is an exact descriptor match.
 			//  TODO: Case where the returnValue but not args are given, case where both are given
@@ -841,7 +1110,7 @@ public class BasicResolver implements Resolver {
 						.filter(e -> e.getDescriptor().startsWith(argsDesc))
 						.collect(Collectors.toList());
 				if (methodsByName.size() == 1)
-					return ofMethod(classEntry, methodsByName.getFirst());
+					return adaptMethodResolution(classType, methodsByName.getFirst(), returnTypeHint, argumentTypeHints);
 			}
 		}
 
@@ -850,11 +1119,12 @@ public class BasicResolver implements Resolver {
 		//  - Interfaces
 		// Just not when the method name is special, like a constructor or the static initializer.
 		if (methodName.charAt(0) != '<') {
-			if (classEntry.getSuperEntry() != null
-					&& resolveMethodByNameInClass(classEntry.getSuperEntry(), methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
+			GenericType.ClassType directSuperType = getDirectSuperType(classType);
+			if (directSuperType != null
+					&& resolveMethodByNameInClass(directSuperType, methodName, returnTypeHint, argumentTypeHints, argumentTypeEntries) instanceof MethodResolution resolution)
 				return resolution;
-			for (ClassEntry implementedEntry : classEntry.getImplementedEntries())
-				if (resolveMethodByNameInClass(implementedEntry, methodName, returnTypeEntry, argumentTypeEntries) instanceof MethodResolution resolution)
+			for (GenericType.ClassType implementedType : getDirectInterfaceTypes(classType))
+				if (resolveMethodByNameInClass(implementedType, methodName, returnTypeHint, argumentTypeHints, argumentTypeEntries) instanceof MethodResolution resolution)
 					return resolution;
 		}
 
@@ -881,7 +1151,8 @@ public class BasicResolver implements Resolver {
 						new StaticFilteredClassEntry(classResolution.getClassEntry()) : classResolution.getClassEntry();
 				Resolution resolution = isFieldsTarget ?
 						resolveFieldByNameInClass(classEntry, name, null) :
-						resolveMethodByNameInClass(classEntry, name, null,
+						resolveMethodByNameInClass(GenericTypes.ofClass(classEntry), name, null,
+								collectGenericMethodArgumentsInParentContext(origin),
 								collectMethodArgumentsInParentContext(origin) /* TODO: Only lookup if needed */);
 				if (!resolution.isUnknown())
 					return resolution;
@@ -982,25 +1253,8 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution toValueTypeResolution(@Nonnull Resolution resolution) {
-		return switch (resolution) {
-			case FieldResolution fieldResolution -> {
-				// The value of a field is the type of the field.
-				DescribableEntry fieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
-				if (fieldType != null)
-					yield ofDescribable(fieldType);
-				yield unknown();
-			}
-			case MethodResolution methodResolution -> {
-				// The value of a method is the return type of the method.
-				DescribableEntry returnType = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
-				if (returnType != null)
-					yield ofDescribable(returnType);
-				yield unknown();
-			}
-			case DescribableResolution describableResolution ->
-					ofDescribable(describableResolution.getDescribableEntry());
-			default -> unknown();
-		};
+		GenericType genericType = getResolvedGenericType(resolution);
+		return genericType == null ? unknown() : toGenericResolution(genericType);
 	}
 
 	@Nonnull
@@ -1058,15 +1312,15 @@ public class BasicResolver implements Resolver {
 				// The identifier is in the context of another member identifier such as:
 				//  - someField.targetName
 				//  - someField.targetName()
-				DescribableEntry describableFieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
-				yield describableFieldType != null ? resolveMemberInContext(ofDescribable(describableFieldType), origin, memberName) : unknown();
+				GenericType fieldType = getResolvedGenericType(fieldResolution);
+				yield fieldType != null ? resolveMemberInContext(toGenericResolution(fieldType), origin, memberName) : unknown();
 			}
 			case MethodResolution methodResolution -> {
 				// The identifier is in the context of another member identifier such as:
 				//  - someMethod().targetName
 				//  - someMethod().targetName()
-				DescribableEntry describableReturnType = pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor());
-				yield describableReturnType != null ? resolveMemberInContext(ofDescribable(describableReturnType), origin, memberName) : unknown();
+				GenericType returnType = getResolvedGenericType(methodResolution);
+				yield returnType != null ? resolveMemberInContext(toGenericResolution(returnType), origin, memberName) : unknown();
 			}
 			case ArrayResolution arrayResolution -> {
 				// The identifier is in the context of another member identifier representing an array variable such as:
@@ -1106,12 +1360,15 @@ public class BasicResolver implements Resolver {
 			// If the parameter was IntSupplier, T would be int.
 			if (lambdaParent instanceof MethodInvocationExpressionModel parentInvoke && resolveMember(parentInvoke) instanceof MethodResolution lambdaReceiverResolution) {
 				int lambdaExprArgIndex = parentInvoke.getArguments().indexOf(lambda);
-				String argDesc = lambdaReceiverResolution.getMethodEntry().getParameterDescriptors().get(lambdaExprArgIndex);
-				if (pool.getDescribable(argDesc) instanceof ClassEntry lambdaType) {
+				List<GenericType> parameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(lambdaReceiverResolution);
+				if (lambdaExprArgIndex < parameterTypes.size() &&
+						GenericTypes.asClassType(parameterTypes.get(lambdaExprArgIndex), jlObjectEntry) instanceof GenericType.ClassType lambdaType) {
 					int lambdaArgIndex = lambda.getParameters().indexOf(origin);
-					List<MethodEntry> abstractMethods = lambdaType.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
-					if (abstractMethods.size() == 1) {
-						usageType = pool.getDescribable(abstractMethods.getFirst().getParameterDescriptors().get(lambdaArgIndex));
+					MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(lambdaType);
+					if (abstractMethod != null) {
+						List<GenericType> abstractParameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(abstractMethod);
+						if (lambdaArgIndex < abstractParameterTypes.size())
+							usageType = abstractParameterTypes.get(lambdaArgIndex).asDescribable();
 					}
 				}
 			}
@@ -1120,11 +1377,13 @@ public class BasicResolver implements Resolver {
 			// Example: IntConsumer c = t -> op(t);
 			// But here we know 't' maps to 'int'
 			else if (lambdaParent instanceof VariableModel model && resolveType(model.getType()) instanceof ClassResolution lambdaTypeResolution) {
-				ClassEntry lambdaType = lambdaTypeResolution.getClassEntry();
+				GenericType.ClassType lambdaType = Resolutions.getResolvedClassType(lambdaTypeResolution);
 				int lambdaArgIndex = lambda.getParameters().indexOf(origin);
-				List<MethodEntry> abstractMethods = lambdaType.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
-				if (abstractMethods.size() == 1) {
-					usageType = pool.getDescribable(abstractMethods.getFirst().getParameterDescriptors().get(lambdaArgIndex));
+				MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(lambdaType);
+				if (abstractMethod != null) {
+					List<GenericType> abstractParameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(abstractMethod);
+					if (lambdaArgIndex < abstractParameterTypes.size())
+						usageType = abstractParameterTypes.get(lambdaArgIndex).asDescribable();
 				}
 			}
 		}
@@ -1136,9 +1395,14 @@ public class BasicResolver implements Resolver {
 		if (adaptLambdaUsage && usageType instanceof ClassEntry classUsage && origin instanceof MethodReferenceExpressionModel) {
 			// The origin model being a reference implies the usage type can be a lambda.
 			// It should be an interface with a single abstract method.
-			List<MethodEntry> abstractMethods = classUsage.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
-			if (abstractMethods.size() == 1)
-				usageType = pool.getDescribable(abstractMethods.getFirst().getReturnDescriptor());
+			MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(GenericTypes.ofClass(classUsage));
+			if (abstractMethod != null) {
+				DescribableEntry lambdaReturnType = abstractMethod.getResolvedReturnType();
+
+				// Void-compatible method references may still target a non-void member whose
+				// result is ignored, so only keep a return-type hint when it constrains anything.
+				usageType = lambdaReturnType == VOID ? null : lambdaReturnType;
+			}
 			else
 				// Reset to null, we do not to incorrectly infer the wrong type for lambdas.
 				usageType = null;
@@ -1156,59 +1420,45 @@ public class BasicResolver implements Resolver {
 		String methodName = invoke.getMethodName();
 		Model methodReceiver = Objects.requireNonNullElse(invoke.getReceiver(), invoke.getParentOfType(ClassModel.class));
 		Resolution receiverResolution = methodReceiver.resolve(this);
-		if (!(receiverResolution instanceof DescribableResolution describableReceiver))
-			return null;
-
-		return inferExpectedTypeForArgument(describableReceiver.getDescribableEntry(), methodName, argumentIndex);
+		return inferExpectedTypeForArgument(invoke, receiverResolution, methodName, argumentIndex);
 	}
 
 	@Nullable
-	private DescribableEntry inferExpectedTypeForArgument(@Nonnull DescribableEntry methodReceiver, @Nonnull String methodName, int argumentIndex) {
-		// Extract receiver type.
-		ClassEntry receiverClass = switch (methodReceiver) {
-			case ClassEntry classEntry -> classEntry;
-			case MemberEntry memberEntry -> {
-				DescribableEntry memberReceivedType = switch (memberEntry) {
-					case FieldEntry fieldEntry -> pool.getDescribable(fieldEntry.getDescriptor());
-					case MethodEntry methodEntry -> pool.getDescribable(methodEntry.getReturnDescriptor());
-				};
-
-				// If we received a class, yield as-is.
-				// If we received an array, yield Object.
-				// Otherwise, we do not support the receiver type.
-				yield memberReceivedType instanceof ClassEntry memberReceivedClass
-						? memberReceivedClass : memberReceivedType instanceof ArrayEntry
-						? jlObjectEntry : null;
-			}
-			case ArrayEntry ignored -> jlObjectEntry;
-			case NullEntry ignored -> null;
-			case PrimitiveEntry ignored -> null;
-		};
+	private DescribableEntry inferExpectedTypeForArgument(@Nonnull MethodInvocationExpressionModel invoke,
+	                                                      @Nonnull Resolution methodReceiver,
+	                                                      @Nonnull String methodName,
+	                                                      int argumentIndex) {
+		GenericType receiverType = getResolvedGenericType(methodReceiver);
+		GenericType.ClassType receiverClass = receiverType == null ? null : GenericTypes.asClassType(receiverType, jlObjectEntry);
 		if (receiverClass == null)
 			return null;
 
+		// Reuse already-resolved sibling arguments to narrow method-level type variables.
+		List<GenericType> argumentHints = collectKnownGenericArgumentHints(invoke, argumentIndex);
+		int argumentCount = invoke.getArguments().size();
+
 		// Collect all methods with the same name in the receiver type's hierarchy.
-		List<MethodEntry> candidates = new ArrayList<>();
-		receiverClass.visitHierarchy(owner -> candidates.addAll(owner.getDeclaredMethodsByName(methodName)));
+		List<MethodResolution> candidates = new ArrayList<>();
+		visitBoundHierarchy(receiverClass, owner -> owner.classEntry().getDeclaredMethodsByName(methodName).stream()
+				.filter(methodEntry -> methodEntry.isVarargs() ?
+						argumentCount >= methodEntry.getGenericParameterTypes().size() - 1 :
+						argumentCount == methodEntry.getGenericParameterTypes().size())
+				.map(methodEntry -> adaptMethodResolution(owner, methodEntry, null, argumentHints))
+				.forEach(candidates::add));
 		if (candidates.isEmpty())
 			return null;
 
 		// Collect parameter types at the given index from all candidates.
 		List<DescribableEntry> expectedTypes = new ArrayList<>();
-		for (MethodEntry candidate : candidates) {
-			List<String> parameterDescriptors = candidate.getParameterDescriptors();
-			if (argumentIndex < parameterDescriptors.size()) {
-				DescribableEntry paramType = pool.getDescribable(parameterDescriptors.get(argumentIndex));
-				if (paramType != null)
-					expectedTypes.add(paramType);
-			} else if (candidate.isVarargs() && argumentIndex >= parameterDescriptors.size() - 1) {
+		for (MethodResolution candidate : candidates) {
+			List<GenericType> parameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(candidate);
+			if (argumentIndex < parameterTypes.size()) {
+				expectedTypes.add(parameterTypes.get(argumentIndex).asDescribable());
+			} else if (candidate.getMethodEntry().isVarargs() && argumentIndex >= parameterTypes.size() - 1) {
 				// Varargs: last parameter applies to all remaining args
-				String varargDesc = parameterDescriptors.getLast();
-				if (varargDesc.startsWith("[")) {
-					DescribableEntry elementType = pool.getDescribable(varargDesc.substring(1));
-					if (elementType != null)
-						expectedTypes.add(elementType);
-				}
+				GenericType usableVarargType = GenericTypes.toUsableType(parameterTypes.getLast(), jlObjectEntry);
+				if (usableVarargType instanceof GenericType.ArrayType arrayType)
+					expectedTypes.add(arrayType.elementType().asDescribable());
 			}
 		}
 		if (expectedTypes.isEmpty())
@@ -1225,6 +1475,93 @@ public class BasicResolver implements Resolver {
 			return new MultiClassEntry(expectedClasses, commonClass);
 		}
 		return common;
+	}
+
+	@Nonnull
+	private MethodResolution adaptMethodResolution(@Nonnull GenericType.ClassType ownerType, @Nonnull MethodEntry methodEntry,
+	                                               @Nullable GenericType returnTypeHint,
+	                                               @Nullable List<GenericType> argumentTypeHints) {
+		// Start with receiver bindings, then layer on method-level bindings inferred from
+		// the expected return type and any already-known argument types.
+		Map<GenericTypeParameter, GenericType> bindings = new LinkedHashMap<>(GenericTypes.bind(ownerType));
+		GenericType resolvedReturnType = GenericTypes.substitute(methodEntry.getGenericReturnType(), bindings);
+		if (returnTypeHint != null)
+			collectGenericTypeBindings(resolvedReturnType, returnTypeHint, bindings);
+		if (argumentTypeHints != null && !argumentTypeHints.isEmpty()) {
+			List<GenericType> parameterTypes = methodEntry.getGenericParameterTypes();
+			int paramCount = parameterTypes.size();
+			for (int i = 0; i < argumentTypeHints.size(); i++) {
+				GenericType argumentTypeHint = argumentTypeHints.get(i);
+				if (argumentTypeHint == null)
+					continue;
+
+				GenericType parameterType;
+				if (methodEntry.isVarargs() && i >= paramCount - 1) {
+					GenericType varargType = GenericTypes.substitute(parameterTypes.getLast(), bindings);
+					parameterType = varargType instanceof GenericType.ArrayType arrayType ? arrayType.elementType() : varargType;
+				} else if (i < paramCount) {
+					parameterType = GenericTypes.substitute(parameterTypes.get(i), bindings);
+				} else {
+					continue;
+				}
+
+				collectGenericTypeBindings(parameterType, argumentTypeHint, bindings);
+			}
+		}
+		return adaptMethodResolution(ownerType, methodEntry, bindings);
+	}
+
+	private void collectGenericTypeBindings(@Nonnull GenericType expectedType, @Nullable GenericType actualType,
+	                                        @Nonnull Map<GenericTypeParameter, GenericType> bindings) {
+		GenericType usableActualType = GenericTypes.toUsableType(actualType, jlObjectEntry);
+		if (usableActualType == null)
+			return;
+
+		// Walk the generic shape in parallel so a parameter like Consumer<T> can learn
+		// that T is String from a concrete argument like Consumer<String>.
+		switch (expectedType) {
+			case GenericType.TypeVariableType typeVariableType -> bindings.put(typeVariableType.parameter(), usableActualType);
+			case GenericType.ArrayType expectedArrayType when usableActualType instanceof GenericType.ArrayType actualArrayType -> {
+				if (expectedArrayType.dimensions() == actualArrayType.dimensions())
+					collectGenericTypeBindings(expectedArrayType.elementType(), actualArrayType.elementType(), bindings);
+			}
+			case GenericType.ClassType expectedClassType when usableActualType instanceof GenericType.ClassType actualClassType -> {
+				GenericType.ClassType actualOwnerType = actualClassType.classEntry().getName().equals(expectedClassType.classEntry().getName()) ?
+						actualClassType : GenericTypes.adaptToOwner(actualClassType, expectedClassType.classEntry(), jlObjectEntry);
+				if (actualOwnerType == null)
+					return;
+				int typeArgCount = Math.min(expectedClassType.typeArguments().size(), actualOwnerType.typeArguments().size());
+				for (int i = 0; i < typeArgCount; i++)
+					collectGenericTypeBindings(expectedClassType.typeArguments().get(i), actualOwnerType.typeArguments().get(i), bindings);
+			}
+			case GenericType.WildcardType wildcardType -> {
+				if (wildcardType.upperBound() != null)
+					collectGenericTypeBindings(wildcardType.upperBound(), usableActualType, bindings);
+			}
+			default -> {
+			}
+		}
+	}
+
+	@Nullable
+	private List<GenericType> collectKnownGenericArgumentHints(@Nonnull MethodInvocationExpressionModel invoke, int ignoredArgumentIndex) {
+		List<AbstractExpressionModel> arguments = invoke.getArguments();
+		if (arguments.isEmpty())
+			return Collections.emptyList();
+
+		// Leave the argument being inferred blank, but keep any sibling argument types
+		// so overload selection can still bind method type variables from them.
+		List<GenericType> hints = new ArrayList<>(arguments.size());
+		boolean anyKnown = false;
+		for (int i = 0; i < arguments.size(); i++) {
+			GenericType argumentType = null;
+			if (i != ignoredArgumentIndex)
+				argumentType = getResolvedGenericType(arguments.get(i).resolve(this));
+			if (argumentType != null)
+				anyKnown = true;
+			hints.add(argumentType);
+		}
+		return anyKnown ? hints : null;
 	}
 
 	@Nonnull
@@ -1251,15 +1588,15 @@ public class BasicResolver implements Resolver {
 		// Member selection should be a field identifier in the context of a class identifier such as:
 		//  - StringConstants.TARGET_NAME
 		if (contextResolution instanceof ClassResolution classResolution) {
-			ClassEntry declaringClass = classResolution.getClassEntry();
-			return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
+			return resolveFieldByNameInClass(Resolutions.getResolvedClassType(classResolution), fieldName, usageType);
 		} else if (contextResolution instanceof FieldResolution fieldResolution) {
 			// The identifier is in the context of another member identifier such as:
 			//  - someField.targetName
-			DescribableEntry describableFieldType = pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor());
-			if (describableFieldType instanceof ClassEntry declaringClass)
+			GenericType describableFieldType = Resolutions.getResolvedFieldGenericType(fieldResolution);
+			GenericType usableFieldType = GenericTypes.toUsableType(describableFieldType, jlObjectEntry);
+			if (usableFieldType instanceof GenericType.ClassType declaringClass)
 				return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
-			else if (describableFieldType instanceof ArrayEntry) {
+			else if (usableFieldType != null && usableFieldType.asDescribable() instanceof ArrayEntry) {
 				// The identifier is in the context of another member identifier representing an array variable such as:
 				//  - args.length
 				if (fieldName.equals("length"))
@@ -1267,7 +1604,9 @@ public class BasicResolver implements Resolver {
 				return resolveFieldByNameInClass(jlObjectEntry, fieldName, usageType);
 			}
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
-			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
+			GenericType returnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			GenericType usableReturnType = GenericTypes.toUsableType(returnType, jlObjectEntry);
+			if (usableReturnType instanceof GenericType.ClassType declaringClass)
 				return resolveFieldByNameInClass(declaringClass, fieldName, usageType);
 		} else if (contextResolution instanceof ArrayResolution) {
 			// The identifier is in the context of another member identifier representing an array variable such as:
@@ -1287,18 +1626,33 @@ public class BasicResolver implements Resolver {
 		DescribableEntry returnType = methodName.startsWith("<") ? VOID : inferFromUsage(origin, true);
 
 		// Resolve the method's arguments.
+		List<GenericType> genericArguments = collectGenericMethodArgumentsInParentContext(origin);
 		List<DescribableEntry> describableArguments = collectMethodArgumentsInParentContext(origin);
 
 		// Member selection is the method identifier
 		if (contextResolution instanceof ClassResolution classResolution) {
-			ClassEntry declaringClass = classResolution.getClassEntry();
-			return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+			Resolution resolution = resolveMethodByNameInClass(Resolutions.getResolvedClassType(classResolution), methodName,
+					rawGenericType(returnType), genericArguments, describableArguments);
+
+			// Unbound references like String::trim use the SAM's first parameter as the receiver,
+			// so retry once with that synthetic receiver slot removed.
+			if (!resolution.isUnknown() || !isUnboundTypeMethodReference(origin) || genericArguments == null || genericArguments.isEmpty())
+				return resolution;
+			return resolveMethodByNameInClass(Resolutions.getResolvedClassType(classResolution), methodName,
+					rawGenericType(returnType), genericArguments.subList(1, genericArguments.size()),
+					describableArguments == null ? null : describableArguments.subList(1, describableArguments.size()));
 		} else if (contextResolution instanceof FieldResolution fieldResolution) {
-			if (pool.getDescribable(fieldResolution.getFieldEntry().getDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+			GenericType fieldType = Resolutions.getResolvedFieldGenericType(fieldResolution);
+			GenericType usableFieldType = GenericTypes.toUsableType(fieldType, jlObjectEntry);
+			if (usableFieldType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnType), genericArguments, describableArguments);
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
-			if (pool.getDescribable(methodResolution.getMethodEntry().getReturnDescriptor()) instanceof ClassEntry declaringClass)
-				return resolveMethodByNameInClass(declaringClass, methodName, returnType, describableArguments);
+			GenericType methodReturnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			GenericType usableReturnType = GenericTypes.toUsableType(methodReturnType, jlObjectEntry);
+			if (usableReturnType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnType), genericArguments, describableArguments);
 		}
 
 		return unknown();
@@ -1306,17 +1660,7 @@ public class BasicResolver implements Resolver {
 
 	@Nonnull
 	private Resolution resolveMethodReturnType(@Nonnull MethodInvocationExpressionModel methodInvocation) {
-		if (resolveMember(methodInvocation) instanceof MethodResolution resolvedInvocation) {
-			DescribableEntry returnValueEntry = pool.getDescribable(resolvedInvocation.getMethodEntry().getReturnDescriptor());
-			if (returnValueEntry instanceof ArrayEntry array)
-				return ofArray(array);
-			else if (returnValueEntry instanceof PrimitiveEntry primitive)
-				return ofPrimitive(primitive);
-			else if (returnValueEntry instanceof ClassEntry clazz)
-				return ofClass(clazz);
-		}
-
-		return unknown();
+		return toValueTypeResolution(resolveMember(methodInvocation));
 	}
 
 	@Nonnull
@@ -1399,6 +1743,17 @@ public class BasicResolver implements Resolver {
 
 	@Nullable
 	private List<DescribableEntry> collectMethodArgumentsInParentContext(@Nonnull Model origin) {
+		List<GenericType> genericArguments = collectGenericMethodArgumentsInParentContext(origin);
+		if (genericArguments == null)
+			return null;
+		return genericArguments.stream()
+				.map(type -> GenericTypes.toUsableType(type, jlObjectEntry))
+				.map(type -> type == null ? null : type.asDescribable())
+				.toList();
+	}
+
+	@Nullable
+	private List<GenericType> collectGenericMethodArgumentsInParentContext(@Nonnull Model origin) {
 		// For method references, find the matching single-abstract-method interface method, then extract the parameters.
 		if (origin instanceof MethodReferenceExpressionModel) {
 			// Places to consider for argument inference:
@@ -1410,11 +1765,11 @@ public class BasicResolver implements Resolver {
 			if (usageType instanceof ClassEntry classUsage) {
 				// The origin model being a reference implies the usage type can be a lambda.
 				// It should be an interface with a single abstract method.
-				List<MethodEntry> abstractMethods = classUsage.getDeclaredMethods().stream().filter(MethodEntry::isAbstract).toList();
-				if (abstractMethods.size() == 1)
-					return abstractMethods.getFirst().getParameterDescriptors().stream()
-							.map(pool::getDescribable)
-							.toList();
+				MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(GenericTypes.ofClass(classUsage));
+				if (abstractMethod != null)
+					// Preserve the SAM parameter generics so later method selection can distinguish
+					// cases like Consumer<String> from raw Consumer.
+					return Resolutions.getResolvedMethodParameterGenericTypes(abstractMethod);
 			}
 
 			return null;
@@ -1426,22 +1781,13 @@ public class BasicResolver implements Resolver {
 			return null;
 
 		List<AbstractExpressionModel> arguments = methodInvocation.getArguments();
-		List<DescribableEntry> describableArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
+		List<GenericType> genericArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
 		for (int i = 0; i < arguments.size(); i++) {
 			AbstractExpressionModel argument = arguments.get(i);
 			Resolution resolution = argument.resolve(this);
-			if (resolution instanceof DescribableResolution describableResolution) {
-				DescribableEntry argumentDescribableEntry = describableResolution.getDescribableEntry();
-				if (argumentDescribableEntry instanceof FieldEntry) {
-					// Because a field entry is describable, but does not support "isAssignableFrom" checking we
-					// need to re-interpret the descriptor with contents from the entry-pool.
-					DescribableEntry entry = pool.getDescribable(argumentDescribableEntry.getDescriptor());
-					if (entry == null)
-						return null; // Entry not in pool, cannot collect all arguments as describable entries.
-					describableArguments.add(entry);
-				} else {
-					describableArguments.add(argumentDescribableEntry);
-				}
+			GenericType argumentType = getResolvedGenericType(resolution);
+			if (argumentType != null) {
+				genericArguments.add(argumentType);
 			} else {
 				// See if we can infer the type based on matching possible argument types for methods of the same name.
 				DescribableEntry inferredEntry = inferExpectedTypeForArgument(methodInvocation, i);
@@ -1450,11 +1796,29 @@ public class BasicResolver implements Resolver {
 					// we don't know anything about the arguments at all.
 					return null;
 				}
-				describableArguments.add(inferredEntry);
+				genericArguments.add(rawGenericType(inferredEntry));
 			}
 		}
 
-		return describableArguments;
+		return genericArguments;
+	}
+
+	@Nullable
+	private List<GenericType> toGenericTypeHints(@Nullable List<DescribableEntry> argumentTypeEntries) {
+		if (argumentTypeEntries == null)
+			return null;
+		List<GenericType> genericTypes = new ArrayList<>(argumentTypeEntries.size());
+		for (DescribableEntry argumentTypeEntry : argumentTypeEntries)
+			genericTypes.add(rawGenericType(argumentTypeEntry));
+		return genericTypes;
+	}
+
+	private boolean isUnboundTypeMethodReference(@Nonnull Model origin) {
+		if (!(origin instanceof MethodReferenceExpressionModel methodReference) || methodReference.getMode() != MethodReferenceExpressionModel.Mode.INVOKE)
+			return false;
+		if (!(methodReference.getQualifier() instanceof NamedModel namedQualifier))
+			return false;
+		return resolveNamed(namedQualifier) instanceof ClassResolution;
 	}
 
 	private enum MemberTarget {

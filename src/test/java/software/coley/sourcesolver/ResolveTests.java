@@ -1,12 +1,12 @@
 package software.coley.sourcesolver;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
 import software.coley.sourcesolver.resolve.Resolver;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
@@ -109,6 +109,8 @@ public class ResolveTests {
 				"java/util/List", "size", "()I");
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "lines.get(i);"),
 				"java/util/List", "get", "(I)Ljava/lang/Object;");
+		assertResolvedMethodReturnType(resolutionAtMiddle(resolver, sourceCode, "lines.get(i);"),
+				CLASS_STRING);
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "Missing argument, path to file"),
 				CLASS_STRING);
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "primary:"),
@@ -557,15 +559,33 @@ public class ResolveTests {
 	}
 
 	@Test
-	@Disabled("Generic resolution required")
 	void testBoxUseCasesGenerics() {
 		String sourceCode = readSrc("sample/BoxUseCases");
 		CompilationUnitModel model = parser.parse(sourceCode);
 		Resolver resolver = new BasicResolver(model, pool);
 
-		// TODO: Need to create a system to resolve things with generics
-		//  IE if a field is a "T" signature, then I should adapt the field-resolution to be of bound "T" instead of "Object"
-		//  And if I have List<T> then "get(int)" which yields T should also be adapted to the bound.
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "stringBox.value.toUpperCase", "stringBox.v".length()),
+				"sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(resolutionAtOffset(resolver, sourceCode, "stringBox.value.toUpperCase", "stringBox.v".length()),
+				"java/lang/String");
+		assertFieldResolution(resolutionAtOffset(resolver, sourceCode, "intBox.value.intValue", "intBox.v".length()),
+				"sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(resolutionAtOffset(resolver, sourceCode, "intBox.value.intValue", "intBox.v".length()),
+				"java/lang/Integer");
+		assertResolvedFieldType(resolutionAtOffset(resolver, sourceCode, "wildcardBox.value.hashCode", "wildcardBox.v".length()),
+				"java/lang/Object");
+		assertResolvedFieldType(resolutionAtOffset(resolver, sourceCode, "numberBox.value.intValue", "numberBox.v".length()),
+				"java/lang/Number");
+
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "stringList.get(0).toUpperCase", "stringList.g".length()),
+				"java/util/List", "get", "(I)Ljava/lang/Object;");
+		assertResolvedMethodReturnType(resolutionAtOffset(resolver, sourceCode, "stringList.get(0).toUpperCase", "stringList.g".length()),
+				"java/lang/String");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "fixedList.get(0).toUpperCase", "fixedList.g".length()),
+				"sample/ExampleFixedList", "get", "(I)Ljava/lang/Object;");
+		assertResolvedMethodReturnType(resolutionAtOffset(resolver, sourceCode, "fixedList.get(0).toUpperCase", "fixedList.g".length()),
+				"java/lang/String");
+
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "toUpperCase"),
 				"java/lang/String", "toUpperCase", "()Ljava/lang/String;");
 		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "intValue"),
@@ -610,11 +630,10 @@ public class ResolveTests {
 		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, s2, 55),
 				"java/io/File", "length", "()J");
 
-		// TODO: Support generic inference
-//		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(String::toLowerCase, \"string\")", 25),
-//				"java/lang/String", "toLowerCase", "()V");
-//		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(str -> str.toLowerCase(), \"string\")", 30),
-//				"java/lang/String", "toLowerCase", "()V");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(String::toLowerCase, \"string\")", 25),
+				"java/lang/String", "toLowerCase", "()Ljava/lang/String;");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "delegateTyped(str -> str.toLowerCase(), \"string\")", 30),
+				"java/lang/String", "toLowerCase", "()Ljava/lang/String;");
 	}
 
 	private static void assertPackageResolution(Resolution resolution, String name) {
@@ -634,14 +653,17 @@ public class ResolveTests {
 	}
 
 	private static void assertClassResolution(Resolution resolution, String name) {
-		if (resolution instanceof ClassResolution classResolution) {
-			if (name != null) assertEquals(name, classResolution.getClassEntry().getName());
-		} else if (resolution instanceof PrimitiveResolution primitiveResolution) {
-			if (name != null) assertEquals(name, primitiveResolution.getPrimitiveEntry().getDescriptor());
-		} else if (resolution instanceof ArrayResolution arrayResolution) {
-			if (name != null) assertEquals(name, arrayResolution.getArrayEntry().getDescriptor());
-		} else {
-			fail("Resolution was not of a class: " + resolution);
+		switch (resolution) {
+			case ClassResolution classResolution -> {
+				if (name != null) assertEquals(name, classResolution.getClassEntry().getName());
+			}
+			case PrimitiveResolution primitiveResolution -> {
+				if (name != null) assertEquals(name, primitiveResolution.getPrimitiveEntry().getDescriptor());
+			}
+			case ArrayResolution arrayResolution -> {
+				if (name != null) assertEquals(name, arrayResolution.getArrayEntry().getDescriptor());
+			}
+			case null, default -> fail("Resolution was not of a class: " + resolution);
 		}
 	}
 
@@ -664,6 +686,26 @@ public class ResolveTests {
 			if (owner != null) assertEquals(owner, ownerEntry.getName());
 			if (name != null) assertEquals(name, fieldEntry.getName());
 			if (desc != null) assertEquals(desc, fieldEntry.getDescriptor());
+		} else {
+			fail("Resolution was not of a field: " + resolution);
+		}
+	}
+
+	private static void assertResolvedMethodReturnType(Resolution resolution, String descOrName) {
+		if (resolution instanceof MethodResolution methodResolution) {
+			DescribableEntry resolvedReturnType = methodResolution.getResolvedReturnType();
+			if (descOrName != null)
+				assertEquals(descOrName, resolvedReturnType instanceof ClassEntry classEntry ? classEntry.getName() : resolvedReturnType.getDescriptor());
+		} else {
+			fail("Resolution was not of a method: " + resolution);
+		}
+	}
+
+	private static void assertResolvedFieldType(Resolution resolution, String descOrName) {
+		if (resolution instanceof FieldResolution fieldResolution) {
+			DescribableEntry resolvedFieldType = fieldResolution.getResolvedFieldType();
+			if (descOrName != null)
+				assertEquals(descOrName, resolvedFieldType instanceof ClassEntry classEntry ? classEntry.getName() : resolvedFieldType.getDescriptor());
 		} else {
 			fail("Resolution was not of a field: " + resolution);
 		}

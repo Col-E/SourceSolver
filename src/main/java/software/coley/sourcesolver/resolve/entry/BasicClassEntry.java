@@ -2,8 +2,10 @@ package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.resolve.generic.GenericType;
+import software.coley.sourcesolver.resolve.generic.GenericTypeParameter;
+
 import java.util.List;
-import java.util.Objects;
 
 public class BasicClassEntry implements ClassEntry {
 	private final String className;
@@ -12,14 +14,20 @@ public class BasicClassEntry implements ClassEntry {
 	private final List<ClassEntry> interfaceEntries;
 	private final List<ClassEntry> innerClassEntries;
 	private final ClassEntry outerClass;
+	private final List<GenericTypeParameter> typeParameters;
+	private final GenericType.ClassType genericSuperType;
+	private final List<GenericType.ClassType> genericInterfaceTypes;
 	private final List<FieldEntry> fields;
 	private final List<MethodEntry> methods;
 
 	public BasicClassEntry(@Nonnull String className, int access,
 	                       @Nullable ClassEntry superEntry,
 	                       @Nonnull List<ClassEntry> interfaceEntries,
-						   @Nonnull List<ClassEntry> innerClassEntries,
-						   @Nullable ClassEntry outerClass,
+	                       @Nonnull List<ClassEntry> innerClassEntries,
+	                       @Nullable ClassEntry outerClass,
+	                       @Nonnull List<GenericTypeParameter> typeParameters,
+	                       @Nullable GenericType.ClassType genericSuperType,
+	                       @Nonnull List<GenericType.ClassType> genericInterfaceTypes,
 	                       @Nonnull List<FieldEntry> fields,
 	                       @Nonnull List<MethodEntry> methods) {
 		this.className = className;
@@ -28,6 +36,9 @@ public class BasicClassEntry implements ClassEntry {
 		this.interfaceEntries = interfaceEntries;
 		this.innerClassEntries = innerClassEntries;
 		this.outerClass = outerClass;
+		this.typeParameters = List.copyOf(typeParameters);
+		this.genericSuperType = genericSuperType;
+		this.genericInterfaceTypes = List.copyOf(genericInterfaceTypes);
 		this.fields = fields;
 		this.methods = methods;
 	}
@@ -69,6 +80,24 @@ public class BasicClassEntry implements ClassEntry {
 
 	@Nonnull
 	@Override
+	public List<GenericTypeParameter> getTypeParameters() {
+		return typeParameters;
+	}
+
+	@Nullable
+	@Override
+	public GenericType.ClassType getGenericSuperType() {
+		return genericSuperType;
+	}
+
+	@Nonnull
+	@Override
+	public List<GenericType.ClassType> getGenericInterfaceTypes() {
+		return genericInterfaceTypes;
+	}
+
+	@Nonnull
+	@Override
 	public List<FieldEntry> getDeclaredFields() {
 		return fields;
 	}
@@ -87,23 +116,13 @@ public class BasicClassEntry implements ClassEntry {
 		BasicClassEntry that = (BasicClassEntry) o;
 
 		if (access != that.access) return false;
-		if (!className.equals(that.className)) return false;
-		if (!Objects.equals(superEntry, that.superEntry)) return false;
-		if (!interfaceEntries.equals(that.interfaceEntries)) return false;
-		if (!innerClassEntries.equals(that.innerClassEntries)) return false;
-		if (!fields.equals(that.fields)) return false;
-		return methods.equals(that.methods);
+		return className.equals(that.className);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = className.hashCode();
 		result = 31 * result + access;
-		result = 31 * result + (superEntry != null ? superEntry.hashCode() : 0);
-		result = 31 * result + interfaceEntries.hashCode();
-		result = 31 * result + innerClassEntries.hashCode();
-		result = 31 * result + fields.hashCode();
-		result = 31 * result + methods.hashCode();
 		return result;
 	}
 

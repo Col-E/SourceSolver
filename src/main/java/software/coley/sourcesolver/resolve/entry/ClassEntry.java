@@ -2,6 +2,8 @@ package software.coley.sourcesolver.resolve.entry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.resolve.generic.GenericType;
+import software.coley.sourcesolver.resolve.generic.GenericTypeParameter;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -38,6 +40,24 @@ public non-sealed interface ClassEntry extends AccessedEntry, DescribableEntry {
 	 */
 	@Nullable
 	ClassEntry getOuterClass();
+
+	/**
+	 * @return Declared generic type parameters on the class.
+	 */
+	@Nonnull
+	List<GenericTypeParameter> getTypeParameters();
+
+	/**
+	 * @return Generic declaration of the direct super-type, if available.
+	 */
+	@Nullable
+	GenericType.ClassType getGenericSuperType();
+
+	/**
+	 * @return Generic declarations of directly implemented interfaces.
+	 */
+	@Nonnull
+	List<GenericType.ClassType> getGenericInterfaceTypes();
 
 	/**
 	 * @return Name of class in internal format.

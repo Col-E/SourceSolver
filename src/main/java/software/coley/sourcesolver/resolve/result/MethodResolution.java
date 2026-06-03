@@ -1,8 +1,8 @@
 package software.coley.sourcesolver.resolve.result;
 
-import software.coley.sourcesolver.resolve.entry.MethodEntry;
-
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 
 /**
  * Resolution of a method.
@@ -15,6 +15,12 @@ non-sealed public interface MethodResolution extends MemberResolution {
 	 */
 	@Nonnull
 	MethodEntry getMethodEntry();
+
+	/**
+	 * @return Resolved return type after applying receiver generic arguments.
+	 */
+	@Nonnull
+	DescribableEntry getResolvedReturnType();
 
 	@Nonnull
 	@Override
