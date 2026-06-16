@@ -67,12 +67,14 @@ import software.coley.sourcesolver.resolve.result.ThrowingResolution;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -91,6 +93,8 @@ public class BasicResolver implements Resolver {
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
 	private final ClassEntry jlObjectEntry, jlClassEntry;
+	private final Set<Model> usageInferenceInProgress = Collections.newSetFromMap(new IdentityHashMap<>());
+	private final Map<MethodInvocationExpressionModel, Set<Integer>> argumentInferenceInProgress = new IdentityHashMap<>();
 	private Map<ClassModel, ClassEntry> externallyResolvedClassEntries;
 
 	/**
@@ -1741,34 +1745,53 @@ public class BasicResolver implements Resolver {
 
 	@Nullable
 	private DescribableEntry inferFromUsage(@Nonnull Model origin, boolean adaptLambdaUsage) {
-		DescribableEntry usageType = null;
-		Model parent = origin.getParent();
-		if (parent instanceof VariableModel variable && variable.getValue() == origin) {
-			// String known = foo --> We know 'foo' must be 'String'
-			Resolution targetRes = variable.getType().resolve(this);
-			if (targetRes instanceof DescribableResolution desc)
-				usageType = desc.getDescribableEntry();
-		} else if (parent instanceof AssignmentExpressionModel assign && assign.getVariable() == origin) {
-			// Unknown.foo = "string" --> We know 'foo' must be 'String'
-			Resolution targetRes = assign.getExpression().resolve(this);
-			if (targetRes instanceof DescribableResolution desc)
-				usageType = desc.getDescribableEntry();
-		} else if (parent instanceof MethodInvocationExpressionModel invoke) {
-			// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
-			int argIndex = invoke.getArguments().indexOf(origin);
-			usageType = inferExpectedTypeForArgument(invoke, argIndex);
-		} else if (parent instanceof LambdaExpressionModel lambda) {
-			Model lambdaParent = lambda.getParent();
-			// Example:
-			//   Usage: passValueToConsumer(t -> op(t), myTValue);
-			//   Defin: passValueToConsumer(Supplier, T)
-			// Then we know T maps to Object.
-			// If the parameter was IntSupplier, T would be int.
-			if (lambdaParent instanceof MethodInvocationExpressionModel parentInvoke && resolveMember(parentInvoke) instanceof MethodResolution lambdaReceiverResolution) {
-				int lambdaExprArgIndex = parentInvoke.getArguments().indexOf(lambda);
-				List<GenericType> parameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(lambdaReceiverResolution);
-				if (lambdaExprArgIndex < parameterTypes.size() &&
-						GenericTypes.asClassType(parameterTypes.get(lambdaExprArgIndex), jlObjectEntry) instanceof GenericType.ClassType lambdaType) {
+		if (!usageInferenceInProgress.add(origin))
+			return null;
+
+		try {
+			DescribableEntry usageType = null;
+			Model parent = origin.getParent();
+			if (parent instanceof VariableModel variable && variable.getValue() == origin) {
+				// String known = foo --> We know 'foo' must be 'String'
+				Resolution targetRes = variable.getType().resolve(this);
+				if (targetRes instanceof DescribableResolution desc)
+					usageType = desc.getDescribableEntry();
+			} else if (parent instanceof AssignmentExpressionModel assign && assign.getVariable() == origin) {
+				// Unknown.foo = "string" --> We know 'foo' must be 'String'
+				Resolution targetRes = assign.getExpression().resolve(this);
+				if (targetRes instanceof DescribableResolution desc)
+					usageType = desc.getDescribableEntry();
+			} else if (parent instanceof MethodInvocationExpressionModel invoke) {
+				// String.copyValueOf(Unknown.foo, 0, 0)  --> We know 'foo' must be 'char[]'
+				int argIndex = invoke.getArguments().indexOf(origin);
+				usageType = inferExpectedTypeForArgument(invoke, argIndex);
+			} else if (parent instanceof LambdaExpressionModel lambda) {
+				Model lambdaParent = lambda.getParent();
+				// Example:
+				//   Usage: passValueToConsumer(t -> op(t), myTValue);
+				//   Defin: passValueToConsumer(Supplier, T)
+				// Then we know T maps to Object.
+				// If the parameter was IntSupplier, T would be int.
+				if (lambdaParent instanceof MethodInvocationExpressionModel parentInvoke && resolveMember(parentInvoke) instanceof MethodResolution lambdaReceiverResolution) {
+					int lambdaExprArgIndex = parentInvoke.getArguments().indexOf(lambda);
+					List<GenericType> parameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(lambdaReceiverResolution);
+					if (lambdaExprArgIndex < parameterTypes.size() &&
+							GenericTypes.asClassType(parameterTypes.get(lambdaExprArgIndex), jlObjectEntry) instanceof GenericType.ClassType lambdaType) {
+						int lambdaArgIndex = lambda.getParameters().indexOf(origin);
+						MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(lambdaType);
+						if (abstractMethod != null) {
+							List<GenericType> abstractParameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(abstractMethod);
+							if (lambdaArgIndex < abstractParameterTypes.size())
+								usageType = abstractParameterTypes.get(lambdaArgIndex).asDescribable();
+						}
+					}
+				}
+				// Example: Consumer c = t -> op(t);
+				// Then we know 't' maps to 'Object'
+				// Example: IntConsumer c = t -> op(t);
+				// But here we know 't' maps to 'int'
+				else if (lambdaParent instanceof VariableModel model && resolveType(model.getType()) instanceof ClassResolution lambdaTypeResolution) {
+					GenericType.ClassType lambdaType = Resolutions.getResolvedClassType(lambdaTypeResolution);
 					int lambdaArgIndex = lambda.getParameters().indexOf(origin);
 					MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(lambdaType);
 					if (abstractMethod != null) {
@@ -1778,43 +1801,31 @@ public class BasicResolver implements Resolver {
 					}
 				}
 			}
-			// Example: Consumer c = t -> op(t);
-			// Then we know 't' maps to 'Object'
-			// Example: IntConsumer c = t -> op(t);
-			// But here we know 't' maps to 'int'
-			else if (lambdaParent instanceof VariableModel model && resolveType(model.getType()) instanceof ClassResolution lambdaTypeResolution) {
-				GenericType.ClassType lambdaType = Resolutions.getResolvedClassType(lambdaTypeResolution);
-				int lambdaArgIndex = lambda.getParameters().indexOf(origin);
-				MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(lambdaType);
+
+			// We may know the required type is a lambda, but then that means we may want to adapt the result
+			// to mirror the return type the lambda outlines, rather than the class itself.
+			//
+			// Consumer known = Unknown::foo --> We know 'foo' must be '()V'
+			if (adaptLambdaUsage && usageType instanceof ClassEntry classUsage && origin instanceof MethodReferenceExpressionModel) {
+				// The origin model being a reference implies the usage type can be a lambda.
+				// It should be an interface with a single abstract method.
+				MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(GenericTypes.ofClass(classUsage));
 				if (abstractMethod != null) {
-					List<GenericType> abstractParameterTypes = Resolutions.getResolvedMethodParameterGenericTypes(abstractMethod);
-					if (lambdaArgIndex < abstractParameterTypes.size())
-						usageType = abstractParameterTypes.get(lambdaArgIndex).asDescribable();
+					DescribableEntry lambdaReturnType = abstractMethod.getResolvedReturnType();
+
+					// Void-compatible method references may still target a non-void member whose
+					// result is ignored, so only keep a return-type hint when it constrains anything.
+					usageType = lambdaReturnType == VOID ? null : lambdaReturnType;
 				}
+				else
+					// Reset to null, we do not to incorrectly infer the wrong type for lambdas.
+					usageType = null;
 			}
+
+			return usageType;
+		} finally {
+			usageInferenceInProgress.remove(origin);
 		}
-
-		// We may know the required type is a lambda, but then that means we may want to adapt the result
-		// to mirror the return type the lambda outlines, rather than the class itself.
-		//
-		// Consumer known = Unknown::foo --> We know 'foo' must be '()V'
-		if (adaptLambdaUsage && usageType instanceof ClassEntry classUsage && origin instanceof MethodReferenceExpressionModel) {
-			// The origin model being a reference implies the usage type can be a lambda.
-			// It should be an interface with a single abstract method.
-			MethodResolution abstractMethod = resolveFunctionalInterfaceMethod(GenericTypes.ofClass(classUsage));
-			if (abstractMethod != null) {
-				DescribableEntry lambdaReturnType = abstractMethod.getResolvedReturnType();
-
-				// Void-compatible method references may still target a non-void member whose
-				// result is ignored, so only keep a return-type hint when it constrains anything.
-				usageType = lambdaReturnType == VOID ? null : lambdaReturnType;
-			}
-			else
-				// Reset to null, we do not to incorrectly infer the wrong type for lambdas.
-				usageType = null;
-		}
-
-		return usageType;
 	}
 
 	@Nullable
@@ -1822,11 +1833,21 @@ public class BasicResolver implements Resolver {
 		if (argumentIndex < 0)
 			return null;
 
-		// Extract the method invocation receiver + name.
-		String methodName = invoke.getMethodName();
-		Model methodReceiver = Objects.requireNonNullElse(invoke.getReceiver(), invoke.getParentOfType(ClassModel.class));
-		Resolution receiverResolution = methodReceiver.resolve(this);
-		return inferExpectedTypeForArgument(invoke, receiverResolution, methodName, argumentIndex);
+		Set<Integer> activeArgumentIndices = argumentInferenceInProgress.computeIfAbsent(invoke, ignored -> new HashSet<>());
+		if (!activeArgumentIndices.add(argumentIndex))
+			return null;
+
+		try {
+			// Extract the method invocation receiver + name.
+			String methodName = invoke.getMethodName();
+			Model methodReceiver = Objects.requireNonNullElse(invoke.getReceiver(), invoke.getParentOfType(ClassModel.class));
+			Resolution receiverResolution = methodReceiver.resolve(this);
+			return inferExpectedTypeForArgument(invoke, receiverResolution, methodName, argumentIndex);
+		} finally {
+			activeArgumentIndices.remove(argumentIndex);
+			if (activeArgumentIndices.isEmpty())
+				argumentInferenceInProgress.remove(invoke);
+		}
 	}
 
 	@Nullable
@@ -1988,7 +2009,8 @@ public class BasicResolver implements Resolver {
 	@Nonnull
 	private Resolution resolveFieldInContext(@Nonnull Resolution contextResolution, @Nonnull Model origin,
 	                                         @Nonnull String fieldName) {
-		return resolveFieldInContext(contextResolution, fieldName, inferFromUsage(origin, true));
+		DescribableEntry typeHint = inferFromUsage(origin, true);
+		return resolveFieldInContext(contextResolution, fieldName, typeHint);
 	}
 
 	@Nonnull

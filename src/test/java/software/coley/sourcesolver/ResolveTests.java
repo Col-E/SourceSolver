@@ -2,6 +2,7 @@ package software.coley.sourcesolver;
 
 import org.junit.jupiter.api.Test;
 import software.coley.sourcesolver.model.CompilationUnitModel;
+import software.coley.sourcesolver.model.MemberSelectExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.ScopeLookup;
 import software.coley.sourcesolver.model.VariableModel;
@@ -352,6 +353,38 @@ public class ResolveTests {
 		Resolver resolver = new BasicResolver(model, pool);
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "copyValueOf"),
 				"java/lang/String", "copyValueOf", "([CII)Ljava/lang/String;");
+	}
+
+	@Test
+	void testResolveFieldInArgumentContextWithoutRecursiveInference() {
+		// Original failure path:
+		// 1. Resolving 'TimeUnit.SECONDS' calls resolveFieldInContext(..., origin, "SECONDS").
+		// 2. That asks inferFromUsage(...) for the argument's expected type from EnumSet.of(...).
+		// 3. inferExpectedTypeForArgument(...) then inspects sibling arguments via collectKnownGenericArgumentHints(...).
+		// 4. Resolving the sibling 'TimeUnit.MINUTES' repeats the same path and re-enters the original field inference.
+		// 5. Without a re-entrancy guard this loops until StackOverflowError.
+		//
+ 		// We not have a guard so this should resolve just fine without blowing the stack.
+		String sourceCode = """
+				package sample;
+				
+				import java.util.EnumSet;
+				import java.util.concurrent.TimeUnit;
+				
+				public class OuterClass {
+					void test() {
+						EnumSet.of(TimeUnit.SECONDS, TimeUnit.MINUTES);
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+		MemberSelectExpressionModel fieldAccess = model.getRecursiveChildrenOfType(MemberSelectExpressionModel.class).stream()
+				.filter(memberSelect -> memberSelect.getSource(model).trim().equals("TimeUnit.SECONDS"))
+				.findFirst()
+				.orElseThrow();
+		assertFieldResolution(fieldAccess.resolve(resolver),
+				"java/util/concurrent/TimeUnit", "SECONDS", "Ljava/util/concurrent/TimeUnit;");
 	}
 
 	@Test
