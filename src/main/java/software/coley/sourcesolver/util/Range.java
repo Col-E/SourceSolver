@@ -1,13 +1,8 @@
 package software.coley.sourcesolver.util;
 
-import com.sun.source.tree.Tree;
-import com.sun.tools.javac.tree.EndPosTable;
-import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.util.JCDiagnostic;
 import jakarta.annotation.Nonnull;
 import software.coley.sourcesolver.model.Model;
 
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -22,51 +17,6 @@ import java.util.List;
  */
 public record Range(int begin, int end) implements Comparable<Range> {
 	public static final Range UNKNOWN = new Range(-1, -1);
-
-	/**
-	 * @param table
-	 * 		Table to lookup tree positions within.
-	 * @param tree
-	 * 		Tree to calculate range of.
-	 *
-	 * @return Range covering tree.
-	 */
-	@Nonnull
-	public static Range extractRange(@Nonnull EndPosTable table, @Nonnull Tree tree) {
-		if (tree instanceof JCTree treeImpl) {
-			JCDiagnostic.DiagnosticPosition pos = treeImpl.pos();
-			return new Range(pos.getStartPosition(), pos.getEndPosition(table));
-		}
-		throw new IllegalArgumentException("Cannot resolve range of unexpected tree type: "
-				+ tree.getClass().getName());
-	}
-
-	/**
-	 * @param table
-	 * 		Table to lookup tree positions within.
-	 * @param trees
-	 * 		Trees to calculate range of.
-	 *
-	 * @return Range covering all trees.
-	 */
-	@Nonnull
-	public static Range extractRange(@Nonnull EndPosTable table, @Nonnull Collection<? extends Tree> trees) {
-		if (trees.isEmpty())
-			throw new IllegalArgumentException("Cannot extract range of empty tree collection");
-
-		int min = Integer.MAX_VALUE;
-		int max = Integer.MIN_VALUE;
-		for (Tree tree : trees) {
-			Range range = extractRange(table, tree);
-			if (range.begin < min)
-				min = range.begin;
-			int end = range.end();
-			if (end > max)
-				max = end;
-		}
-
-		return new Range(min, max);
-	}
 
 	/**
 	 * @param position

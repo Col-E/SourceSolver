@@ -1,9 +1,8 @@
 package software.coley.sourcesolver.mapping;
 
-import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.Parser;
-
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.Parser;
+import software.coley.sourcesolver.util.RangeExtractor;
 
 /**
  * Supplies a {@link MappingContext}.
@@ -13,13 +12,13 @@ import jakarta.annotation.Nonnull;
  */
 public interface MappingContextProvider {
 	/**
-	 * @param table
-	 * 		Table to lookup tree positions within.
+	 * @param extractor
+	 * 		Range extractor to use for calculating source code ranges of trees.
 	 * @param source
 	 * 		Java source code.
 	 *
 	 * @return New mapping context.
 	 */
 	@Nonnull
-	MappingContext newMappingContext(@Nonnull EndPosTable table, @Nonnull String source);
+	MappingContext newMappingContext(@Nonnull RangeExtractor extractor, @Nonnull String source);
 }

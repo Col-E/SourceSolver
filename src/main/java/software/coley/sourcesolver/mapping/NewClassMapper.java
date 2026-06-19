@@ -2,23 +2,21 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.ParameterizedTypeTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NewClassExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class NewClassMapper implements Mapper<NewClassExpressionModel, NewClassTree> {
 	@Nonnull
 	@Override
-	public NewClassExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull NewClassTree tree) {
-		Range range = extractRange(table, tree);
+	public NewClassExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull NewClassTree tree) {
+		Range range = extractor.get(tree);
 		AbstractExpressionModel enclosing = tree.getEnclosingExpression() == null ? null : context.map(ExpressionMapper.class, tree.getEnclosingExpression());
 		List<Model> typeArguments = context.map(TypeArgumentsMapper.class, tree::getTypeArguments).getArguments();
 		AbstractExpressionModel identifier;

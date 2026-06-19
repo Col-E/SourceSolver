@@ -1,7 +1,8 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.BlockTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.MethodBodyModel;
 import software.coley.sourcesolver.model.MethodModel;
 import software.coley.sourcesolver.model.ModifiersModel;
@@ -9,16 +10,13 @@ import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class StaticInitializerMethodMapper implements Mapper<MethodModel, BlockTree> {
 	@Nonnull
 	@Override
-	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull BlockTree tree) {
-		Range methodRange = extractRange(table, tree); // Will contain the whole "static { ... }"
+	public MethodModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull BlockTree tree) {
+		Range methodRange = extractor.get(tree); // Will contain the whole "static { ... }"
 		Range keywordRange = new Range(methodRange.begin(), methodRange.begin() + 6);
 		Range blockRange = new Range(context.getSource().indexOf('{', methodRange.begin()), methodRange.end());
 		TypeModel.Primitive returnType = new TypeModel.Primitive(keywordRange, new NameExpressionModel(Range.UNKNOWN, "void"));

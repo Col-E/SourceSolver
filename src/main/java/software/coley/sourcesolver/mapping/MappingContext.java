@@ -1,9 +1,9 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.Tree;
-import com.sun.tools.javac.tree.EndPosTable;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.Model;
 
 import java.util.IdentityHashMap;
@@ -17,19 +17,19 @@ import java.util.function.Supplier;
  */
 public class MappingContext {
 	private static final Map<Class<?>, Supplier<Mapper<?, ?>>> mapperSuppliersByClass = new IdentityHashMap<>();
-	private final EndPosTable table;
+	private final RangeExtractor extractor;
 	private final String source;
 	private String className = ".";
 	private boolean isEnum;
 
 	/**
-	 * @param table
-	 * 		Table to lookup tree positions within.
+	 * @param extractor
+	 * 		Extractor to use for calculating source code ranges of trees.
 	 * @param source
 	 * 		Original source code being parsed.
 	 */
-	public MappingContext(@Nonnull EndPosTable table, @Nonnull String source) {
-		this.table = table;
+	public MappingContext(@Nonnull RangeExtractor extractor, @Nonnull String source) {
+		this.extractor = extractor;
 		this.source = source;
 
 		initializeDefaultMappers();
@@ -44,11 +44,11 @@ public class MappingContext {
 	}
 
 	/**
-	 * @return Table to lookup tree positions within.
+	 * @return Extractor to use for calculating source code ranges of trees.
 	 */
 	@Nonnull
-	public EndPosTable getTable() {
-		return table;
+	public RangeExtractor getRangeExtractor() {
+		return extractor;
 	}
 
 	/**
@@ -148,7 +148,7 @@ public class MappingContext {
 	public <M extends Model, T extends Tree, X extends Mapper<M, T>> M map(@Nonnull Class<X> mapperType, @Nonnull T tree) {
 		if (tree == null)
 			throw new IllegalStateException("Cannot map 'null' tree value to type " + mapperType.getSimpleName());
-		return getMapper(mapperType).map(this, table, tree);
+		return getMapper(mapperType).map(this, extractor, tree);
 	}
 
 	/**
@@ -172,7 +172,7 @@ public class MappingContext {
 	                                                                         @Nonnull Supplier<M> defaultValueSupplier) {
 		if (tree == null)
 			return defaultValueSupplier.get();
-		return getMapper(mapperType).map(this, table, tree);
+		return getMapper(mapperType).map(this, extractor, tree);
 	}
 
 	/**

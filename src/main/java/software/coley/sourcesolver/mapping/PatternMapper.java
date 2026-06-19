@@ -3,7 +3,8 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.BindingPatternTree;
 import com.sun.source.tree.DeconstructionPatternTree;
 import com.sun.source.tree.PatternTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AbstractPatternModel;
 import software.coley.sourcesolver.model.BindingPatternModel;
@@ -12,16 +13,13 @@ import software.coley.sourcesolver.model.UnknownPatternModel;
 import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class PatternMapper implements Mapper<AbstractPatternModel, PatternTree> {
 	@Nonnull
 	@Override
-	public AbstractPatternModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull PatternTree tree) {
-		Range range = extractRange(table, tree);
+	public AbstractPatternModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull PatternTree tree) {
+		Range range = extractor.get(tree);
 		if (tree instanceof BindingPatternTree bindingTree) {
 			VariableModel variable = context.map(VariableMapper.class, bindingTree.getVariable());
 			return new BindingPatternModel(range, variable);

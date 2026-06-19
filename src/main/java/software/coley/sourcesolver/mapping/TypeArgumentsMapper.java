@@ -4,20 +4,20 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TreeVisitor;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 
 public class TypeArgumentsMapper implements Mapper<TypeArgumentsMapper.Args, TypeArgumentsMapper.ArgsTree> {
 	@Nonnull
 	@Override
-	public Args map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nullable ArgsTree tree) {
+	public Args map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nullable ArgsTree tree) {
 		List<Model> typeArguments = tree == null || tree.getTypeArguments() == null ? Collections.emptyList() :
 				tree.getTypeArguments().stream().map(t -> {
 					Model model;

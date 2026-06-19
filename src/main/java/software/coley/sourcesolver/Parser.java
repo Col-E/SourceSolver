@@ -3,18 +3,19 @@ package software.coley.sourcesolver;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.tools.javac.parser.JavacParser;
 import com.sun.tools.javac.parser.ParserFactory;
-import com.sun.tools.javac.tree.EndPosTable;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import software.coley.sourcesolver.mapping.CompilationUnitMapper;
 import software.coley.sourcesolver.mapping.MappingContext;
 import software.coley.sourcesolver.mapping.MappingContextProvider;
 import software.coley.sourcesolver.model.CompilationUnitModel;
+import software.coley.sourcesolver.util.RangeExtractor;
+import software.coley.sourcesolver.util.compat.FactoryFactory;
+import software.coley.sourcesolver.util.compat.RangeExtractorFactory;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import javax.tools.JavaFileManager;
-import java.lang.reflect.Field;
 
 /**
  * Initiates the parsing of source code and provides {@link CompilationUnitModel} in return.
@@ -134,16 +135,11 @@ public class Parser {
 				true  /* keepEndPos */,
 				false /* keepLineMap */
 		);
-		EndPosTable table;
-		try {
-			table = extractEndPosTable(parser);
-		} catch (Exception ex) {
-			throw new IllegalStateException("Failed to extract end-pos table from javac parser", ex);
-		}
 
 		// Parse the compilation unit and convert to our own lightweight model
 		CompilationUnitTree unit = parser.parseCompilationUnit();
-		return mapCompilationUnit(source, table, unit);
+		RangeExtractor extractor = FactoryFactory.getRangeExtractor().apply(parser);
+		return mapCompilationUnit(source, extractor, unit);
 	}
 
 	/**
@@ -151,35 +147,18 @@ public class Parser {
 	 *
 	 * @param source
 	 * 		Java source code.
-	 * @param table
-	 * 		Table containing offsets of javac tree elements.
+	 * @param extractor
+	 * 		Range extractor to use for calculating source code ranges of trees.
 	 * @param unit
 	 * 		Root tree element.
 	 *
 	 * @return Parsed model.
 	 */
 	@Nonnull
-	protected CompilationUnitModel mapCompilationUnit(@Nonnull String source, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree unit) {
-		MappingContext mappingContext = mappingContextFactory.newMappingContext(table, source);
+	protected CompilationUnitModel mapCompilationUnit(@Nonnull String source, @Nonnull RangeExtractor extractor, @Nonnull CompilationUnitTree unit) {
+		MappingContext mappingContext = mappingContextFactory.newMappingContext(extractor, source);
 		mappingContext.setMapperSupplier(CompilationUnitMapper.class, () -> new CompilationUnitMapper(source));
 		return mappingContext.map(CompilationUnitMapper.class, unit);
 	}
 
-	/**
-	 * Retrieves the private table information we use for mapping our model's ranges.
-	 *
-	 * @param parser
-	 * 		Context to reflect from.
-	 *
-	 * @return End position table within the given parser.
-	 *
-	 * @throws Exception
-	 * 		When the table cannot be reflected.
-	 */
-	@Nonnull
-	protected EndPosTable extractEndPosTable(@Nonnull JavacParser parser) throws Exception {
-		Field field = JavacParser.class.getDeclaredField("endPosTable");
-		field.setAccessible(true);
-		return (EndPosTable) field.get(parser);
-	}
 }

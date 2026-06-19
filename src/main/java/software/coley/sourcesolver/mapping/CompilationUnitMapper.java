@@ -3,19 +3,17 @@ package software.coley.sourcesolver.mapping;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.PackageTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
 import software.coley.sourcesolver.model.CompilationUnitModel;
 import software.coley.sourcesolver.model.ImportModel;
 import software.coley.sourcesolver.model.PackageModel;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class CompilationUnitMapper implements Mapper<CompilationUnitModel, CompilationUnitTree> {
 	private final String inputSource;
@@ -26,7 +24,7 @@ public class CompilationUnitMapper implements Mapper<CompilationUnitModel, Compi
 
 	@Nonnull
 	@Override
-	public CompilationUnitModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull CompilationUnitTree tree) {
+	public CompilationUnitModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull CompilationUnitTree tree) {
 		// Package
 		List<AnnotationExpressionModel> packageAnnotations;
 		if (tree.getPackageAnnotations() == null)
@@ -51,6 +49,6 @@ public class CompilationUnitMapper implements Mapper<CompilationUnitModel, Compi
 				.map(t -> (ClassTree) t)
 				.map(ct -> context.map(ClassMapper.class, ct))
 				.toList();
-		return new CompilationUnitModel(extractRange(table, tree), inputSource, packageModel, importModels, classModels);
+		return new CompilationUnitModel(extractor.get(tree), inputSource, packageModel, importModels, classModels);
 	}
 }

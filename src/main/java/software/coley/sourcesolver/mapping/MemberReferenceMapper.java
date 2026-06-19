@@ -1,24 +1,22 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.MemberReferenceTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.MethodReferenceExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class MemberReferenceMapper implements Mapper<MethodReferenceExpressionModel, MemberReferenceTree> {
 	@Nonnull
 	@Override
-	public MethodReferenceExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table,
+	public MethodReferenceExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor,
 	                                          @Nonnull MemberReferenceTree tree) {
-		Range range = extractRange(table, tree);
+		Range range = extractor.get(tree);
 		MethodReferenceExpressionModel.Mode mode = switch (tree.getMode()) {
 			case INVOKE -> MethodReferenceExpressionModel.Mode.INVOKE;
 			case NEW -> MethodReferenceExpressionModel.Mode.NEW;

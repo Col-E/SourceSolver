@@ -1,17 +1,14 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.LiteralTree;
-import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.LiteralExpressionModel;
-
 import jakarta.annotation.Nonnull;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
+import software.coley.sourcesolver.util.RangeExtractor;
+import software.coley.sourcesolver.model.LiteralExpressionModel;
 
 public class LiteralMapper implements Mapper<LiteralExpressionModel, LiteralTree> {
 	@Nonnull
 	@Override
-	public LiteralExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull LiteralTree tree) {
+	public LiteralExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull LiteralTree tree) {
 		Object content = tree.getValue();
 		var kind = switch (tree.getKind()) {
 			case INT_LITERAL -> LiteralExpressionModel.Kind.INT;
@@ -24,6 +21,6 @@ public class LiteralMapper implements Mapper<LiteralExpressionModel, LiteralTree
 			case NULL_LITERAL -> LiteralExpressionModel.Kind.NULL;
 			default -> LiteralExpressionModel.Kind.ERROR;
 		};
-		return new LiteralExpressionModel(extractRange(table, tree), kind, content);
+		return new LiteralExpressionModel(extractor.get(tree), kind, content);
 	}
 }

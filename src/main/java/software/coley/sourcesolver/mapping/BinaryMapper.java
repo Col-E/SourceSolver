@@ -1,20 +1,17 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.BinaryTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.BinaryExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
-
 public class BinaryMapper implements Mapper<BinaryExpressionModel, BinaryTree> {
 	@Nonnull
 	@Override
-	public BinaryExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull BinaryTree tree) {
-		Range range = extractRange(table, tree);
+	public BinaryExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull BinaryTree tree) {
+		Range range = extractor.get(tree);
 		AbstractExpressionModel left = context.map(ExpressionMapper.class, tree.getLeftOperand());
 		AbstractExpressionModel right = context.map(ExpressionMapper.class, tree.getRightOperand());
 		BinaryExpressionModel.Operator operator =

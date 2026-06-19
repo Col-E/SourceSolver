@@ -1,17 +1,14 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.ImportTree;
-import com.sun.tools.javac.tree.EndPosTable;
-import software.coley.sourcesolver.model.ImportModel;
-
 import jakarta.annotation.Nonnull;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
+import software.coley.sourcesolver.util.RangeExtractor;
+import software.coley.sourcesolver.model.ImportModel;
 
 public class ImportMapper implements Mapper<ImportModel, ImportTree> {
 	@Nonnull
 	@Override
-	public ImportModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ImportTree tree) {
-		return new ImportModel(extractRange(table, tree), tree.isStatic(), tree.getQualifiedIdentifier().toString());
+	public ImportModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull ImportTree tree) {
+		return new ImportModel(extractor.get(tree), tree.isStatic(), tree.getQualifiedIdentifier().toString());
 	}
 }

@@ -2,23 +2,21 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.NewArrayTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ArrayDeclarationExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static software.coley.sourcesolver.util.Range.extractRange;
-
 public class ArrayDeclarationMapper implements Mapper<ArrayDeclarationExpressionModel, NewArrayTree> {
 	@Nonnull
 	@Override
-	public ArrayDeclarationExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull NewArrayTree tree) {
+	public ArrayDeclarationExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull NewArrayTree tree) {
 		List<AnnotationExpressionModel> annotationModels = tree.getAnnotations().stream()
 				.map(anno -> context.map(AnnotationUseMapper.class, anno))
 				.toList();
@@ -31,6 +29,6 @@ public class ArrayDeclarationMapper implements Mapper<ArrayDeclarationExpression
 
 		TypeModel type = context.mapOr(TypeMapper.class, tree.getType(), TypeModel::newVar);
 
-		return new ArrayDeclarationExpressionModel(extractRange(table, tree), type, dimensionModels, initializersModels, annotationModels);
+		return new ArrayDeclarationExpressionModel(extractor.get(tree), type, dimensionModels, initializersModels, annotationModels);
 	}
 }

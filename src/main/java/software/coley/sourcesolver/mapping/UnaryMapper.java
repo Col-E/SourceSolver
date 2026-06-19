@@ -1,20 +1,17 @@
 package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.UnaryTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.UnaryExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
-
 public class UnaryMapper implements Mapper<UnaryExpressionModel, UnaryTree> {
 	@Nonnull
 	@Override
-	public UnaryExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull UnaryTree tree) {
-		Range range = extractRange(table, tree);
+	public UnaryExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull UnaryTree tree) {
+		Range range = extractor.get(tree);
 		AbstractExpressionModel expression = context.map(ExpressionMapper.class, tree.getExpression());
 		UnaryExpressionModel.Operator operator = switch (tree.getKind()) {
 			case POSTFIX_INCREMENT -> UnaryExpressionModel.Operator.POST_INCREMENT;

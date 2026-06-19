@@ -7,9 +7,9 @@ import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
-import com.sun.tools.javac.tree.EndPosTable;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.ClassModel;
 import software.coley.sourcesolver.model.ImplementsModel;
@@ -26,12 +26,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static software.coley.sourcesolver.util.Range.extractRange;
-
 public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 	@Nonnull
 	@Override
-	public ClassModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ClassTree tree) {
+	public ClassModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull ClassTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiersModel = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
@@ -56,14 +54,14 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 		List<? extends Tree> implementsClauses = tree.getImplementsClause();
 		ImplementsModel implementsModel = implementsClauses.isEmpty() ?
 				ImplementsModel.EMPTY :
-				new ImplementsModel(extractRange(table, implementsClauses), implementsClauses.stream()
+				new ImplementsModel(extractor.get(implementsClauses), implementsClauses.stream()
 						.map(e -> mapMaybeGeneric(context, e))
 						.toList());
 
 		List<? extends Tree> permitsClause = tree.getPermitsClause();
 		PermitsModel permitsModel = permitsClause.isEmpty() ?
 				PermitsModel.EMPTY :
-				new PermitsModel(extractRange(table, permitsClause), permitsClause.stream()
+				new PermitsModel(extractor.get(permitsClause), permitsClause.stream()
 						.map(e -> mapMaybeGeneric(context, e))
 						.toList());
 
@@ -78,14 +76,14 @@ public class ClassMapper implements Mapper<ClassModel, ClassTree> {
 				VariableModel fieldModel = context.map(VariableMapper.class, variableTree);
 				fieldModels.add(fieldModel);
 			} else if (memberTree instanceof ClassTree innerClassTree) {
-				ClassModel innerClassModel = map(context, table, innerClassTree);
+				ClassModel innerClassModel = map(context, extractor, innerClassTree);
 				innerClassModels.add(innerClassModel);
 			} else if (memberTree instanceof BlockTree staticInitializerTree) {
 				methodModels.add(context.map(StaticInitializerMethodMapper.class, staticInitializerTree));
 			}
 		}
 
-		return new ClassModel(extractRange(table, tree), annotationModels, modifiersModel,
+		return new ClassModel(extractor.get(tree), annotationModels, modifiersModel,
 				className, typeParameterModels, extendsModel, implementsModel, permitsModel, fieldModels, methodModels, innerClassModels);
 	}
 

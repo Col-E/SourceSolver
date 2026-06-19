@@ -6,8 +6,8 @@ import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
-import com.sun.tools.javac.tree.EndPosTable;
 import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.LiteralExpressionModel;
@@ -22,14 +22,11 @@ import software.coley.sourcesolver.util.Range;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 	@Nonnull
 	@Override
-	public MethodModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull MethodTree tree) {
+	public MethodModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull MethodTree tree) {
 		// Modifiers
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
@@ -84,7 +81,7 @@ public class MethodMapper implements Mapper<MethodModel, MethodTree> {
 		BlockTree body = tree.getBody();
 		MethodBodyModel methodBody = body == null ? null : context.map(MethodBodyMapper.class, body);
 
-		return new MethodModel(extractRange(table, tree), name, modifiers, typeParameters, returnType,
+		return new MethodModel(extractor.get(tree), name, modifiers, typeParameters, returnType,
 				parameters, defaultValue, thrownTypes, annotationModels, methodBody);
 	}
 }

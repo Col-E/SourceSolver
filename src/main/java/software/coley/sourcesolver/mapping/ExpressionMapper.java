@@ -1,7 +1,28 @@
 package software.coley.sourcesolver.mapping;
 
-import com.sun.source.tree.*;
-import com.sun.tools.javac.tree.EndPosTable;
+import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.ArrayAccessTree;
+import com.sun.source.tree.AssignmentTree;
+import com.sun.source.tree.BinaryTree;
+import com.sun.source.tree.CompoundAssignmentTree;
+import com.sun.source.tree.ConditionalExpressionTree;
+import com.sun.source.tree.ErroneousTree;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.InstanceOfTree;
+import com.sun.source.tree.LambdaExpressionTree;
+import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.MemberReferenceTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.NewArrayTree;
+import com.sun.source.tree.NewClassTree;
+import com.sun.source.tree.ParenthesizedTree;
+import com.sun.source.tree.SwitchExpressionTree;
+import com.sun.source.tree.TypeCastTree;
+import com.sun.source.tree.UnaryTree;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AbstractExpressionModel;
 import software.coley.sourcesolver.model.ArrayAccessExpressionModel;
 import software.coley.sourcesolver.model.AssignmentExpressionModel;
@@ -13,20 +34,17 @@ import software.coley.sourcesolver.model.SwitchExpressionModel;
 import software.coley.sourcesolver.model.UnknownExpressionModel;
 import software.coley.sourcesolver.util.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
-
-import static software.coley.sourcesolver.util.Range.extractRange;
 
 public class ExpressionMapper implements Mapper<AbstractExpressionModel, ExpressionTree> {
 	@Nonnull
 	@Override
-	public AbstractExpressionModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull ExpressionTree tree) {
-		Range range = extractRange(table, tree);
+	public AbstractExpressionModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull ExpressionTree tree) {
+		Range range = extractor.get(tree);
 
 		// Anything in parentheses
 		if (tree instanceof ParenthesizedTree parenthesized)
-			return new ParenthesizedExpressionModel(range, map(context, table, parenthesized.getExpression()));
+			return new ParenthesizedExpressionModel(range, map(context, extractor, parenthesized.getExpression()));
 
 		// Strings, integers, floats, etc
 		if (tree instanceof LiteralTree literal)
@@ -47,15 +65,15 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 
 		// foo = expression
 		if (tree instanceof AssignmentTree assignment) {
-			AbstractExpressionModel variable = map(context, table, assignment.getVariable());
-			AbstractExpressionModel expression = map(context, table, assignment.getExpression());
+			AbstractExpressionModel variable = map(context, extractor, assignment.getVariable());
+			AbstractExpressionModel expression = map(context, extractor, assignment.getExpression());
 			return new AssignmentExpressionModel(range, variable, expression, AssignmentExpressionModel.Operator.SET);
 		}
 
 		// foo += value
 		if (tree instanceof CompoundAssignmentTree assignment) {
-			AbstractExpressionModel variable = map(context, table, assignment.getVariable());
-			AbstractExpressionModel expression = map(context, table, assignment.getExpression());
+			AbstractExpressionModel variable = map(context, extractor, assignment.getVariable());
+			AbstractExpressionModel expression = map(context, extractor, assignment.getExpression());
 			AssignmentExpressionModel.Operator operator = switch (tree.getKind()) {
 				case PLUS_ASSIGNMENT -> AssignmentExpressionModel.Operator.PLUS;
 				case MINUS_ASSIGNMENT -> AssignmentExpressionModel.Operator.MINUS;
@@ -99,15 +117,15 @@ public class ExpressionMapper implements Mapper<AbstractExpressionModel, Express
 		// array[index++]
 		if (tree instanceof ArrayAccessTree arrayAccess)
 			return new ArrayAccessExpressionModel(range,
-					map(context, table, arrayAccess.getExpression()),
-					map(context, table, arrayAccess.getIndex()));
+					map(context, extractor, arrayAccess.getExpression()),
+					map(context, extractor, arrayAccess.getIndex()));
 
 		// condition ? case1 : case2
 		if (tree instanceof ConditionalExpressionTree conditional)
 			return new ConditionalExpressionModel(range,
-					map(context, table, conditional.getCondition()),
-					map(context, table, conditional.getTrueExpression()),
-					map(context, table, conditional.getFalseExpression()));
+					map(context, extractor, conditional.getCondition()),
+					map(context, extractor, conditional.getTrueExpression()),
+					map(context, extractor, conditional.getFalseExpression()));
 
 		// new int[N];
 		// { one, two };

@@ -2,7 +2,8 @@ package software.coley.sourcesolver.mapping;
 
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.VariableTree;
-import com.sun.tools.javac.tree.EndPosTable;
+import jakarta.annotation.Nonnull;
+import software.coley.sourcesolver.util.RangeExtractor;
 import software.coley.sourcesolver.model.AnnotationExpressionModel;
 import software.coley.sourcesolver.model.Model;
 import software.coley.sourcesolver.model.ModifiersModel;
@@ -10,20 +11,16 @@ import software.coley.sourcesolver.model.NameExpressionModel;
 import software.coley.sourcesolver.model.NewClassExpressionModel;
 import software.coley.sourcesolver.model.TypeModel;
 import software.coley.sourcesolver.model.VariableModel;
-
-import jakarta.annotation.Nonnull;
 import software.coley.sourcesolver.util.Range;
 
 import java.util.Collections;
 import java.util.List;
 
-import static software.coley.sourcesolver.util.Range.extractRange;
-
 public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 	@Nonnull
 	@Override
 	@SuppressWarnings("DataFlowIssue")
-	public VariableModel map(@Nonnull MappingContext context, @Nonnull EndPosTable table, @Nonnull VariableTree tree) {
+	public VariableModel map(@Nonnull MappingContext context, @Nonnull RangeExtractor extractor, @Nonnull VariableTree tree) {
 		ModifiersMapper.ModifiersParsePair modifiersPair = context.map(ModifiersMapper.class, tree.getModifiers());
 		List<AnnotationExpressionModel> annotationModels = modifiersPair.getAnnotations() == null ? Collections.emptyList() : modifiersPair.getAnnotations();
 		ModifiersModel modifiers = modifiersPair.isEmpty() ? ModifiersModel.EMPTY : modifiersPair.getModifiers();
@@ -41,6 +38,6 @@ public class VariableMapper implements Mapper<VariableModel, VariableTree> {
 			valueModel = new NewClassExpressionModel(Range.UNKNOWN, null, Collections.emptyList(), new NameExpressionModel(Range.UNKNOWN, namedType.getName()), Collections.emptyList(), null);
 		}
 
-		return new VariableModel(extractRange(table, tree), annotationModels, modifiers, typeModel, name, valueModel);
+		return new VariableModel(extractor.get(tree), annotationModels, modifiers, typeModel, name, valueModel);
 	}
 }
