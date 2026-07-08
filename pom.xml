@@ -33,7 +33,9 @@
     </developers>
 
     <properties>
+        <jacoco.version>0.8.15</jacoco.version>
         <junit.version>5.9.2</junit.version>
+        <argLine></argLine>
     </properties>
 
     <dependencies>
@@ -120,11 +122,32 @@
                 <version>2.22.2</version>
                 <configuration>
                     <argLine>
+                        @{argLine}
                         --add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
                         --add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
                         --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
                     </argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
