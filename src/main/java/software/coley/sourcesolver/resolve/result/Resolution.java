@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Base type of any resolution.
  */
-public sealed interface Resolution permits DescribableResolution, PackageResolution, MultiClassResolution, MultiMemberResolution, ThrowingResolution, UnknownResolution {
+public sealed interface Resolution permits DescribableResolution, PackageResolution, VariableResolution, MultiClassResolution, MultiMemberResolution, ThrowingResolution, UnknownResolution {
 	/**
 	 * @param other
 	 * 		Other resolution to check against.

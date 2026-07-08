@@ -63,6 +63,7 @@ import software.coley.sourcesolver.resolve.result.PrimitiveResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.resolve.result.Resolutions;
 import software.coley.sourcesolver.resolve.result.ThrowingResolution;
+import software.coley.sourcesolver.resolve.result.VariableResolution;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -287,6 +288,18 @@ public class BasicResolver implements Resolver {
 					return ofPrimitive(INT);
 				return resolveFieldByNameInClass(jlObjectEntry, fieldName, typeHint);
 			}
+		} else if (contextResolution instanceof VariableResolution variableResolution) {
+			GenericType variableType = Resolutions.getResolvedVariableGenericType(variableResolution);
+			GenericType usableVariableType = GenericTypes.toUsableType(variableType, jlObjectEntry);
+			if (usableVariableType instanceof GenericType.ClassType declaringClass)
+				return resolveFieldByNameInClass(declaringClass, fieldName, typeHint);
+			else if (usableVariableType != null && usableVariableType.asDescribable() instanceof ArrayEntry) {
+				// The identifier is in the context of an array variable such as:
+				//  - args.length
+				if (fieldName.equals("length"))
+					return ofPrimitive(INT);
+				return resolveFieldByNameInClass(jlObjectEntry, fieldName, typeHint);
+			}
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			GenericType returnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
 			GenericType usableReturnType = GenericTypes.toUsableType(returnType, jlObjectEntry);
@@ -320,6 +333,15 @@ public class BasicResolver implements Resolver {
 			if (usableFieldType instanceof GenericType.ClassType declaringClass)
 				return resolveMethodByNameInClass(declaringClass, methodName,
 						rawGenericType(returnTypeHint), genericArguments, describableArguments);
+		} else if (contextResolution instanceof VariableResolution variableResolution) {
+			GenericType variableType = Resolutions.getResolvedVariableGenericType(variableResolution);
+			GenericType usableVariableType = GenericTypes.toUsableType(variableType, jlObjectEntry);
+			if (usableVariableType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnTypeHint), genericArguments, describableArguments);
+			else if (usableVariableType != null && usableVariableType.asDescribable() instanceof ArrayEntry)
+				return resolveMethodByNameInClass(GenericTypes.ofClass(jlObjectEntry), methodName,
+						rawGenericType(returnTypeHint), genericArguments, describableArguments);
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			GenericType methodReturnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);
 			GenericType usableReturnType = GenericTypes.toUsableType(methodReturnType, jlObjectEntry);
@@ -348,7 +370,7 @@ public class BasicResolver implements Resolver {
 			case ClassModel clazz -> resolveClassModel(clazz);
 			case MethodModel method -> resolveMethodModel(method);
 			case VariableModel variable ->
-					target.getParent() instanceof ClassModel declaringClass ? resolveFieldModel(declaringClass, variable) : resolveVariableType(variable);
+					target.getParent() instanceof ClassModel declaringClass ? resolveFieldModel(declaringClass, variable) : resolveVariableModel(variable);
 			case PackageModel pkg -> resolvePackageModel(pkg);
 			case ImportModel imp -> resolveImportModel(imp);
 			case ModifiersModel modifiers when modifiers.getParent() instanceof MethodModel method && method.getName().equals("<clinit>") ->
@@ -469,7 +491,7 @@ public class BasicResolver implements Resolver {
 						.filter(v -> v.getRange().end() <= named.getRange().begin() && v.getName().equals(name))
 						.findFirst();
 				if (outerScopedVariable.isPresent()) {
-					Resolution resolution = resolveVariableType(outerScopedVariable.get());
+					Resolution resolution = resolveVariableModel(outerScopedVariable.get());
 					if (!resolution.isUnknown())
 						return resolution;
 				}
@@ -483,7 +505,7 @@ public class BasicResolver implements Resolver {
 				for (VariableModel variable : scopedVariables) {
 					// Check for matching name, and if it is within scope (basic usage after definition check)
 					if (variable.getName().equals(name) && variable.getRange().end() <= named.getRange().begin()) {
-						Resolution resolution = resolveVariableType(variable);
+						Resolution resolution = resolveVariableModel(variable);
 						if (!resolution.isUnknown())
 							return resolution;
 					}
@@ -1002,6 +1024,7 @@ public class BasicResolver implements Resolver {
 		return switch (resolution) {
 			case FieldResolution fieldResolution -> Resolutions.getResolvedFieldGenericType(fieldResolution);
 			case MethodResolution methodResolution -> Resolutions.getResolvedMethodReturnGenericType(methodResolution);
+			case VariableResolution variableResolution -> Resolutions.getResolvedVariableGenericType(variableResolution);
 			case ClassResolution classResolution -> Resolutions.getResolvedClassType(classResolution);
 			case ArrayResolution arrayResolution -> {
 				GenericType elementType = getResolvedGenericType(arrayResolution.getElementTypeResolution());
@@ -1306,20 +1329,17 @@ public class BasicResolver implements Resolver {
 		if (!(method.getReturnType().resolve(this) instanceof DescribableResolution resolvedReturnType))
 			return unknown();
 		List<VariableModel> parameters = method.getParameters();
-		List<DescribableResolution> resolvedParameterTypes = new ArrayList<>(parameters.size());
+		List<DescribableEntry> describableParameters = new ArrayList<>(parameters.size());
 		for (VariableModel parameter : parameters) {
-			Resolution resolution = parameter.resolve(this);
-			if (resolution instanceof DescribableResolution resolvedParameter)
-				resolvedParameterTypes.add(resolvedParameter);
+			DescribableEntry resolvedParameterType = Resolutions.getResolvedValueType(parameter.resolve(this));
+			if (resolvedParameterType != null)
+				describableParameters.add(resolvedParameterType);
 			else
 				// If a parameter is not resolvable, we cannot resolve this method
 				return unknown();
 		}
 
 		// Resolve by name/descriptor.
-		List<DescribableEntry> describableParameters = resolvedParameterTypes.stream()
-				.map(DescribableResolution::getDescribableEntry)
-				.toList();
 		Resolution resolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
 
 		// For constructors of inner classes, try again with the synthetic outer class parameter added.
@@ -1328,10 +1348,7 @@ public class BasicResolver implements Resolver {
 			ClassEntry outerClass = definingClassEntry.getOuterClass();
 			if (outerClass != null) {
 				// Same resolve by name/descriptor, but with the added synthetic parameter.
-				resolvedParameterTypes.addFirst(ofClass(outerClass));
-				describableParameters = resolvedParameterTypes.stream()
-						.map(DescribableResolution::getDescribableEntry)
-						.toList();
+				describableParameters.addFirst(outerClass);
 
 				// If we do not find a result we want to retain our existing resolution.
 				Resolution synthCtorResolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
@@ -1341,6 +1358,17 @@ public class BasicResolver implements Resolver {
 		}
 
 		return resolution;
+	}
+
+	@Nonnull
+	private Resolution resolveVariableModel(@Nonnull VariableModel variable) {
+		Resolution typeResolution = resolveVariableType(variable);
+		GenericType genericType = getResolvedGenericType(typeResolution);
+		if (genericType != null)
+			return ofVariable(variable.getName(), genericType);
+
+		DescribableEntry resolvedType = Resolutions.getResolvedValueType(typeResolution);
+		return resolvedType == null ? unknown() : ofVariable(variable.getName(), resolvedType);
 	}
 
 	@Nonnull
@@ -1725,6 +1753,13 @@ public class BasicResolver implements Resolver {
 				GenericType fieldType = getResolvedGenericType(fieldResolution);
 				yield fieldType != null ? resolveMemberInContext(toGenericResolution(fieldType), origin, memberName) : unknown();
 			}
+			case VariableResolution variableResolution -> {
+				// The identifier is in the context of a local variable or method parameter such as:
+				//  - someLocal.targetName
+				//  - someLocal.targetName()
+				GenericType variableType = getResolvedGenericType(variableResolution);
+				yield variableType != null ? resolveMemberInContext(toGenericResolution(variableType), origin, memberName) : unknown();
+			}
 			case MethodResolution methodResolution -> {
 				// The identifier is in the context of another member identifier such as:
 				//  - someMethod().targetName
@@ -2040,6 +2075,15 @@ public class BasicResolver implements Resolver {
 			GenericType usableFieldType = GenericTypes.toUsableType(fieldType, jlObjectEntry);
 			if (usableFieldType instanceof GenericType.ClassType declaringClass)
 				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnType), genericArguments, describableArguments);
+		} else if (contextResolution instanceof VariableResolution variableResolution) {
+			GenericType variableType = Resolutions.getResolvedVariableGenericType(variableResolution);
+			GenericType usableVariableType = GenericTypes.toUsableType(variableType, jlObjectEntry);
+			if (usableVariableType instanceof GenericType.ClassType declaringClass)
+				return resolveMethodByNameInClass(declaringClass, methodName,
+						rawGenericType(returnType), genericArguments, describableArguments);
+			else if (usableVariableType != null && usableVariableType.asDescribable() instanceof ArrayEntry)
+				return resolveMethodByNameInClass(GenericTypes.ofClass(jlObjectEntry), methodName,
 						rawGenericType(returnType), genericArguments, describableArguments);
 		} else if (contextResolution instanceof MethodResolution methodResolution) {
 			GenericType methodReturnType = Resolutions.getResolvedMethodReturnGenericType(methodResolution);

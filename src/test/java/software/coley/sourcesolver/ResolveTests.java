@@ -24,6 +24,7 @@ import software.coley.sourcesolver.resolve.result.PackageResolution;
 import software.coley.sourcesolver.resolve.result.PrimitiveResolution;
 import software.coley.sourcesolver.resolve.result.Resolution;
 import software.coley.sourcesolver.resolve.result.Resolutions;
+import software.coley.sourcesolver.resolve.result.VariableResolution;
 import software.coley.sourcesolver.util.Utils;
 
 import java.io.IOException;
@@ -91,20 +92,23 @@ public class ResolveTests {
 				CLASS_STRING); // On type name yields type
 		assertArrayResolution(resolutionAtOffset(resolver, sourceCode, "String[] args", "String[".length()),
 				1, CLASS_STRING); // On brackets yields array
-		assertArrayResolution(resolutionAtOffset(resolver, sourceCode, "String[] args", "String[] ar".length()),
-				1, CLASS_STRING); // On use of the variable yield its type (array)
-		assertArrayResolution(resolutionAtMiddle(resolver, sourceCode, "args[0]"),
-				1, CLASS_STRING);
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, "String[] args", "String[] ar".length()),
+				"args", "[Ljava/lang/String;"); // On use of the variable yield its variable resolution
+		assertVariableResolution(resolutionAtMiddle(resolver, sourceCode, "args[0]"),
+				"args", "[Ljava/lang/String;");
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "args.length"),
 				"I"); // Array length is a 'fake' field, so we yield the return type instead
-		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, ", mappedOutput)"),
-				CLASS_FIXED_DATA_LIST); // Use of the variable will yield its type
+		assertVariableResolution(resolutionAtMiddle(resolver, sourceCode, ", mappedOutput)"),
+				"mappedOutput", CLASS_FIXED_DATA_LIST);
 		assertClassResolution(resolutionAtMiddle(resolver, sourceCode, "new ExampleFixedList<>"),
 				CLASS_FIXED_DATA_LIST);
 		assertClassResolution(resolutionAtStart(resolver, sourceCode, "new ExampleFixedList<>"),
 				CLASS_FIXED_DATA_LIST);
-		assertClassResolution(resolutionAtOffset(resolver, sourceCode, ", ex)", 3),
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, ", ex)", 3),
+				"ex",
 				"java/io/IOException");
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, "String line = lines.get(i);", "String l".length()),
+				"line", CLASS_STRING);
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "ng.join("), // a varargs method
 				CLASS_STRING, "join", "(Ljava/lang/CharSequence;Ljava/lang/Iterable;)Ljava/lang/String;");
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "Files.writeString(path"), // another varargs method
@@ -593,8 +597,12 @@ public class ResolveTests {
 				"java/util/Properties", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
 		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "foo.split("),
 				"java/lang/String", "split", "(Ljava/lang/String;)[Ljava/lang/String;");
-		assertArrayResolution(resolutionAtMiddle(resolver, sourceCode, "fooList.length"),
-				1, "java/lang/String");
+		assertVariableResolution(resolutionAtMiddle(resolver, sourceCode, "fooList.length"),
+				"fooList", "[Ljava/lang/String;");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "fooList.length", "fooList.l".length()),
+				"I");
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, "var foo =", "var f".length()),
+				"foo", CLASS_STRING);
 
 	}
 
@@ -701,6 +709,7 @@ public class ResolveTests {
 				}
 				""";
 		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
 		int position = sourceCode.indexOf("inner.toUpperCase");
 
 		Model leaf = model.getDeepestChildAtPosition(position);
@@ -717,6 +726,10 @@ public class ResolveTests {
 		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("inner")));
 		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("outer")));
 		assertTrue(visible.stream().anyMatch(variable -> variable.getName().equals("param")));
+
+		assertVariableResolution(resolver.resolveReferenceAt("param", position), "param", CLASS_STRING);
+		assertVariableResolution(resolver.resolveReferenceAt("outer", position), "outer", "I");
+		assertVariableResolution(resolver.resolveReferenceAt("inner", position), "inner", CLASS_STRING);
 	}
 
 	@Test
@@ -834,6 +847,18 @@ public class ResolveTests {
 			if (desc != null) assertEquals(desc, fieldEntry.getDescriptor());
 		} else {
 			fail("Resolution was not of a field: " + resolution);
+		}
+	}
+
+	private static void assertVariableResolution(Resolution resolution, String name, String descOrName) {
+		if (resolution instanceof VariableResolution variableResolution) {
+			if (name != null) assertEquals(name, variableResolution.getName());
+			if (descOrName != null) {
+				DescribableEntry resolvedType = variableResolution.getResolvedType();
+				assertEquals(descOrName, resolvedType instanceof ClassEntry classEntry ? classEntry.getName() : resolvedType.getDescriptor());
+			}
+		} else {
+			fail("Resolution was not of a variable: " + resolution);
 		}
 	}
 

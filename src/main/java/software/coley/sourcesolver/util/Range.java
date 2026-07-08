@@ -83,6 +83,13 @@ public record Range(int begin, int end) implements Comparable<Range> {
 		return begin == end;
 	}
 
+	/**
+	 * @return Length of the range.
+	 */
+	public int length() {
+		return end - begin;
+	}
+
 	@Override
 	public int compareTo(Range o) {
 		int cmp = Integer.compare(begin, o.begin);

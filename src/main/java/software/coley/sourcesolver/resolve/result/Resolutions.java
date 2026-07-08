@@ -57,6 +57,16 @@ public class Resolutions {
 	}
 
 	@Nonnull
+	public static VariableResolution ofVariable(@Nonnull String name, @Nonnull DescribableEntry resolvedType) {
+		return ofVariable(name, rawGenericType(resolvedType));
+	}
+
+	@Nonnull
+	public static VariableResolution ofVariable(@Nonnull String name, @Nonnull GenericType resolvedType) {
+		return new VariableResolutionImpl(name, resolvedType);
+	}
+
+	@Nonnull
 	public static PrimitiveResolution ofPrimitive(@Nonnull String descriptor) {
 		return ofPrimitive(PrimitiveEntry.getPrimitive(descriptor));
 	}
@@ -220,6 +230,13 @@ public class Resolutions {
 		return resolution.getMethodEntry().getGenericParameterTypes();
 	}
 
+	@Nonnull
+	public static GenericType getResolvedVariableGenericType(@Nonnull VariableResolution resolution) {
+		if (resolution instanceof VariableResolutionImpl variableResolution)
+			return variableResolution.resolvedType();
+		return rawGenericType(resolution.getResolvedType());
+	}
+
 	/**
 	 * @param resolution
 	 * 		Some resolution.
@@ -229,6 +246,7 @@ public class Resolutions {
 	@Nullable
 	public static DescribableEntry getResolvedValueType(@Nonnull Resolution resolution) {
 		return switch (resolution) {
+			case VariableResolution variableResolution -> variableResolution.getResolvedType();
 			case FieldResolution fieldResolution -> fieldResolution.getResolvedFieldType();
 			case MethodResolution methodResolution -> methodResolution.getResolvedReturnType();
 			case DescribableResolution describableResolution -> describableResolution.getDescribableEntry();
@@ -293,6 +311,10 @@ public class Resolutions {
 		// Merged becomes unknown if either are also unknown.
 		if (left.isUnknown() || right.isUnknown())
 			return unknown();
+		left = toMergeValueResolution(left);
+		right = toMergeValueResolution(right);
+		if (left.isUnknown() || right.isUnknown())
+			return unknown();
 
 		// Merged becomes the wider primitive if both are primitives.
 		if (left instanceof PrimitiveResolution primitiveFirst && right instanceof PrimitiveResolution primitiveSecond)
@@ -314,6 +336,20 @@ public class Resolutions {
 
 		// Incompatible types therefore we cannot merge.
 		return unknown();
+	}
+
+	@Nonnull
+	private static Resolution toMergeValueResolution(@Nonnull Resolution resolution) {
+		// Flatten resolutions to their value type resolution.
+		//  - Fields    -> Variable type
+		//  - Variables -> Variable  type
+		//  - Methods   -> Return type
+		return switch (resolution) {
+			case VariableResolution ignored -> toValueTypeResolution(resolution);
+			case FieldResolution ignored -> toValueTypeResolution(resolution);
+			case MethodResolution ignored -> toValueTypeResolution(resolution);
+			default -> resolution;
+		};
 	}
 
 	public enum MergeOp {
@@ -432,6 +468,20 @@ public class Resolutions {
 		}
 	}
 
+	private record VariableResolutionImpl(@Nonnull String name, @Nonnull GenericType resolvedType) implements VariableResolution {
+		@Nonnull
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Nonnull
+		@Override
+		public DescribableEntry getResolvedType() {
+			return resolvedType.asDescribable();
+		}
+	}
+
 	private record UnknownResolutionImpl() implements UnknownResolution {}
 
 	private record ThrowingResolutionImpl() implements ThrowingResolution {}
@@ -444,5 +494,16 @@ public class Resolutions {
 		public String getPackageName() {
 			return name;
 		}
+	}
+
+	@Nonnull
+	private static GenericType rawGenericType(@Nonnull DescribableEntry entry) {
+		return switch (entry) {
+			case ClassEntry classEntry -> GenericTypes.ofClass(classEntry);
+			case PrimitiveEntry primitiveEntry -> GenericTypes.ofPrimitive(primitiveEntry);
+			case ArrayEntry arrayEntry -> new GenericType.ArrayType(rawGenericType(arrayEntry.getElementEntry()), arrayEntry.getDimensions());
+			case NullEntry ignored -> throw new IllegalArgumentException("Variables cannot resolve to null type");
+			case MemberEntry ignored -> throw new IllegalArgumentException("Variables cannot resolve to member type");
+		};
 	}
 }
