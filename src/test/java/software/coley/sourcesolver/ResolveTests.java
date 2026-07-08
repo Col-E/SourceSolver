@@ -795,12 +795,177 @@ public class ResolveTests {
 		assertEquals("Ljava/lang/String;", Resolutions.getResolvedType(invocationResolution).getDescriptor());
 	}
 
+	@Test
+	void testReferenceResolverHandlesDetachedQualifiedTypeName() {
+		String sourceCode = readSrc("sample/MapLookup");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The source uses wildcard-imported Map, while library users may ask for a detached fully-qualified name.
+		assertClassResolution(resolver.resolveReferenceAt("java.util.Map", sourceCode.indexOf("headers.size")),
+				"java/util/Map");
+	}
+
+	@Test
+	void testReferenceResolverHandlesTypeParameterByBound() {
+		String sourceCode = readSrc("sample/BoxAccess");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// We should be able to resolve a type parameter even if its:
+		//  - Sourced by a method parameter like 'T value'
+		//  - Which is backed by the class's type parameter 'T extends Number'
+		assertClassResolution(resolver.resolveReferenceAt("T", sourceCode.indexOf("value.intValue")),
+				"java/lang/Number");
+	}
+
+	@Test
+	void testReferenceAndFragmentResolversIgnoreBlankInput() {
+		String sourceCode = readSrc("sample/BoxAccess");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+		int position = sourceCode.indexOf("value.intValue");
+
+		// Blank input should not resolve to anything, even if the position is valid.
+		assertUnknown(resolver.resolveReferenceAt(" ", position));
+		assertUnknown(resolver.resolveFragmentAt(" ", position));
+	}
+
+	@Test
+	void testWildcardLowerBoundBoxAccessResolvesThroughObject() {
+		String sourceCode = readSrc("sample/BoxAccess");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The 'lowerBox' is a Box<? super String>.
+		// The real field type is 'Object' even though the generic type is a lower-bounded to '? super Integer'.
+		// We don't want it to come back as some wildcard type, nor as 'Integer'.
+		Resolution resolution = resolutionAtOffset(resolver, sourceCode, "lowerBox.value.toString()", "lowerBox.v".length());
+		assertFieldResolution(resolution, "sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(resolution, "java/lang/Object");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "lowerBox.value.toString()", "lowerBox.value.toStr".length()),
+				"java/lang/Object", "toString", "()Ljava/lang/String;");
+	}
+
+	@Test
+	void testArrayMembersResolveFromVariablesAndArrayTypes() {
+		String sourceCode = readSrc("sample/MessageTemplate");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The 'recipients' variable is a String[] array.
+		// We should be able to resolve the 'clone()' method and the 'length' field.
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "recipients.clone()", "recipients.cl".length()),
+				"java/lang/Object", "clone", "()Ljava/lang/Object;");
+		assertClassResolution(resolutionAtOffset(resolver, sourceCode, "recipients.length", "recipients.l".length()),
+				"I");
+
+		// When we get the variable resolution for 'recipients' we expect it to be String[].
+		Resolution recipientsVariable = resolutionAtStart(resolver, sourceCode, "recipients.length");
+		assertVariableResolution(recipientsVariable, "recipients", "[Ljava/lang/String;");
+
+		// In the context of the variable, the field 'length' should resolve to the primitive int type.
+		assertClassResolution(resolver.resolveFieldInContext(recipientsVariable, "length"), "I");
+
+		// Resolving on 'String' in the 'String[]' of the array variable should get us the array type.
+		// We should be able to resolve 'clone()' and 'length' on the array type as well.
+		Resolution recipientsArray = resolutionAtOffset(resolver, sourceCode, "String[] recipients", "String[".length());
+		assertArrayResolution(recipientsArray, 1, CLASS_STRING);
+		assertMethodResolution(resolver.resolveMethodInContext(recipientsArray, "clone", null, List.of()),
+				"java/lang/Object", "clone", "()Ljava/lang/Object;");
+		assertClassResolution(resolver.resolveFieldInContext(recipientsArray, "length"), "I");
+		assertMethodResolution(resolver.resolveMethodInContext(recipientsArray, "clone", null, List.of()),
+				"java/lang/Object", "clone", "()Ljava/lang/Object;");
+	}
+
+	@Test
+	void testMethodReturnContextKeepsGenericFieldType() {
+		String sourceCode = readSrc("sample/BoxAccess");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The 'provideBox()' method returns a Box<String>.
+		Resolution provideBox = resolutionAtOffset(resolver, sourceCode, "provideBox().value.toUpperCase()", "provide".length());
+		assertMethodResolution(provideBox, "sample/BoxAccess", "provideBox", "()Lsample/Box;");
+
+		// In the Box<String> context we should be able to resolve the 'value' field to a String type.
+		Resolution providedValue = resolver.resolveFieldInContext(provideBox, "value");
+		assertFieldResolution(providedValue, "sample/Box", "value", "Ljava/lang/Object;");
+		assertResolvedFieldType(providedValue, CLASS_STRING);
+	}
+
+	@Test
+	void testInheritedAndStaticMembersInTemplateHierarchy() {
+		String sourceCode = readSrc("sample/MessageTemplate");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The 'status' field is declared in MessageTemplate, so as a baseline this should work fine.
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "status.length()"),
+				"sample/MessageTemplate", "status", "Ljava/lang/String;");
+
+		// MessageTemplate extends MessageTemplateBase, which declares 'fallbackTitle' and 'defaultPrefix'.
+		// We should be able to resolve those fields and their accessors as well.
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "fallbackTitle.length()"),
+				"sample/MessageTemplateBase", "fallbackTitle", "Ljava/lang/String;");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "fallbackTitle()"),
+				"sample/MessageTemplateBase", "fallbackTitle", "()Ljava/lang/String;");
+		assertFieldResolution(resolutionAtStart(resolver, sourceCode, "defaultPrefix.length()"),
+				"sample/MessageTemplateBase", "defaultPrefix", "Ljava/lang/String;");
+		assertMethodResolution(resolutionAtMiddle(resolver, sourceCode, "defaultPrefix()"),
+				"sample/MessageTemplateBase", "defaultPrefix", "()Ljava/lang/String;");
+	}
+
+	@Test
+	void testReferenceHelpersUseEnclosingMetadataWhenSourceIsIncomplete() {
+		// Make a unit with less information than the real MessageTemplate class.
+		// It is still syntactically valid, but it doesn't declare the base class or any of the fields.
+		String sourceCode = """
+				package sample;
+
+				public class MessageTemplate {
+					void detached() {
+						System.nanoTime();
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+
+		// Our resolver specifies the real MessageTemplate class as the declared class, so it can still resolve inherited and static members.
+		Resolver resolver = new BasicResolver(model, pool);
+		resolver.setDeclaredClass(model.getDeclaredClasses().getFirst(), pool.getClass("sample/MessageTemplate"));
+
+		// Bogus position, but we can still resolve the inherited and static members by name
+		// because the resolver has the real class metadata.
+		int position = sourceCode.indexOf("nanoTime");
+		assertFieldResolution(resolver.resolveReferenceAt("fallbackTitle", position),
+				"sample/MessageTemplateBase", "fallbackTitle", "Ljava/lang/String;");
+		assertFieldResolution(resolver.resolveReferenceAt("status", position),
+				"sample/MessageTemplate", "status", "Ljava/lang/String;");
+		assertUnknown(resolver.resolveReferenceAt("notAField", position));
+	}
+
+	@Test
+	void testStaticInitializerResolution() {
+		// Even if we use the default reflective entry pool model, which has no way to know about the existence
+		// of static initializer methods, we should resolve the <clinit> if we resolve on the static {} block.
+		String sourceCode = readSrc("sample/StaticInitBacked");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "static {"),
+				"sample/StaticInitBacked", "<clinit>", "()V");
+	}
+
 	private static void assertPackageResolution(Resolution resolution, String name) {
 		if (resolution instanceof PackageResolution packageResolution) {
 			if (name != null) assertEquals(name, packageResolution.getPackageName());
 		} else {
 			fail("Resolution was not of a package: " + resolution);
 		}
+	}
+
+	private static void assertUnknown(Resolution resolution) {
+		assertTrue(resolution.isUnknown(), "Resolution should be unknown: " + resolution);
 	}
 
 	private static void assertMultiMemberResolution(Resolution resolution, Consumer<ClassMemberPair> consumer) {

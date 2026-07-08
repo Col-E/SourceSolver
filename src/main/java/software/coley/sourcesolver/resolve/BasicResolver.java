@@ -36,6 +36,7 @@ import software.coley.sourcesolver.model.TypeParameterModel;
 import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.model.YieldStatementModel;
 import software.coley.sourcesolver.resolve.entry.ArrayEntry;
+import software.coley.sourcesolver.resolve.entry.BasicMethodEntry;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
@@ -65,6 +66,7 @@ import software.coley.sourcesolver.resolve.result.Resolutions;
 import software.coley.sourcesolver.resolve.result.ThrowingResolution;
 import software.coley.sourcesolver.resolve.result.VariableResolution;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -90,6 +92,9 @@ import static software.coley.sourcesolver.resolve.result.Resolutions.*;
  * @author Matt Coley
  */
 public class BasicResolver implements Resolver {
+	// Shared stub for static initializer methods.
+	// This is used to resolve references to the <clinit> method when users don't provide a class entry model that contains them.
+	private static final MethodEntry STATIC_INIT_STUB = new BasicMethodEntry("<clinit>", "()V", Modifier.STATIC, GenericTypes.ofPrimitive(VOID), List.of());
 	private final Map<String, ClassEntry> importedTypes;
 	private final CompilationUnitModel unit;
 	private final EntryPool pool;
@@ -192,6 +197,7 @@ public class BasicResolver implements Resolver {
 			return unknown();
 		}
 
+		// Check for qualified name access.
 		if (trimmedName.indexOf('.') >= 0) {
 			Resolution typeResolution = resolveNameAsQualifiedOrImported(trimmedName);
 			if (!typeResolution.isUnknown())
@@ -917,8 +923,6 @@ public class BasicResolver implements Resolver {
 				.reduce(this::getCommonDescriptor)
 				.orElse(jlObjectEntry);
 	}
-
-
 
 	@Nullable
 	private GenericType resolvePrimitiveGenericType(@Nonnull TypeModel type) {
@@ -1653,10 +1657,12 @@ public class BasicResolver implements Resolver {
 			return unknown();
 
 		// Static initializers will only be resolved in the target class.
+		// If the class doesn't declare a static initializer, we will return a stub resolution for it.
 		List<MethodEntry> initializers = resolvedDefiningClass.getClassEntry().getDeclaredMethodsByName("<clinit>");
-		if (initializers.isEmpty())
-			return unknown();
-		return ofMethod(resolvedDefiningClass.getClassEntry(), initializers.getFirst());
+		MethodEntry initializer = initializers.isEmpty() ?
+				STATIC_INIT_STUB :
+				initializers.getFirst();
+		return ofMethod(resolvedDefiningClass.getClassEntry(), initializer);
 	}
 
 	@Nonnull
@@ -1851,8 +1857,7 @@ public class BasicResolver implements Resolver {
 					// Void-compatible method references may still target a non-void member whose
 					// result is ignored, so only keep a return-type hint when it constrains anything.
 					usageType = lambdaReturnType == VOID ? null : lambdaReturnType;
-				}
-				else
+				} else
 					// Reset to null, we do not to incorrectly infer the wrong type for lambdas.
 					usageType = null;
 			}
