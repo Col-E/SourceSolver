@@ -291,6 +291,19 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testQualifiedInnerClassGenericVariable() {
+		String sourceCode = readSrc("sample/Extractor");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// The variable resolution should work regardless of whether we use qualified or unqualified inner class names.
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, "List<Item> list", "List<Item> l".length()),
+				"list", "java/util/List");
+		assertVariableResolution(resolutionAtOffset(resolver, sourceCode, "List<Extractor.Item> list", "List<Extractor.Item> l".length()),
+				"list", "java/util/List");
+	}
+
+	@Test
 	void testInnerClassInIsolation_CFR() {
 		// Simulate scenario where the inner class is decompiled by CFR in isolation
 		String sourceCode = """

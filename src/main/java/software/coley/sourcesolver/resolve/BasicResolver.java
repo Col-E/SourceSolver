@@ -773,18 +773,13 @@ public class BasicResolver implements Resolver {
 		String packageName = unit.getPackage().getName();
 
 		for (ClassModel cls : unit.getRecursiveChildrenOfType(ClassModel.class)) {
-			// Only visit classes with the same inner-most name.
-			String localClassName = cls.getName();
-			if (!localClassName.equals(name))
+			// Only visit classes with the same inner-most name, or nested source name.
+			String sourceName = getSourceClassName(cls, '.');
+			if (!cls.getName().equals(name) && !sourceName.equals(name))
 				continue;
 
 			// Build name with outer classes and package.
-			StringBuilder nameBuilder = new StringBuilder(localClassName);
-			ClassModel outerCls = cls.getParentOfType(ClassModel.class);
-			while (outerCls != null) {
-				nameBuilder.insert(0, outerCls.getName() + '$');
-				outerCls = outerCls.getParentOfType(ClassModel.class);
-			}
+			StringBuilder nameBuilder = new StringBuilder(getSourceClassName(cls, '$'));
 			if (!packageName.isEmpty())
 				nameBuilder.insert(0, packageName.replace('.', '/') + '/');
 
@@ -797,11 +792,22 @@ public class BasicResolver implements Resolver {
 			// instead. This is mainly viable when the provided code is a decompilation of an inner class
 			// that is being informed via 'Resolver#setDeclaredClass'.
 			if (resolve(cls) instanceof ClassResolution resolvedClass &&
-					resolvedClass.getClassEntry().getName().endsWith("$" + localClassName))
+					resolvedClass.getClassEntry().getName().endsWith("$" + cls.getName()))
 				return resolvedClass;
 		}
 
 		return unknown();
+	}
+
+	@Nonnull
+	private String getSourceClassName(@Nonnull ClassModel cls, char innerSeparator) {
+		StringBuilder nameBuilder = new StringBuilder(cls.getName());
+		ClassModel outerCls = cls.getParentOfType(ClassModel.class);
+		while (outerCls != null) {
+			nameBuilder.insert(0, outerCls.getName() + innerSeparator);
+			outerCls = outerCls.getParentOfType(ClassModel.class);
+		}
+		return nameBuilder.toString();
 	}
 
 	@Nonnull
