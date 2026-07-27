@@ -13,7 +13,11 @@ import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
+import software.coley.sourcesolver.resolve.entry.BasicClassEntry;
+import software.coley.sourcesolver.resolve.entry.BasicMethodEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
+import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
+import software.coley.sourcesolver.resolve.generic.GenericTypes;
 import software.coley.sourcesolver.resolve.result.ArrayResolution;
 import software.coley.sourcesolver.resolve.result.ClassResolution;
 import software.coley.sourcesolver.resolve.result.DescribableResolution;
@@ -33,10 +37,9 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static java.lang.reflect.Modifier.PUBLIC;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("SameParameterValue")
 public class ResolveTests {
@@ -265,6 +268,53 @@ public class ResolveTests {
 	}
 
 	@Test
+	void testOverloadResolving() {
+		String sourceCode = """
+				package sample;
+
+				import example.Arg;
+
+				class OverloadsTwo {
+					void foo(Arg arg) {}
+					void foo(Arg arg, int i) {}
+
+					void usage() {
+						foo(new Arg());
+						foo(new Arg(), 1);
+					}
+				}
+				""";
+		CompilationUnitModel model = parser.parse(sourceCode);
+
+		// Create a pool for just this test with a new entry for the class we're modeling.
+		// However, we won't register the 'Arg' type. This is to simulate the case where
+		// the library is used in a context where we only have access to the 'OverloadsTwo' class.
+		EntryPool pool2 = Utils.copy(pool);
+		ClassEntry object = pool2.getClass("java/lang/Object"); // TODO: This is ugly, maybe make a util for this?
+		ClassEntry arg = new BasicClassEntry("example/Arg", PUBLIC, object, List.of(), List.of(), null,
+				List.of(), GenericTypes.ofClass(object), List.of(), List.of(), List.of());
+		ClassEntry overloads = new BasicClassEntry("sample/OverloadsTwo", PUBLIC, object, List.of(), List.of(), null,
+				List.of(), GenericTypes.ofClass(object), List.of(), List.of(), List.of(
+						new BasicMethodEntry("foo", "(Lexample/Arg;)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg))),
+						new BasicMethodEntry("foo", "(Lexample/Arg;I)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg), GenericTypes.ofPrimitive(PrimitiveEntry.INT)))));
+		pool2.register(overloads);
+		Resolver resolver = new BasicResolver(model, pool2);
+
+		// Even without pool entries for the argument types, we should be able to differentiate
+		// between the two 'foo' methods by the number of arguments.
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(Arg arg) {}"),
+				"sample/OverloadsTwo", "foo", "(Lexample/Arg;)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(Arg arg, int i) {}"),
+				"sample/OverloadsTwo", "foo", "(Lexample/Arg;I)V");
+
+		// Same for the references.
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new Arg());"),
+				"sample/OverloadsTwo", "foo", "(Lexample/Arg;)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new Arg(), 1);"),
+				"sample/OverloadsTwo", "foo", "(Lexample/Arg;I)V");
+	}
+
+	@Test
 	void testOuterClass() {
 		String sourceCode = readSrc("sample/OuterClass");
 		CompilationUnitModel model = parser.parse(sourceCode);
@@ -381,7 +431,7 @@ public class ResolveTests {
 		// 4. Resolving the sibling 'TimeUnit.MINUTES' repeats the same path and re-enters the original field inference.
 		// 5. Without a re-entrancy guard this loops until StackOverflowError.
 		//
- 		// We not have a guard so this should resolve just fine without blowing the stack.
+		// We not have a guard so this should resolve just fine without blowing the stack.
 		String sourceCode = """
 				package sample;
 				

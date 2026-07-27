@@ -1,5 +1,6 @@
 package software.coley.sourcesolver.util;
 
+import jakarta.annotation.Nonnull;
 import software.coley.collections.Unchecked;
 import software.coley.sourcesolver.resolve.entry.BasicEntryPool;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
@@ -21,12 +22,20 @@ public class Utils {
 	private static final EntryPool pool = new BasicEntryPool();
 	private static boolean filled;
 
+	@Nonnull
 	public static EntryPool getSharedPool() {
 		if (!filled) {
 			filled = true;
 			fillPool();
 		}
 		return pool;
+	}
+
+	@Nonnull
+	public static EntryPool copy(@Nonnull EntryPool pool) {
+		if (pool instanceof BasicEntryPool basic)
+			return basic.copy();
+		throw new IllegalArgumentException("Cannot copy pool of type: " + pool.getClass().getName());
 	}
 
 	private static void fillPool() {

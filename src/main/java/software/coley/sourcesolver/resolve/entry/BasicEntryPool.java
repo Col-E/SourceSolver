@@ -3,12 +3,25 @@ package software.coley.sourcesolver.resolve.entry;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class BasicEntryPool implements EntryPool {
 	private final Map<String, ClassEntry> classEntries = new HashMap<>();
+
+	public BasicEntryPool() {}
+
+	public BasicEntryPool(@Nonnull Collection<ClassEntry> entries) {
+		for (ClassEntry entry : entries)
+			register(entry);
+	}
+
+	@Nonnull
+	public BasicEntryPool copy() {
+		return new BasicEntryPool(classEntries.values());
+	}
 
 	@Override
 	public void register(@Nonnull ClassEntry entry) {

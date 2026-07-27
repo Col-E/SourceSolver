@@ -1341,16 +1341,21 @@ public class BasicResolver implements Resolver {
 		List<VariableModel> parameters = method.getParameters();
 		List<DescribableEntry> describableParameters = new ArrayList<>(parameters.size());
 		for (VariableModel parameter : parameters) {
+			// The resolved type may be null if the parameter type is something we don't have access to.
+			// However, we want to keep these nulls in the list so that the parameter count is correct for the method descriptor.
 			DescribableEntry resolvedParameterType = Resolutions.getResolvedValueType(parameter.resolve(this));
-			if (resolvedParameterType != null)
-				describableParameters.add(resolvedParameterType);
-			else
-				// If a parameter is not resolvable, we cannot resolve this method
-				return unknown();
+			describableParameters.add(resolvedParameterType);
 		}
 
 		// Resolve by name/descriptor.
-		Resolution resolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+		//  - If all parameter types are resolved, we can use the method descriptor to resolve the method.
+		//  - If any parameter type is unresolved, we will need to resolve by name and parameter count, and then filter by the resolved return type.
+		Resolution resolution;
+		if (describableParameters.stream().allMatch(Objects::nonNull))
+			resolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+		else
+			resolution = resolveMethodByNameInClass(GenericTypes.ofClass(definingClassEntry), methodName,
+					rawGenericType(resolvedReturnType.getDescribableEntry()), toGenericTypeHints(describableParameters), describableParameters);
 
 		// For constructors of inner classes, try again with the synthetic outer class parameter added.
 		if (methodName.charAt(0) == '<' && (resolution.isUnknown() || resolution instanceof MethodResolution mr && !mr.getOwnerEntry().getName().equals(definingClassEntry.getName()))) {
@@ -1361,7 +1366,13 @@ public class BasicResolver implements Resolver {
 				describableParameters.addFirst(outerClass);
 
 				// If we do not find a result we want to retain our existing resolution.
-				Resolution synthCtorResolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+				// Same idea applies here as above, if all parameter types are resolved, we can use the method descriptor to resolve the method.
+				Resolution synthCtorResolution;
+				if (describableParameters.stream().allMatch(Objects::nonNull))
+					synthCtorResolution = ofMethod(definingClassEntry, methodName, resolvedReturnType.getDescribableEntry(), describableParameters);
+				else
+					synthCtorResolution = resolveMethodByNameInClass(GenericTypes.ofClass(definingClassEntry), methodName,
+							rawGenericType(resolvedReturnType.getDescribableEntry()), toGenericTypeHints(describableParameters), describableParameters);
 				if (!synthCtorResolution.isUnknown())
 					resolution = synthCtorResolution;
 			}
@@ -1497,7 +1508,8 @@ public class BasicResolver implements Resolver {
 							DescribableEntry varargElementType = arrayType.elementType().asDescribable();
 							boolean methodRemoved = false;
 							for (int j = maxArgToCheck; j < hintedArgCount; j++) {
-								if (!varargElementType.isAssignableFrom(argumentTypeEntries.get(j))) {
+								DescribableEntry argumentType = argumentTypeEntries.get(j);
+								if (argumentType != null && !varargElementType.isAssignableFrom(argumentType)) {
 									methodRemoved = true;
 									methodsByName.remove(methodEntry);
 									break;
@@ -1519,6 +1531,9 @@ public class BasicResolver implements Resolver {
 					for (int j = 0; j < maxArgToCheck; j++) {
 						DescribableEntry describableParameter = parameterTypes.get(j).asDescribable();
 						DescribableEntry argType = argumentTypeEntries.get(j);
+						if (argType == null) // Can be null for unresolved types, we cannot prune in that case.
+							continue;
+
 						// Multi-class entries are special and created from our inference logic.
 						// In essence, the arg can be "one of multiple" options.
 						// Example:
@@ -1550,7 +1565,7 @@ public class BasicResolver implements Resolver {
 
 			// Check and see if there is an exact descriptor match.
 			//  TODO: Case where the returnValue but not args are given, case where both are given
-			if (argumentTypeEntries != null) {
+			if (argumentTypeEntries != null && argumentTypeEntries.stream().allMatch(Objects::nonNull)) {
 				String argsDesc = "(" + argumentTypeEntries.stream().map(DescribableEntry::getDescriptor).collect(Collectors.joining("")) + ")";
 				methodsByName = methodsByName.stream()
 						.filter(e -> e.getDescriptor().startsWith(argsDesc))
@@ -2244,9 +2259,10 @@ public class BasicResolver implements Resolver {
 				// See if we can infer the type based on matching possible argument types for methods of the same name.
 				DescribableEntry inferredEntry = inferExpectedTypeForArgument(methodInvocation, i);
 				if (inferredEntry == null) {
-					// If any of the arguments cannot be described, then we will treat it as if
-					// we don't know anything about the arguments at all.
-					return null;
+					// Preserve the argument count even when this argument's type is unknown,
+					// so overloads can still be differentiated by arity.
+					genericArguments.add(null);
+					continue;
 				}
 				genericArguments.add(rawGenericType(inferredEntry));
 			}
