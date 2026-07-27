@@ -908,15 +908,34 @@ public class BasicResolver implements Resolver {
 
 	@Nullable
 	private GenericType resolveSourceTypeVariable(@Nonnull Model origin, @Nonnull String name) {
+		// Check for a type parameter in the method first.
+		MethodModel method = origin.getParentOfType(MethodModel.class);
+		if (method != null) {
+			for (TypeParameterModel typeParameter : method.getTypeParameters())
+				if (typeParameter.getName().equals(name))
+					return new GenericType.TypeVariableType(new GenericTypeParameter(getSourceTypeOwnerId(method),
+							name, resolveTypeParameterUpperBound(typeParameter)));
+		}
+
+		// Then check for a type parameter in the class and its outer classes.
 		ClassModel cls = origin.getParentOfType(ClassModel.class);
 		while (cls != null) {
 			for (TypeParameterModel typeParameter : cls.getTypeParameters())
 				if (typeParameter.getName().equals(name))
-					return new GenericType.TypeVariableType(new GenericTypeParameter(
-							getSourceTypeOwnerId(cls), name, resolveTypeParameterUpperBound(typeParameter)));
+					return new GenericType.TypeVariableType(new GenericTypeParameter(getSourceTypeOwnerId(cls),
+							name, resolveTypeParameterUpperBound(typeParameter)));
 			cls = cls.getParentOfType(ClassModel.class);
 		}
 		return null;
+	}
+
+	@Nonnull
+	private String getSourceTypeOwnerId(@Nonnull MethodModel method) {
+		ClassModel declaringClass = method.getParent() instanceof ClassModel cls ? cls : null;
+		String classOwner = declaringClass == null ?
+				unit.getPackage().getName() :
+				getSourceTypeOwnerId(declaringClass);
+		return classOwner + '#' + method.getName() + '@' + method.getRange().begin();
 	}
 
 	@Nonnull
@@ -924,6 +943,7 @@ public class BasicResolver implements Resolver {
 		if (resolveClassModel(cls) instanceof ClassResolution classResolution)
 			return classResolution.getClassEntry().getName();
 
+		// Fallback to source-based owner ID if the class is not resolvable in the pool.
 		StringBuilder builder = new StringBuilder(cls.getName());
 		ClassModel outerClass = cls.getParentOfType(ClassModel.class);
 		while (outerClass != null) {
@@ -2267,6 +2287,15 @@ public class BasicResolver implements Resolver {
 		List<GenericType> genericArguments = arguments.isEmpty() ? Collections.emptyList() : new ArrayList<>(arguments.size());
 		for (int i = 0; i < arguments.size(); i++) {
 			AbstractExpressionModel argument = arguments.get(i);
+			if (argument instanceof MethodReferenceExpressionModel) {
+				// Method references are target-typed expressions. Resolving the reference
+				// directly yields the referenced method's return type, which is not the
+				// argument type used for overload selection.
+				DescribableEntry inferredEntry = inferExpectedTypeForArgument(methodInvocation, i);
+				genericArguments.add(inferredEntry == null ? null : rawGenericType(inferredEntry));
+				continue;
+			}
+
 			Resolution resolution = argument.resolve(this);
 			GenericType argumentType = getResolvedGenericType(resolution);
 			if (argumentType != null) {

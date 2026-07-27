@@ -8,13 +8,13 @@ import software.coley.sourcesolver.model.ScopeLookup;
 import software.coley.sourcesolver.model.VariableModel;
 import software.coley.sourcesolver.resolve.BasicResolver;
 import software.coley.sourcesolver.resolve.Resolver;
+import software.coley.sourcesolver.resolve.entry.BasicClassEntry;
+import software.coley.sourcesolver.resolve.entry.BasicMethodEntry;
 import software.coley.sourcesolver.resolve.entry.ClassEntry;
 import software.coley.sourcesolver.resolve.entry.ClassMemberPair;
 import software.coley.sourcesolver.resolve.entry.DescribableEntry;
 import software.coley.sourcesolver.resolve.entry.EntryPool;
 import software.coley.sourcesolver.resolve.entry.FieldEntry;
-import software.coley.sourcesolver.resolve.entry.BasicClassEntry;
-import software.coley.sourcesolver.resolve.entry.BasicMethodEntry;
 import software.coley.sourcesolver.resolve.entry.MethodEntry;
 import software.coley.sourcesolver.resolve.entry.PrimitiveEntry;
 import software.coley.sourcesolver.resolve.generic.GenericTypes;
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static java.lang.reflect.Modifier.PUBLIC;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("SameParameterValue")
@@ -271,13 +270,13 @@ public class ResolveTests {
 	void testOverloadResolving() {
 		String sourceCode = """
 				package sample;
-
+				
 				import example.Arg;
-
+				
 				class OverloadsTwo {
 					void foo(Arg arg) {}
 					void foo(Arg arg, int i) {}
-
+				
 					void usage() {
 						foo(new Arg());
 						foo(new Arg(), 1);
@@ -334,6 +333,21 @@ public class ResolveTests {
 				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;)V");
 		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new sample.alt.Box(), 1);"),
 				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;I)V");
+	}
+
+	@Test
+	void testGenericOverloadResolvingWithMethodReference() {
+		String sourceCode = readSrc("sample/ThreadUtil");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// Method scoped type variables shouldn't break our overload resolution.
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "blockUntilDone(Function<Executor, CompletableFuture<T>> task)"),
+				"sample/ThreadUtil", "blockUntilDone", "(Ljava/util/function/Function;)Ljava/util/concurrent/CompletableFuture;");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "blockUntilDone(Function<Executor, T> task, Predicate<T> completionCheck)"),
+				"sample/ThreadUtil", "blockUntilDone", "(Ljava/util/function/Function;Ljava/util/function/Predicate;)Ljava/lang/Object;");
+		assertMethodResolution(resolutionAtOffset(resolver, sourceCode, "Util.blockUntilDone(task, CompletableFuture::isDone)", "Util.".length()),
+				"sample/ThreadUtil", "blockUntilDone", "(Ljava/util/function/Function;Ljava/util/function/Predicate;)Ljava/lang/Object;");
 	}
 
 	@Test
@@ -1007,7 +1021,7 @@ public class ResolveTests {
 		// It is still syntactically valid, but it doesn't declare the base class or any of the fields.
 		String sourceCode = """
 				package sample;
-
+				
 				public class MessageTemplate {
 					void detached() {
 						System.nanoTime();
