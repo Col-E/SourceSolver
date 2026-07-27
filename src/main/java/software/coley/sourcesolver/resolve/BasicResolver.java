@@ -385,13 +385,15 @@ public class BasicResolver implements Resolver {
 			case AnnotationExpressionModel annotation -> annotation.getNameModel().resolve(this);
 			case MemberSelectExpressionModel memberSelectExpression -> {
 				Model parent = memberSelectExpression.getParent();
-				if (parent instanceof NewClassExpressionModel || parent instanceof TypeModel)
+				if (parent instanceof NewClassExpressionModel newClass && newClass.getIdentifier() == memberSelectExpression)
+					yield resolveNewClass(newClass);
+				if (parent instanceof TypeModel)
 					yield resolveNamed(memberSelectExpression);
 				yield resolveMemberSelection(memberSelectExpression);
 			}
 			case MethodInvocationExpressionModel methodInvocationExpressionModel ->
 					resolveMethodReturnType(methodInvocationExpressionModel);
-			case NewClassExpressionModel newClass -> resolveNamed(newClass);
+			case NewClassExpressionModel newClass -> resolveNewClass(newClass);
 			case NamedModel named -> resolveNameUsage(named);
 			case TypeModel type -> resolveType(type);
 			case CastExpressionModel cast -> cast.getType().resolve(this);
@@ -443,7 +445,7 @@ public class BasicResolver implements Resolver {
 		else if (parent instanceof NewClassExpressionModel newExpr) {
 			// The named model is the identifier of a 'new T()' expression so resolve as T.
 			if (newExpr.getIdentifier() == named)
-				return resolveNamed(newExpr);
+				return resolveNewClass(newExpr);
 
 			// The named model is an argument, so for 'new Box<T>' we would be resolving T.
 			if (newExpr.getTypeArguments().contains(named))
@@ -572,6 +574,20 @@ public class BasicResolver implements Resolver {
 		}
 
 		return unknown();
+	}
+
+	@Nonnull
+	private Resolution resolveNewClass(@Nonnull NewClassExpressionModel newClass) {
+		// A qualified constructor name is represented as a member-select chain.
+		// We want to resolve the complete selection as a single type name.
+		if (newClass.getIdentifier() instanceof MemberSelectExpressionModel memberSelect) {
+			Resolution resolution = resolveDotName(memberSelect.toString());
+			if (!resolution.isUnknown())
+				return resolution;
+		}
+
+		// If we haven't resolved the qualified name, fall back to resolving the identifier as a normal named model.
+		return resolveNamed(newClass);
 	}
 
 	@Nonnull

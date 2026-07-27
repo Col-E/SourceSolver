@@ -295,8 +295,8 @@ public class ResolveTests {
 				List.of(), GenericTypes.ofClass(object), List.of(), List.of(), List.of());
 		ClassEntry overloads = new BasicClassEntry("sample/OverloadsTwo", PUBLIC, object, List.of(), List.of(), null,
 				List.of(), GenericTypes.ofClass(object), List.of(), List.of(), List.of(
-						new BasicMethodEntry("foo", "(Lexample/Arg;)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg))),
-						new BasicMethodEntry("foo", "(Lexample/Arg;I)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg), GenericTypes.ofPrimitive(PrimitiveEntry.INT)))));
+				new BasicMethodEntry("foo", "(Lexample/Arg;)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg))),
+				new BasicMethodEntry("foo", "(Lexample/Arg;I)V", 0, GenericTypes.ofPrimitive(PrimitiveEntry.VOID), List.of(GenericTypes.ofClass(arg), GenericTypes.ofPrimitive(PrimitiveEntry.INT)))));
 		pool2.register(overloads);
 		Resolver resolver = new BasicResolver(model, pool2);
 
@@ -312,6 +312,28 @@ public class ResolveTests {
 				"sample/OverloadsTwo", "foo", "(Lexample/Arg;)V");
 		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new Arg(), 1);"),
 				"sample/OverloadsTwo", "foo", "(Lexample/Arg;I)V");
+	}
+
+	@Test
+	void testOverloadResolvingWithQualifiedName() {
+		// We have 'sample.Box' and 'sample.alt.Box' and in this case
+		// just 'Box' would be the first. We're using the latter.
+		String sourceCode = readSrc("sample/AltBoxUser");
+		CompilationUnitModel model = parser.parse(sourceCode);
+		Resolver resolver = new BasicResolver(model, pool);
+
+		// Even without pool entries for the argument types, we should be able to differentiate
+		// between the two 'foo' methods by the number of arguments.
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(sample.alt.Box box) {}"),
+				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(sample.alt.Box box, int i) {}"),
+				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;I)V");
+
+		// Same for the references.
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new sample.alt.Box());"),
+				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;)V");
+		assertMethodResolution(resolutionAtStart(resolver, sourceCode, "foo(new sample.alt.Box(), 1);"),
+				"sample/AltBoxUser", "foo", "(Lsample/alt/Box;I)V");
 	}
 
 	@Test
